@@ -13,3 +13,26 @@ or alternatively whether its effect is specific to a particular cancer type.
 
 More to come.
 
+## Setup
+
+We recommend using the conda environment specified in the `environment.yml` file to run these analyses. To build and activate this environment, run:
+
+```shell
+# conda version 4.5.0
+conda env create --file environment.yml
+
+conda activate pancancer-evaluation
+```
+
+## Running tests
+
+Running the tests requires the `pytest` module (included in the specified
+Conda environment). Once this module is installed, you can run the tests
+by executing the command
+
+```shell
+pytest tests/
+```
+
+from the repo root.
+
