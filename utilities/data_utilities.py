@@ -72,7 +72,7 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
         sample_info_df.loc[sample_info_df.cancer_type == holdout_cancer_type]
         .index
     )
-    cancer_type_df = rnaseq_df.loc[cancer_type_sample_ids, :]
+    cancer_type_df = rnaseq_df.loc[rnaseq_df.index.intersection(cancer_type_sample_ids), :]
 
     cancer_type_train_df, rnaseq_test_df = split_single_cancer_type(
             cancer_type_df, num_folds, fold_no)
@@ -82,7 +82,7 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
             sample_info_df.loc[~(sample_info_df.cancer_type == holdout_cancer_type)]
             .index
         )
-        pancancer_df = rnaseq_df.loc[pancancer_sample_ids, :]
+        pancancer_df = rnaseq_df.loc[rnaseq_df.index.intersection(pancancer_sample_ids), :]
         rnaseq_train_df = pd.concat((pancancer_df, cancer_type_train_df))
     else:
         rnaseq_train_df = cancer_type_train_df
