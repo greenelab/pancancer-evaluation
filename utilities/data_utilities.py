@@ -15,7 +15,6 @@ def load_expression_data(subset_mad_genes=cfg.num_features_raw,
 
     Arguments
     ---------
-
     subset_mad_genes (int): TODO still need to implement this
     scale_input (bool): whether or not to scale the expression data
     verbose (bool): whether or not to print verbose output
@@ -69,7 +68,6 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
     rnaseq_train_df (pd.DataFrame): samples x genes train data
     rnaseq_test_df (pd.DataFrame): samples x genes test data
     """
-    print(sample_info_df.head())
     cancer_type_sample_ids = (
         sample_info_df.loc[sample_info_df.cancer_type == holdout_cancer_type]
         .index
