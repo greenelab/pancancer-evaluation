@@ -8,7 +8,9 @@ data_dir = repo_root.joinpath('data').resolve()
 
 # location of saved expression data
 pancan_data = data_dir.joinpath('pancancer_data.pkl').resolve()
-mad_data = data_dir.joinpath('tcga_mad_genes.tsv').resolve()
+rnaseq_data = data_dir.joinpath(
+                  'tcga_expression_matrix_processed.tsv.gz').resolve()
+# mad_data = data_dir.joinpath('tcga_mad_genes.tsv').resolve()
 sample_counts = data_dir.joinpath('tcga_sample_counts.tsv').resolve()
 sample_info = data_dir.joinpath('tcga_sample_identifiers.tsv').resolve()
 
