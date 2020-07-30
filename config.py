@@ -4,15 +4,18 @@ import pathlib
 repo_root = pathlib.Path(__file__).parents[0]
 
 # important subdirectories
-data_dir = repo_root.joinpath('data').resolve()
+data_dir = repo_root / 'data'
 
 # location of saved expression data
-pancan_data = data_dir.joinpath('pancancer_data.pkl').resolve()
-rnaseq_data = data_dir.joinpath(
-                  'tcga_expression_matrix_processed.tsv.gz').resolve()
+pancan_data = data_dir / 'pancancer_data.pkl'
+rnaseq_data = data_dir / 'tcga_expression_matrix_processed.tsv.gz'
 # mad_data = data_dir.joinpath('tcga_mad_genes.tsv').resolve()
-sample_counts = data_dir.joinpath('tcga_sample_counts.tsv').resolve()
-sample_info = data_dir.joinpath('tcga_sample_identifiers.tsv').resolve()
+sample_counts = data_dir / 'tcga_sample_counts.tsv'
+sample_info = data_dir / 'tcga_sample_identifiers.tsv'
+
+# location of test data
+test_data_dir = repo_root / 'tests' / 'data'
+test_expression = test_data_dir / 'expression_subsampled.tsv.gz'
 
 # parameters for classification using raw gene expression
 num_features_raw = 8000
