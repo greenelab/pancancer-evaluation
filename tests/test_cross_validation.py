@@ -4,10 +4,8 @@ Test cases for cross-validation code in data_utilities.py
 import pytest
 import pandas as pd
 
-# TODO: how to do this import properly?
-import sys; sys.path.append('.')
-import config as cfg
-import utilities.data_utilities as du
+import pancancer_utilities.config as cfg
+import pancancer_utilities.data_utilities as du
 
 @pytest.fixture(scope='module')
 def expression_data():

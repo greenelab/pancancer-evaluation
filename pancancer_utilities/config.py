@@ -1,7 +1,6 @@
 import pathlib
 
-# home is where the file is
-repo_root = pathlib.Path(__file__).parents[0]
+repo_root = pathlib.Path(__file__).resolve().parent.parent
 
 # important subdirectories
 data_dir = repo_root / 'data'

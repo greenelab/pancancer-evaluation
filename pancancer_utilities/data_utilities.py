@@ -5,8 +5,7 @@ import pickle as pkl
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
 
-import sys; sys.path.append('.')
-import config as cfg
+import pancancer_utilities.config as cfg
 
 def load_expression_data(subset_mad_genes=cfg.num_features_raw,
                          scale_input=False,
