@@ -11,14 +11,25 @@ import config as cfg
 def load_expression_data(subset_mad_genes=cfg.num_features_raw,
                          scale_input=False,
                          verbose=False):
+    """Load and preprocess saved TCGA gene expression data.
 
-    # Load and process X matrix
+    Arguments
+    ---------
+
+    subset_mad_genes (int): TODO still need to implement this
+    scale_input (bool): whether or not to scale the expression data
+    verbose (bool): whether or not to print verbose output
+
+    Returns
+    -------
+    rnaseq_df: samples x genes expression dataframe
+    """
     if verbose:
         print('Loading gene expression data...')
 
     rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
 
-    # TODO: fix this in data loading script
+    # TODO: this needs to be added to data loading script
     # if subset_mad_genes is not None:
     #     rnaseq_df = subset_genes_by_mad(rnaseq_df, cfg.mad_data,
     #                                     subset_mad_genes)
@@ -37,7 +48,27 @@ def load_expression_data(subset_mad_genes=cfg.num_features_raw,
 
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
                          use_pancancer=False, num_folds=4, fold_no=1):
-    """words go here"""
+    """Split expression data into train and test sets.
+
+    The test set will contain data from a single cancer type. The train set
+    will contain either the remaining data from that cancer type, or the
+    remaining data from that cancer type and data from all other cancer types
+    in the dataset.
+
+    Arguments
+    ---------
+    rnaseq_df (pd.DataFrame): samples x genes expression dataframe
+    sample_info_df (pd.DataFrame): maps samples to cancer types
+    holdout_cancer_type (str): cancer type to hold out
+    use_pancancer (bool): whether or not to include pan-cancer data in train set
+    num_folds (int): number of cross-validation folds
+    fold_no (int): cross-validation fold to hold out
+
+    Returns
+    -------
+    rnaseq_train_df (pd.DataFrame): samples x genes train data
+    rnaseq_test_df (pd.DataFrame): samples x genes test data
+    """
     print(sample_info_df.head())
     cancer_type_sample_ids = (
         sample_info_df.loc[sample_info_df.cancer_type == holdout_cancer_type]
@@ -61,6 +92,7 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
     return (rnaseq_train_df, rnaseq_test_df)
 
 def split_single_cancer_type(cancer_type_df, num_folds, fold_no):
+    """Split data for a single cancer type into train and test sets."""
     kf = KFold(n_splits=num_folds)
     for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
         if fold == fold_no:
