@@ -19,7 +19,7 @@ jobs:
             - name: Setup conda environment
               run: |
                 $CONDA/bin/conda env update --file environment.yml --name base
-                $CONDA/bin/pip install .
+                $CONDA/bin/pip install -e .
 
             - name: Run tests
               run: |
