@@ -1,4 +1,5 @@
 import os
+import sys
 
 import pandas as pd
 import pickle as pkl
@@ -7,9 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 import pancancer_utilities.config as cfg
 
-def load_expression_data(subset_mad_genes=cfg.num_features_raw,
-                         scale_input=False,
-                         verbose=False):
+def load_expression_data(scale_input=False, verbose=False):
     """Load and preprocess saved TCGA gene expression data.
 
     Arguments
@@ -23,7 +22,7 @@ def load_expression_data(subset_mad_genes=cfg.num_features_raw,
     rnaseq_df: samples x genes expression dataframe
     """
     if verbose:
-        print('Loading gene expression data...')
+        print('Loading gene expression data...', file=sys.stderr)
 
     rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
 
