@@ -53,6 +53,5 @@ def test_cv_pancancer(expression_data, cancer_type):
             sample_info_df, test_df_pancancer.index)
 
     assert set([cancer_type]).issubset(train_cancer_types)
-    assert len(train_cancer_types.difference(set([cancer_type]))) != 0
+    assert len(train_cancer_types) > len(set([cancer_type])) 
     assert test_cancer_types == set([cancer_type])
-
