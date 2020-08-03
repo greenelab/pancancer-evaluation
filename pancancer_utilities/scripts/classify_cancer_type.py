@@ -148,12 +148,6 @@ for fold_no in range(args.num_folds):
         exit('No test samples found for cancer type: {}, gene: {}\n'.format(
                args.holdout_cancer_type, args.gene))
 
-    # TODO: for testing purposes, remove for actual evaluation
-    X_train_df = X_train_df.iloc[:100, :100]
-    X_test_df = X_test_df.iloc[:100, :100]
-    y_train_df = y_train_df.iloc[:100, :]
-    y_test_df = y_test_df.iloc[:100, :]
-
     # Fit the model
     logging.debug('Training model for fold {}'.format(fold_no))
     logging.debug(X_train_df.shape)
@@ -222,14 +216,16 @@ gene_coef_df = pd.concat(gene_coef_list)
 gene_metrics_df = pd.concat(gene_metrics_list)
 
 file = os.path.join(
-    gene_dir, "{}_{}_auc_threshold_metrics.tsv.gz".format(gene_name, args.holdout_cancer_type)
+    gene_dir, "{}_{}_{}_auc_threshold_metrics.tsv.gz".format(
+        gene_name, args.holdout_cancer_type, signal)
 )
 gene_auc_df.to_csv(
     file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
 file = os.path.join(
-    gene_dir, "{}_{}_aupr_threshold_metrics.tsv.gz".format(gene_name, args.holdout_cancer_type)
+    gene_dir, "{}_{}_{}_aupr_threshold_metrics.tsv.gz".format(
+        gene_name, args.holdout_cancer_type, signal)
 )
 gene_aupr_df.to_csv(
     file, sep="\t", index=False, compression="gzip", float_format="%.5g"
@@ -239,7 +235,8 @@ gene_coef_df.to_csv(
     check_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-file = os.path.join(gene_dir, "{}_{}_classify_metrics.tsv.gz".format(gene_name, args.holdout_cancer_type))
+file = os.path.join(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
+    gene_name, args.holdout_cancer_type, signal))
 gene_metrics_df.to_csv(
     file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
