@@ -97,3 +97,55 @@ def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
             test_df = cancer_type_df.iloc[test_ixs]
     return train_df, test_df
 
+def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
+                      seed, algorithm, data_type):
+    """
+    Given an input results file, summarize and output all pertinent files
+
+    Arguments
+    ---------
+    results: a results object output from `get_threshold_metrics`
+    gene: the gene being predicted
+    holdout_cancer_type: the cancer type being used as holdout data
+    signal: the signal of interest
+    z_dim: the internal bottleneck dimension of the compression model
+    seed: the seed used to compress the data
+    algorithm: the algorithm used to compress the data
+    data_type: the type of data (either training, testing, or cv)
+    """
+    results_append_list = [
+        gene,
+        holdout_cancer_type,
+        signal,
+        z_dim,
+        seed,
+        algorithm,
+        data_type,
+    ]
+
+    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
+
+    roc_df_ = results["roc_df"]
+    pr_df_ = results["pr_df"]
+
+    roc_df_ = roc_df_.assign(
+        predictor=gene,
+        signal=signal,
+        z_dim=z_dim,
+        seed=seed,
+        algorithm=algorithm,
+        data_type=data_type,
+    )
+
+    pr_df_ = pr_df_.assign(
+        predictor=gene,
+        signal=signal,
+        z_dim=z_dim,
+        seed=seed,
+        algorithm=algorithm,
+        data_type=data_type,
+    )
+
+    return metrics_out_, roc_df_, pr_df_
+
+
