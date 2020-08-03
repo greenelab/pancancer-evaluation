@@ -1,4 +1,6 @@
 **/__pycache__/*
 **/.ipynb_checkpoints/*
+*.egg-info*
 
-data/*
+data/EBPlusPlusAdjustPANCAN_IlluminaHiSeq_RNASeqV2-v2.geneExp.tsv
+data/*.gz
