@@ -4,66 +4,11 @@ Functions for preprocessing TCGA expression data and mutation status labels.
 Most functions are adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_util.py
 """
-
 import os
+
 import pandas as pd
-from sklearn.metrics import (
-    roc_auc_score,
-    roc_curve,
-    precision_recall_curve,
-    average_precision_score
-)
 from sklearn.preprocessing import StandardScaler
 
-def summarize_results(
-    results, gene_or_cancertype, signal, z_dim, seed, algorithm, data_type
-):
-    """
-    Given an input results file, summarize and output all pertinent files
-
-    Arguments:
-    results - a results object output from `get_threshold_metrics`
-    gene_or_cancertype - the gene or cancertype of interest
-    signal - the signal of interest
-    z_dim - the internal bottleneck dimension of the compression model
-    seed - the seed used to compress the data
-    algorithm - the algorithm used to compress the data
-    data_type - the type of data (either training, testing, or cv)
-    """
-
-    results_append_list = [
-        gene_or_cancertype,
-        signal,
-        z_dim,
-        seed,
-        algorithm,
-        data_type,
-    ]
-
-    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
-
-    roc_df_ = results["roc_df"]
-    pr_df_ = results["pr_df"]
-
-    roc_df_ = roc_df_.assign(
-        predictor=gene_or_cancertype,
-        signal=signal,
-        z_dim=z_dim,
-        seed=seed,
-        algorithm=algorithm,
-        data_type=data_type,
-    )
-
-    pr_df_ = pr_df_.assign(
-        predictor=gene_or_cancertype,
-        signal=signal,
-        z_dim=z_dim,
-        seed=seed,
-        algorithm=algorithm,
-        data_type=data_type,
-    )
-
-    return metrics_out_, roc_df_, pr_df_
 
 def process_y_matrix(
     y_mutation,
