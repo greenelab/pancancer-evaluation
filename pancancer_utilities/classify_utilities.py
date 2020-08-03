@@ -7,8 +7,15 @@ https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_u
 import pandas as pd
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import (
+    roc_auc_score,
+    roc_curve,
+    precision_recall_curve,
+    average_precision_score
+)
 from sklearn.model_selection import cross_val_predict
-from dask_ml.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV
+# from dask_ml.model_selection import GridSearchCV
 
 def train_model(x_train, x_test, y_train, alphas, l1_ratios, n_folds=5, max_iter=1000):
     """
@@ -57,6 +64,7 @@ def train_model(x_train, x_test, y_train, alphas, l1_ratios, n_folds=5, max_iter
         cv=n_folds,
         scoring="roc_auc",
         return_train_score=True,
+        iid=False
     )
 
     # Fit the model
@@ -85,11 +93,8 @@ def extract_coefficients(cv_pipeline, feature_names, signal, seed):
     cv_pipeline - the trained sklearn cross validation pipeline
     feature_names - the column names of the x matrix used to train model (features)
     results - a results object output from `get_threshold_metrics`
-    gene - the gene of interest
     signal - the signal of interest
-    z_dim - the internal bottleneck dimension of the compression model
     seed - the seed used to compress the data
-    algorithm - the algorithm used to compress the data
     """
     final_pipeline = cv_pipeline.best_estimator_
     final_classifier = final_pipeline.named_steps["classify"]
@@ -102,7 +107,7 @@ def extract_coefficients(cv_pipeline, feature_names, signal, seed):
         coef_df.assign(abs=coef_df["weight"].abs())
         .sort_values("abs", ascending=False)
         .reset_index(drop=True)
-        .assign(signal=signal, z_dim=z_dim, seed=seed, algorithm=algorithm)
+        .assign(signal=signal, seed=seed)
     )
 
     return coef_df
@@ -135,4 +140,48 @@ def get_threshold_metrics(y_true, y_pred, drop=False):
     aupr = average_precision_score(y_true, y_pred, average="weighted")
 
     return {"auroc": auroc, "aupr": aupr, "roc_df": roc_df, "pr_df": pr_df}
+
+def summarize_results(results, gene, holdout_cancer_type, signal, seed, data_type):
+    """
+    Given an input results file, summarize and output all pertinent files
+
+    Arguments:
+    results - a results object output from `get_threshold_metrics`
+    gene - the gene being predicted
+    holdout_cancer_type - the cancer type being used as holdout data
+    signal - the signal of interest
+    seed - the seed used to compress the data
+    data_type - the type of data (either training, testing, or cv)
+    """
+
+    results_append_list = [
+        gene,
+        holdout_cancer_type,
+        signal,
+        seed,
+        data_type,
+    ]
+
+    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
+
+    roc_df_ = results["roc_df"]
+    pr_df_ = results["pr_df"]
+
+    roc_df_ = roc_df_.assign(
+        predictor=gene,
+        cancer_type=holdout_cancer_type,
+        signal=signal,
+        seed=seed,
+        data_type=data_type,
+    )
+
+    pr_df_ = pr_df_.assign(
+        predictor=gene,
+        cancer_type=holdout_cancer_type,
+        signal=signal,
+        seed=seed,
+        data_type=data_type,
+    )
+
+    return metrics_out_, roc_df_, pr_df_
 
