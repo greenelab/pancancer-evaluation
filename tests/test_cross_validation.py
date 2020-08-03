@@ -11,7 +11,7 @@ import pancancer_utilities.data_utilities as du
 def expression_data():
     """Load gene expression and sample info data from files"""
     rnaseq_df = pd.read_csv(cfg.test_expression, index_col=0, sep='\t')
-    sample_info_df = pd.read_csv(cfg.sample_info, sep='\t', index_col='sample_id')
+    sample_info_df = du.load_sample_info()
     return rnaseq_df, sample_info_df
 
 def get_cancer_types(sample_info_df, sample_ids):

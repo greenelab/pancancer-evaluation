@@ -112,6 +112,11 @@ def load_pancancer_data_from_repo():
         mut_burden_df
     )
 
+def load_sample_info(verbose=False):
+    if verbose:
+        print('Loading sample info', file=sys.stderr)
+    return pd.read_csv(cfg.sample_info, sep='\t', index_col='sample_id')
+
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
                          use_pancancer=False, num_folds=4, fold_no=1,
                          seed=cfg.default_seed):
