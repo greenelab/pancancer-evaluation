@@ -45,7 +45,8 @@ def load_expression_data(subset_mad_genes=cfg.num_features_raw,
     return rnaseq_df
 
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
-                         use_pancancer=False, num_folds=4, fold_no=1):
+                         use_pancancer=False, num_folds=4, fold_no=1,
+                         seed=cfg.default_seed):
     """Split expression data into train and test sets.
 
     The test set will contain data from a single cancer type. The train set
@@ -74,7 +75,7 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
     cancer_type_df = rnaseq_df.loc[rnaseq_df.index.intersection(cancer_type_sample_ids), :]
 
     cancer_type_train_df, rnaseq_test_df = split_single_cancer_type(
-            cancer_type_df, num_folds, fold_no)
+            cancer_type_df, num_folds, fold_no, seed)
 
     if use_pancancer:
         pancancer_sample_ids = (
@@ -88,9 +89,9 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
 
     return (rnaseq_train_df, rnaseq_test_df)
 
-def split_single_cancer_type(cancer_type_df, num_folds, fold_no):
+def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
     """Split data for a single cancer type into train and test sets."""
-    kf = KFold(n_splits=num_folds)
+    kf = KFold(n_splits=num_folds, random_state=seed)
     for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
         if fold == fold_no:
             train_df = cancer_type_df.iloc[train_ixs]
