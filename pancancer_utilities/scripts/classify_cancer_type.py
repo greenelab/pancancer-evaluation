@@ -139,10 +139,10 @@ for fold_no in range(args.num_folds):
 
     try:
         train_samples, X_train_df, y_train_df = align_matrices(
-            x_file_or_df=X_train_raw_df, y=y_df
+            x_file_or_df=X_train_raw_df, y=y_df, add_cancertype_covariate=False
         )
         test_samples, X_test_df, y_test_df = align_matrices(
-            x_file_or_df=X_test_raw_df, y=y_df
+            x_file_or_df=X_test_raw_df, y=y_df, add_cancertype_covariate=False
         )
     except ValueError:
         exit('No test samples found for cancer type: {}, gene: {}\n'.format(
