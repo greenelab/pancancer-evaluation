@@ -28,6 +28,8 @@ from pancancer_utilities.classify_utilities import (
 )
 
 p = argparse.ArgumentParser()
+p.add_argument('--cancer_type_covariate', action='store_true',
+               help='Add a data covariate for the cancer type')
 p.add_argument('--gene', type=str, required=True,
                help='Provide a gene to run mutation classification for.')
 p.add_argument('--holdout_cancer_type', type=str, required=True,

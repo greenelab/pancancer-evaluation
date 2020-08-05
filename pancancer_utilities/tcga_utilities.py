@@ -134,31 +134,35 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True, algorithm=Non
     -------
     The samples used to subset and the processed X and y matrices
     """
-    # Load Data
     try:
         x_df = pd.read_csv(x_file_or_df, index_col=0, sep='\t')
     except:
         x_df = x_file_or_df
 
-    # Subset samples
+    if add_cancertype_covariate:
+        # merge features with covariate data
+        # have to do this before filtering samples, in case some cancer types
+        # aren't present in test set
+        covariate_df = pd.get_dummies(y.DISEASE)
+
     use_samples = set(y.index).intersection(set(x_df.index))
 
     x_df = x_df.reindex(use_samples)
     y = y.reindex(use_samples)
 
-    # Transform features to between zero and one
+    # scale features between zero and one
     x_scaled = StandardScaler().fit_transform(x_df)
     x_df = pd.DataFrame(x_scaled, columns=x_df.columns, index=x_df.index)
 
     # create covariate info
     mutation_covariate_df = pd.DataFrame(y.loc[:, "log10_mut"], index=y.index)
 
-    # Merge log10 mutation burden covariate
+    # merge log10 mutation burden covariate
     x_df = x_df.merge(mutation_covariate_df, left_index=True, right_index=True)
 
     if add_cancertype_covariate:
-        # Merge features with covariate data
-        covariate_df = pd.get_dummies(y.DISEASE)
+        # merge cancer type covariate, if applicable
+        covariate_df = covariate_df.reindex(use_samples)
         x_df = x_df.merge(covariate_df, left_index=True, right_index=True)
 
     return use_samples, x_df, y
