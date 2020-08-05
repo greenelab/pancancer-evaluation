@@ -42,12 +42,9 @@ p.add_argument('--shuffle_labels', action='store_true',
 p.add_argument('--verbose', action='store_true')
 args = p.parse_args()
 
+np.random.seed(args.seed)
 if args.verbose:
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-
-np.random.seed(args.seed)
-# TODO remove algorithm option for this script
-algorithm = "raw"
 
 # load and unpack pancancer data
 genes_df, pancan_data = du.load_pancancer_data([args.gene], verbose=args.verbose)
@@ -67,7 +64,7 @@ sample_info_df = du.load_sample_info(verbose=args.verbose)
 assert args.holdout_cancer_type in np.unique(sample_info_df.cancer_type), \
         'Holdout cancer type must be a valid TCGA cancer type identifier'
 
-# Track total metrics for each gene in one file
+# track total metrics for each gene in one file
 metric_cols = [
     "auroc",
     "aupr",
@@ -79,19 +76,19 @@ metric_cols = [
     "fold"
 ]
 
-# Create list to store gene specific results
+# create list to store gene specific results
 gene_auc_list = []
 gene_aupr_list = []
 gene_coef_list = []
 gene_metrics_list = []
 
-# Create directory for the gene
+# create directory for the gene
 dirname = 'pancancer' if args.use_pancancer else 'single_cancer'
 gene_dir = os.path.join(args.results_dir, dirname, gene_name)
 os.makedirs(gene_dir, exist_ok=True)
 
-# Check if gene has been processed already
-# TODO: probably want to get rid of this
+# check if gene has been processed already
+# TODO: probably want to add a "resume" option for this in the future
 signal = 'shuffled' if args.shuffle_labels else 'signal'
 check_file = os.path.join(gene_dir,
                           "{}_{}_{}_coefficients.tsv.gz".format(
@@ -99,10 +96,10 @@ check_file = os.path.join(gene_dir,
 if check_status(check_file):
     exit()
 
-# Process the y matrix for the given gene or pathway
+# process the y matrix for the given gene or pathway
 y_mutation_df = mutation_df.loc[:, gene_name]
 
-# Include copy number gains for oncogenes
+# include copy number gains for oncogenes
 # and copy number loss for tumor suppressor genes (TSG)
 include_copy = True
 if classification == "Oncogene":
@@ -148,7 +145,7 @@ for fold_no in range(args.num_folds):
         exit('No test samples found for cancer type: {}, gene: {}\n'.format(
                args.holdout_cancer_type, args.gene))
 
-    # Fit the model
+    # fit the model
     logging.debug('Training model for fold {}'.format(fold_no))
     logging.debug(X_train_df.shape)
     logging.debug(X_test_df.shape)
@@ -161,7 +158,7 @@ for fold_no in range(args.num_folds):
         n_folds=cfg.folds,
         max_iter=cfg.max_iter
     )
-    # Get coefficients
+    # get coefficients
     coef_df = extract_coefficients(
         cv_pipeline=cv_pipeline,
         feature_names=X_train_df.columns,
@@ -171,7 +168,7 @@ for fold_no in range(args.num_folds):
     coef_df = coef_df.assign(gene=gene_name)
     coef_df = coef_df.assign(fold=fold_no)
 
-    # Get metric predictions
+    # get classification metric values
     y_train_results = get_threshold_metrics(
         y_train_df.status, y_pred_train_df, drop=False
     )
@@ -182,7 +179,7 @@ for fold_no in range(args.num_folds):
         y_train_df.status, y_cv_df, drop=False
     )
 
-    # Store all results
+    # summarize all results in dataframes
     train_metrics_, train_roc_df, train_pr_df = summarize_results(
         y_train_results, gene_name, args.holdout_cancer_type, signal,
         args.seed, "train", fold_no
@@ -196,7 +193,7 @@ for fold_no in range(args.num_folds):
         args.seed, "cv", fold_no
     )
 
-    # Compile summary metrics
+    # compile summary metrics
     metrics_ = [train_metrics_, test_metrics_, cv_metrics_]
     metric_df_ = pd.DataFrame(metrics_, columns=metric_cols)
     gene_metrics_list.append(metric_df_)
@@ -215,29 +212,30 @@ gene_aupr_df = pd.concat(gene_aupr_list)
 gene_coef_df = pd.concat(gene_coef_list)
 gene_metrics_df = pd.concat(gene_metrics_list)
 
-file = os.path.join(
-    gene_dir, "{}_{}_{}_auc_threshold_metrics.tsv.gz".format(
-        gene_name, args.holdout_cancer_type, signal)
-)
-gene_auc_df.to_csv(
-    file, sep="\t", index=False, compression="gzip", float_format="%.5g"
-)
-
-file = os.path.join(
-    gene_dir, "{}_{}_{}_aupr_threshold_metrics.tsv.gz".format(
-        gene_name, args.holdout_cancer_type, signal)
-)
-gene_aupr_df.to_csv(
-    file, sep="\t", index=False, compression="gzip", float_format="%.5g"
-)
-
+# save metric dataframes and label info to files
 gene_coef_df.to_csv(
     check_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-file = os.path.join(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
+output_file = os.path.join(
+    gene_dir, "{}_{}_{}_auc_threshold_metrics.tsv.gz".format(
+        gene_name, args.holdout_cancer_type, signal)
+)
+gene_auc_df.to_csv(
+    output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+)
+
+output_file = os.path.join(
+    gene_dir, "{}_{}_{}_aupr_threshold_metrics.tsv.gz".format(
+        gene_name, args.holdout_cancer_type, signal)
+)
+gene_aupr_df.to_csv(
+    output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+)
+
+output_file = os.path.join(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
     gene_name, args.holdout_cancer_type, signal))
 gene_metrics_df.to_csv(
-    file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 

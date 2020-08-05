@@ -9,7 +9,6 @@ import os
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-
 def process_y_matrix(
     y_mutation,
     y_copy,
@@ -88,7 +87,6 @@ def process_y_matrix(
 
     return y_df
 
-
 def process_y_matrix_cancertype(
     acronym, sample_freeze, mutation_burden, hyper_filter=5
 ):
@@ -117,7 +115,6 @@ def process_y_matrix_cancertype(
     count_df.columns = ["status", acronym]
 
     return y_df, count_df
-
 
 def align_matrices(x_file_or_df, y, add_cancertype_covariate=True, algorithm=None):
     """
