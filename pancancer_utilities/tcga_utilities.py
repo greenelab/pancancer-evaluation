@@ -24,19 +24,21 @@ def process_y_matrix(
     """
     Combine copy number and mutation data and filter cancer-types to build y matrix
 
-    Arguments:
-    y_mutation - Pandas DataFrame of mutation status
-    y_copy - Pandas DataFrame of copy number status
-    include_copy - boolean if the copy number data should be included in status calc
-    gene - string indicating gene of interest (used for writing proportion file)
-    sample_feeze - pandas dataframe storing which samples to use
-    mutation_burden - pandas dataframe storing log10 mutation counts
-    filter_count - the number of positives or negatives required per cancer-type
-    filter_prop - the proportion of positives or negatives required per cancer-type
-    output_directory - the name of the directory to store the gene summary
-    hyper_filter - the number of std dev above log10 mutation burden to filter
+    Arguments
+    ---------
+    y_mutation: Pandas DataFrame of mutation status
+    y_copy: Pandas DataFrame of copy number status
+    include_copy: boolean if the copy number data should be included in status calc
+    gene: string indicating gene of interest (used for writing proportion file)
+    sample_freeze: pandas dataframe storing which samples to use
+    mutation_burden: pandas dataframe storing log10 mutation counts
+    filter_count: the number of positives or negatives required per cancer-type
+    filter_prop: the proportion of positives or negatives required per cancer-type
+    output_directory: the name of the directory to store the gene summary
+    hyper_filter: the number of std dev above log10 mutation burden to filter
 
-    Output:
+    Returns
+    -------
     Write file of cancer-type filtering to disk and output a processed y vector
     """
     if include_copy:
@@ -93,12 +95,14 @@ def process_y_matrix_cancertype(
     """
     Build a y vector based on cancer-type membership
 
-    Arguments:
-    acronym - the TCGA cancer-type barcode
-    sample_freeze - a dataframe storing TCGA barcodes and cancer-types
-    mutation_burden - a log10 mutation count per sample (added as covariate)
+    Arguments
+    ---------
+    acronym: the TCGA cancer-type barcode
+    sample_freeze: a dataframe storing TCGA barcodes and cancer-types
+    mutation_burden: a log10 mutation count per sample (added as covariate)
 
-    Output:
+    Returns
+    -------
     A y status DataFrame and a status count dataframe
     """
     y_df = sample_freeze.assign(status=0)
@@ -120,12 +124,14 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True, algorithm=Non
     """
     Process the x matrix for the given input file and align x and y together
 
-    Arguments:
-    x_file_or_df - string location of the x matrix or matrix df itself
-    y - pandas DataFrame storing status of corresponding samples
-    algorithm - a string indicating which algorithm to subset the z matrices
+    Arguments
+    ---------
+    x_file_or_df: string location of the x matrix or matrix df itself
+    y: pandas DataFrame storing status of corresponding samples
+    algorithm: a string indicating which algorithm to subset the z matrices
 
-    Output:
+    Returns
+    -------
     The samples used to subset and the processed X and y matrices
     """
     # Load Data
@@ -161,14 +167,14 @@ def check_status(file):
     """
     Check the status of a gene or cancer-type application
 
-    Arguments:
-    file - the file to check if it exists. If exists, then there is no need to rerun
+    Arguments
+    ---------
+    file: the file to check if it exists. If exists, then there is no need to rerun
 
-    Output:
+    Returns
+    -------
     boolean if the file exists or not
     """
-
     import os
-
     return os.path.isfile(file)
 

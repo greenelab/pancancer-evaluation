@@ -1,3 +1,7 @@
+"""
+Functions for reading/writing/processing data
+
+"""
 import os
 import sys
 

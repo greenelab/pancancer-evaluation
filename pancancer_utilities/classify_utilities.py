@@ -15,22 +15,23 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import GridSearchCV
-# from dask_ml.model_selection import GridSearchCV
 
-def train_model(x_train, x_test, y_train, alphas, l1_ratios, n_folds=5, max_iter=1000):
+def train_model(x_train, x_test, y_train, alphas, l1_ratios, seed, n_folds=5, max_iter=1000):
     """
     Build the logic and sklearn pipelines to train x matrix based on input y
 
-    Arguments:
-    x_train - pandas DataFrame of feature matrix for training data
-    x_test - pandas DataFrame of feature matrix for testing data
-    y_train - pandas DataFrame of processed y matrix (output from align_matrices())
-    alphas - list of alphas to perform cross validation over
-    l1_ratios - list of l1 mixing parameters to perform cross validation over
-    n_folds - int of how many folds of cross validation to perform
-    max_iter - the maximum number of iterations to test until convergence
+    Arguments
+    ---------
+    x_train: pandas DataFrame of feature matrix for training data
+    x_test: pandas DataFrame of feature matrix for testing data
+    y_train: pandas DataFrame of processed y matrix (output from align_matrices())
+    alphas: list of alphas to perform cross validation over
+    l1_ratios: list of l1 mixing parameters to perform cross validation over
+    n_folds: int of how many folds of cross validation to perform
+    max_iter: the maximum number of iterations to test until convergence
 
-    Output:
+    Returns
+    ------
     The full pipeline sklearn object and y matrix predictions for training, testing,
     and cross validation
     """
@@ -47,7 +48,7 @@ def train_model(x_train, x_test, y_train, alphas, l1_ratios, n_folds=5, max_iter
             (
                 "classify",
                 SGDClassifier(
-                    random_state=0,
+                    random_state=seed,
                     class_weight="balanced",
                     loss="log",
                     max_iter=max_iter,
@@ -89,12 +90,13 @@ def extract_coefficients(cv_pipeline, feature_names, signal, seed):
     """
     Pull out the coefficients from the trained classifiers
 
-    Arguments:
-    cv_pipeline - the trained sklearn cross validation pipeline
-    feature_names - the column names of the x matrix used to train model (features)
-    results - a results object output from `get_threshold_metrics`
-    signal - the signal of interest
-    seed - the seed used to compress the data
+    Arguments
+    ---------
+    cv_pipeline: the trained sklearn cross validation pipeline
+    feature_names: the column names of the x matrix used to train model (features)
+    results: a results object output from `get_threshold_metrics`
+    signal: the signal of interest
+    seed: the seed used to compress the data
     """
     final_pipeline = cv_pipeline.best_estimator_
     final_classifier = final_pipeline.named_steps["classify"]
@@ -116,12 +118,14 @@ def get_threshold_metrics(y_true, y_pred, drop=False):
     """
     Retrieve true/false positive rates and auroc/aupr for class predictions
 
-    Arguments:
-    y_true - an array of gold standard mutation status
-    y_pred - an array of predicted mutation status
-    drop - boolean if intermediate thresholds are dropped
+    Arguments
+    ---------
+    y_true: an array of gold standard mutation status
+    y_pred: an array of predicted mutation status
+    drop: boolean if intermediate thresholds are dropped
 
-    Output:
+    Returns
+    -------
     dict of AUROC, AUPR, pandas dataframes of ROC and PR data, and cancer-type
     """
     roc_columns = ["fpr", "tpr", "threshold"]
@@ -146,16 +150,16 @@ def summarize_results(results, gene, holdout_cancer_type, signal, seed,
     """
     Given an input results file, summarize and output all pertinent files
 
-    Arguments:
-    results - a results object output from `get_threshold_metrics`
-    gene - the gene being predicted
-    holdout_cancer_type - the cancer type being used as holdout data
-    signal - the signal of interest
-    seed - the seed used to compress the data
-    data_type - the type of data (either training, testing, or cv)
-    fold_no - the fold number for the external cross-validation loop
+    Arguments
+    ---------
+    results: a results object output from `get_threshold_metrics`
+    gene: the gene being predicted
+    holdout_cancer_type: the cancer type being used as holdout data
+    signal: the signal of interest
+    seed: the seed used to compress the data
+    data_type: the type of data (either training, testing, or cv)
+    fold_no: the fold number for the external cross-validation loop
     """
-
     results_append_list = [
         gene,
         holdout_cancer_type,

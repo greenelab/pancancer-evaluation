@@ -1,5 +1,6 @@
 """
-Run pancancer classification experiments
+Script to run pancancer classification experiments, by calling classify_cancer_type.py
+with the corresponding arguments
 """
 import os
 import sys

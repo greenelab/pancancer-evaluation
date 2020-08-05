@@ -1,4 +1,6 @@
 """
+Script to run mutation classification for a given gene and cancer type.
+
 Adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/classify-with-raw-expression.py
 """
@@ -26,9 +28,9 @@ from pancancer_utilities.classify_utilities import (
 )
 
 p = argparse.ArgumentParser()
-p.add_argument('--gene', type=str, default=None,
+p.add_argument('--gene', type=str, required=True,
                help='Provide a gene to run mutation classification for.')
-p.add_argument('--holdout_cancer_type', type=str, default=None,
+p.add_argument('--holdout_cancer_type', type=str, required=True,
                help='Provide a cancer type to hold out; train on all others.')
 p.add_argument('--num_folds', type=int, default=4,
                help='Number of folds of cross-validation to run')
@@ -155,6 +157,7 @@ for fold_no in range(args.num_folds):
         y_train=y_train_df,
         alphas=cfg.alphas,
         l1_ratios=cfg.l1_ratios,
+        seed=args.seed,
         n_folds=cfg.folds,
         max_iter=cfg.max_iter
     )
