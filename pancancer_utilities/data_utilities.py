@@ -42,6 +42,31 @@ def load_expression_data(scale_input=False, verbose=False):
     return rnaseq_df
 
 def load_pancancer_data(gene_list, verbose=False):
+    """Load pan-cancer relevant data from previous Greene Lab repos.
+
+    Data being loaded includes:
+    * sample_freeze_df: list of samples from TCGA "data freeze" in 2017
+    * mutation_df: deleterious mutation count information for freeze samples
+      (this is a samples x genes dataframe, entries are the number of
+       deleterious mutations in the given gene for the given sample)
+    * copy_loss_df: copy number loss information for freeze samples
+    * copy_gain_df: copy number gain information for freeze samples
+    * mut_burden_df: log10(total deleterious mutations) for freeze samples
+
+    Most of this data was originally compiled and documented in Greg's
+    pancancer repo: http://github.com/greenelab/pancancer
+    See, e.g. https://github.com/greenelab/pancancer/blob/master/scripts/initialize/process_sample_freeze.py for more info on mutation processing steps.
+
+    Arguments
+    ---------
+    gene_list: list of genes to load mutation data for
+    verbose (bool): whether or not to print verbose output
+
+    Returns
+    -------
+    genes_df: list of top 50 most mutated genes (generated in BioBombe)
+    pancan_data: TCGA "data freeze" mutation information described above
+    """
     # load data (TODO: what data is this?)
     if verbose:
         print('Loading gene label data...', file=sys.stderr)
