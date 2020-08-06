@@ -17,7 +17,6 @@ def load_expression_data(scale_input=False, verbose=False):
 
     Arguments
     ---------
-    subset_mad_genes (int): TODO still need to implement this
     scale_input (bool): whether or not to scale the expression data
     verbose (bool): whether or not to print verbose output
 
@@ -29,11 +28,6 @@ def load_expression_data(scale_input=False, verbose=False):
         print('Loading gene expression data...', file=sys.stderr)
 
     rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
-
-    # TODO: this needs to be added to data loading script
-    # if subset_mad_genes is not None:
-    #     rnaseq_df = subset_genes_by_mad(rnaseq_df, cfg.mad_data,
-    #                                     subset_mad_genes)
 
     # Scale RNAseq matrix the same way RNAseq was scaled for
     # compression algorithms
@@ -225,5 +219,17 @@ def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
     )
 
     return metrics_out_, roc_df_, pr_df_
+
+def subset_by_mad(X_train_df, X_test_df, subset_mad_genes, verbose=False):
+    if verbose:
+        print('Taking subset of gene features', file=sys.stderr)
+    mad_genes_df = pd.DataFrame(
+            X_train_df.mad(axis=0).sort_values(ascending=False)
+    ).reset_index()
+    mad_genes_df.columns = ['gene_id', 'mean_absolute_deviation']
+    mad_genes = mad_genes_df.iloc[:subset_mad_genes, :].gene_id.astype(str)
+    train_df = X_train_df.reindex(mad_genes, axis='columns')
+    test_df = X_test_df.reindex(mad_genes, axis='columns')
+    return (train_df, test_df)
 
 

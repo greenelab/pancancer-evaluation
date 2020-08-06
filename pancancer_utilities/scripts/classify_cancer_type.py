@@ -30,6 +30,9 @@ from pancancer_utilities.classify_utilities import (
 p = argparse.ArgumentParser()
 p.add_argument('--cancer_type_covariate', action='store_true',
                help='Add a data covariate for the cancer type')
+p.add_argument('--subset_mad_genes', type=int, default=-1,
+               help='If included, subset gene features to this number of\
+                     features having highest mean absolute deviation.')
 p.add_argument('--gene', type=str, required=True,
                help='Provide a gene to run mutation classification for.')
 p.add_argument('--holdout_cancer_type', type=str, required=True,
@@ -145,6 +148,10 @@ for fold_no in range(args.num_folds):
         test_samples, X_test_df, y_test_df = align_matrices(
             x_file_or_df=X_test_raw_df, y=y_df, add_cancertype_covariate=False
         )
+        if args.subset_mad_genes > 0:
+            X_train_df, X_test_df = du.subset_by_mad(
+                X_train_df, X_test_df, args.subset_mad_genes, verbose=args.verbose
+            )
     except ValueError:
         exit('No test samples found for cancer type: {}, gene: {}\n'.format(
                args.holdout_cancer_type, args.gene))
