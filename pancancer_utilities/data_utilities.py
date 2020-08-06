@@ -221,6 +221,22 @@ def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
     return metrics_out_, roc_df_, pr_df_
 
 def subset_by_mad(X_train_df, X_test_df, subset_mad_genes, verbose=False):
+    """Subset features by mean absolute deviation.
+
+    Takes the top subset_mad_genes genes (sorted in descending order),
+    calculated on the training set.
+
+    Arguments
+    ---------
+    X_train_df: training data, samples x genes
+    X_test_df: test data, samples x genes
+    subset_mad_genes (int): number of genes to take
+    verbose (bool): whether or not to print verbose output
+
+    Returns
+    -------
+    (train_df, test_df) tuple of datasets with filtered features
+    """
     if verbose:
         print('Taking subset of gene features', file=sys.stderr)
     mad_genes_df = pd.DataFrame(
