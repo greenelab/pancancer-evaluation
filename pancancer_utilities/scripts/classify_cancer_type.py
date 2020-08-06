@@ -147,8 +147,6 @@ use_samples, rnaseq_df, y_df, gene_features = align_matrices(
     add_cancertype_covariate=True,
     add_mutation_covariate=True
 )
-# exit('No test samples found for cancer type: {}, gene: {}\n'.format(
-#        args.holdout_cancer_type, args.gene))
 
 # shuffle mutation status labels if necessary
 if args.shuffle_labels:
@@ -163,10 +161,14 @@ for fold_no in range(args.num_folds):
     logging.debug('Splitting data and preprocessing features...')
 
     # split data into train and test sets
-    X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
-       rnaseq_df, sample_info_df, args.holdout_cancer_type,
-       num_folds=args.num_folds, fold_no=fold_no,
-       use_pancancer=args.use_pancancer, seed=args.seed)
+    try:
+        X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
+           rnaseq_df, sample_info_df, args.holdout_cancer_type,
+           num_folds=args.num_folds, fold_no=fold_no,
+           use_pancancer=args.use_pancancer, seed=args.seed)
+    except ValueError:
+        exit('No test samples found for cancer type: {}, gene: {}\n'.format(
+               args.holdout_cancer_type, args.gene))
 
     y_train_df = y_df.reindex(X_train_raw_df.index)
     y_test_df = y_df.reindex(X_test_raw_df.index)
