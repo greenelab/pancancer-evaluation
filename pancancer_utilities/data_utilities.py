@@ -5,6 +5,7 @@ Functions for reading/writing/processing data
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 import pickle as pkl
 from sklearn.model_selection import KFold
@@ -245,7 +246,7 @@ def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
 
     return metrics_out_, roc_df_, pr_df_
 
-def subset_by_mad(X_train_df, X_test_df, subset_mad_genes, verbose=False):
+def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbose=False):
     """Subset features by mean absolute deviation.
 
     Takes the top subset_mad_genes genes (sorted in descending order),
@@ -255,22 +256,31 @@ def subset_by_mad(X_train_df, X_test_df, subset_mad_genes, verbose=False):
     ---------
     X_train_df: training data, samples x genes
     X_test_df: test data, samples x genes
+    gene_features: numpy array of gene features
     subset_mad_genes (int): number of genes to take
-    verbose (bool): whether or not to print verbose output
 
     Returns
     -------
-    (train_df, test_df) tuple of datasets with filtered features
+    (train_df, test_df, gene_features) datasets with filtered features
     """
     if verbose:
         print('Taking subset of gene features', file=sys.stderr)
+
     mad_genes_df = pd.DataFrame(
-            X_train_df.mad(axis=0).sort_values(ascending=False)
+            X_train_df.loc[:, gene_features].mad(axis=0).sort_values(ascending=False)
     ).reset_index()
     mad_genes_df.columns = ['gene_id', 'mean_absolute_deviation']
-    mad_genes = mad_genes_df.iloc[:subset_mad_genes, :].gene_id.astype(str)
-    train_df = X_train_df.reindex(mad_genes, axis='columns')
-    test_df = X_test_df.reindex(mad_genes, axis='columns')
-    return (train_df, test_df)
+    mad_genes = mad_genes_df.iloc[:subset_mad_genes, :].gene_id.astype(str).values
+
+    non_gene_features = X_train_df.columns.values[~gene_features]
+    valid_features = np.concatenate((mad_genes, non_gene_features))
+
+    gene_features = np.concatenate((
+        np.ones(mad_genes.shape[0]).astype('bool'),
+        np.zeros(non_gene_features.shape[0]).astype('bool')
+    ))
+    train_df = X_train_df.reindex(valid_features, axis='columns')
+    test_df = X_test_df.reindex(valid_features, axis='columns')
+    return (train_df, test_df, gene_features)
 
 

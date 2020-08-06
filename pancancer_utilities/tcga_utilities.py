@@ -6,6 +6,7 @@ https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_u
 """
 import os
 
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
@@ -120,7 +121,8 @@ def process_y_matrix_cancertype(
 
     return y_df, count_df
 
-def align_matrices(x_file_or_df, y, add_cancertype_covariate=True, algorithm=None):
+def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
+                   add_mutation_covariate=True):
     """
     Process the x matrix for the given input file and align x and y together
 
@@ -128,44 +130,62 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True, algorithm=Non
     ---------
     x_file_or_df: string location of the x matrix or matrix df itself
     y: pandas DataFrame storing status of corresponding samples
-    algorithm: a string indicating which algorithm to subset the z matrices
+    add_cancertype_covariate: if true, add one-hot encoded cancer type as a covariate
+    add_mutation_covariate: if true, add log10(mutation burden) as a covariate
 
     Returns
     -------
-    The samples used to subset and the processed X and y matrices
+    use_samples: the samples used to subset
+    rnaseq_df: processed X matrix
+    y_df: processed y matrix
+    gene_features: real-valued gene features, to be standardized later
     """
     try:
         x_df = pd.read_csv(x_file_or_df, index_col=0, sep='\t')
     except:
         x_df = x_file_or_df
 
-    if add_cancertype_covariate:
-        # merge features with covariate data
-        # have to do this before filtering samples, in case some cancer types
-        # aren't present in test set
-        covariate_df = pd.get_dummies(y.DISEASE)
-
+    # select samples to use, assuming y has already been filtered by cancer type
     use_samples = set(y.index).intersection(set(x_df.index))
-
     x_df = x_df.reindex(use_samples)
     y = y.reindex(use_samples)
 
-    # scale features between zero and one
-    x_scaled = StandardScaler().fit_transform(x_df)
-    x_df = pd.DataFrame(x_scaled, columns=x_df.columns, index=x_df.index)
-
-    # create covariate info
-    mutation_covariate_df = pd.DataFrame(y.loc[:, "log10_mut"], index=y.index)
-
-    # merge log10 mutation burden covariate
-    x_df = x_df.merge(mutation_covariate_df, left_index=True, right_index=True)
+    # add features to X matrix if necessary
+    gene_features = np.ones(x_df.shape[1]).astype('bool')
 
     if add_cancertype_covariate:
-        # merge cancer type covariate, if applicable
-        covariate_df = covariate_df.reindex(use_samples)
+        # add one-hot covariate for cancer type
+        covariate_df = pd.get_dummies(y.DISEASE)
         x_df = x_df.merge(covariate_df, left_index=True, right_index=True)
 
-    return use_samples, x_df, y
+    if add_mutation_covariate:
+        # add covariate for mutation burden
+        mutation_covariate_df = pd.DataFrame(y.loc[:, "log10_mut"], index=y.index)
+        x_df = x_df.merge(mutation_covariate_df, left_index=True, right_index=True)
+
+    num_added_features = x_df.shape[1] - gene_features.shape[0]
+    if num_added_features > 0:
+        gene_features = np.concatenate(
+            (gene_features, np.zeros(num_added_features).astype('bool'))
+        )
+
+    return use_samples, x_df, y, gene_features
+
+def standardize_gene_features(x_df, gene_features):
+    """Standardize (take z-scores of) real-valued gene expression features.
+
+    Note this should be done for train and test sets independently. Also note
+    this doesn't necessarily preserve the order of features (this shouldn't
+    matter in most cases).
+    """
+    x_df_gene = x_df.loc[:, gene_features]
+    x_df_other = x_df.loc[:, ~gene_features]
+    x_df_scaled = pd.DataFrame(
+        StandardScaler().fit_transform(x_df_gene),
+        index=x_df_gene.index,
+        columns=x_df_gene.columns
+    )
+    return pd.concat((x_df_scaled, x_df_other), axis=1)
 
 def check_status(file):
     """
