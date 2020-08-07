@@ -54,6 +54,7 @@ gene_idx = 0
 gene_name = genes_df.iloc[0, :].gene
 classification = genes_df.iloc[0, :].classification
 
+# this data is described in more detail in the load_pancancer_data docstring
 (sample_freeze_df,
  mutation_df,
  copy_loss_df,
@@ -89,7 +90,7 @@ dirname = 'pancancer' if args.use_pancancer else 'single_cancer'
 gene_dir = os.path.join(args.results_dir, dirname, gene_name)
 os.makedirs(gene_dir, exist_ok=True)
 
-# check if gene has been processed already
+# check if this experiment has been run already
 # TODO: probably want to add a "resume" option for this in the future
 signal = 'shuffled' if args.shuffle_labels else 'signal'
 check_file = os.path.join(gene_dir,
