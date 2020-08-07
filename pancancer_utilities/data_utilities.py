@@ -56,7 +56,9 @@ def load_pancancer_data(gene_list, verbose=False):
 
     Most of this data was originally compiled and documented in Greg's
     pancancer repo: http://github.com/greenelab/pancancer
-    See, e.g. https://github.com/greenelab/pancancer/blob/master/scripts/initialize/process_sample_freeze.py for more info on mutation processing steps.
+    See, e.g.
+    https://github.com/greenelab/pancancer/blob/master/scripts/initialize/process_sample_freeze.py
+    for more info on mutation processing steps.
 
     Arguments
     ---------
@@ -68,7 +70,6 @@ def load_pancancer_data(gene_list, verbose=False):
     genes_df: list of top 50 most mutated genes (generated in BioBombe)
     pancan_data: TCGA "data freeze" mutation information described above
     """
-    # load data (TODO: what data is this?)
     if verbose:
         print('Loading gene label data...', file=sys.stderr)
 

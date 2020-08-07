@@ -80,6 +80,7 @@ gene_idx = 0
 gene_name = genes_df.iloc[0, :].gene
 classification = genes_df.iloc[0, :].classification
 
+# this data is described in more detail in the load_pancancer_data docstring
 (sample_freeze_df,
  mutation_df,
  copy_loss_df,
@@ -128,6 +129,8 @@ else:
     y_copy_number_df = pd.DataFrame()
     include_copy = False
 
+# Construct labels from mutation/CNV information, and filter for
+# cancer types without an extreme label imbalance
 y_df = process_y_matrix(
     y_mutation=y_mutation_df,
     y_copy=y_copy_number_df,
