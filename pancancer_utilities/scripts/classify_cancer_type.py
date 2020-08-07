@@ -147,7 +147,7 @@ y_df = process_y_matrix(
 use_samples, rnaseq_df, y_df, gene_features = align_matrices(
     x_file_or_df=rnaseq_df,
     y=y_df,
-    add_cancertype_covariate=True,
+    add_cancertype_covariate=args.use_pancancer,
     add_mutation_covariate=True
 )
 
@@ -182,8 +182,11 @@ for fold_no in range(args.num_folds):
         X_train_raw_df, X_test_raw_df, gene_features_filtered = du.subset_by_mad(
             X_train_raw_df, X_test_raw_df, gene_features, args.subset_mad_genes
         )
-    X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
-    X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
+        X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
+        X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
+    else:
+        X_train_df = standardize_gene_features(X_train_raw_df, gene_features)
+        X_test_df = standardize_gene_features(X_test_raw_df, gene_features)
 
     # fit the model
     logging.debug('Training model for fold {}'.format(fold_no))
