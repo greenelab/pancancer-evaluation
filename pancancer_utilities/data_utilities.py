@@ -1,3 +1,7 @@
+"""
+Functions for reading/writing/processing data
+
+"""
 import os
 import sys
 
@@ -42,6 +46,106 @@ def load_expression_data(scale_input=False, verbose=False):
         )
 
     return rnaseq_df
+
+def load_pancancer_data(gene_list, verbose=False):
+    """Load pan-cancer relevant data from previous Greene Lab repos.
+
+    Data being loaded includes:
+    * sample_freeze_df: list of samples from TCGA "data freeze" in 2017
+    * mutation_df: deleterious mutation count information for freeze samples
+      (this is a samples x genes dataframe, entries are the number of
+       deleterious mutations in the given gene for the given sample)
+    * copy_loss_df: copy number loss information for freeze samples
+    * copy_gain_df: copy number gain information for freeze samples
+    * mut_burden_df: log10(total deleterious mutations) for freeze samples
+
+    Most of this data was originally compiled and documented in Greg's
+    pancancer repo: http://github.com/greenelab/pancancer
+    See, e.g.
+    https://github.com/greenelab/pancancer/blob/master/scripts/initialize/process_sample_freeze.py
+    for more info on mutation processing steps.
+
+    Arguments
+    ---------
+    gene_list: list of genes to load mutation data for
+    verbose (bool): whether or not to print verbose output
+
+    Returns
+    -------
+    genes_df: list of top 50 most mutated genes (generated in BioBombe)
+    pancan_data: TCGA "data freeze" mutation information described above
+    """
+    if verbose:
+        print('Loading gene label data...', file=sys.stderr)
+
+    genes_df = load_top_50()
+    if gene_list is not None:
+        genes_df = genes_df[genes_df['gene'].isin(gene_list)]
+        genes_df.reset_index(drop=True, inplace=True)
+
+    # loading this data from the pancancer repo is very slow, so we
+    # cache it in a pickle to speed up loading
+    if os.path.exists(cfg.pancan_data):
+        if verbose:
+            print('Loading pan-cancer data from cached pickle file...', file=sys.stderr)
+        with open(cfg.pancan_data, 'rb') as f:
+            pancan_data = pkl.load(f)
+    else:
+        if verbose:
+            print('Loading pan-cancer data from repo (warning: slow)...', file=sys.stderr)
+        pancan_data = load_pancancer_data_from_repo()
+        with open(cfg.pancan_data, 'wb') as f:
+            pkl.dump(pancan_data, f)
+
+    return (genes_df, pancan_data)
+
+def load_top_50():
+    """Load top 50 mutated genes in TCGA from BioBombe repo.
+
+    These were precomputed for the equivalent experiments in the
+    BioBombe paper, so no need to recompute them.
+    """
+    base_url = "https://github.com/greenelab/BioBombe/raw"
+    commit = "aedc9dfd0503edfc5f25611f5eb112675b99edc9"
+
+    file = "{}/{}/9.tcga-classify/data/top50_mutated_genes.tsv".format(
+            base_url, commit)
+    genes_df = pd.read_csv(file, sep='\t')
+    return genes_df
+
+def load_pancancer_data_from_repo():
+    """Load data to build feature matrices from pancancer repo. """
+
+    base_url = "https://github.com/greenelab/pancancer/raw"
+    commit = "2a0683b68017fb226f4053e63415e4356191734f"
+
+    file = "{}/{}/data/sample_freeze.tsv".format(base_url, commit)
+    sample_freeze_df = pd.read_csv(file, index_col=0, sep='\t')
+
+    file = "{}/{}/data/pancan_mutation_freeze.tsv.gz".format(base_url, commit)
+    mutation_df = pd.read_csv(file, index_col=0, sep='\t')
+
+    file = "{}/{}/data/copy_number_loss_status.tsv.gz".format(base_url, commit)
+    copy_loss_df = pd.read_csv(file, index_col=0, sep='\t')
+
+    file = "{}/{}/data/copy_number_gain_status.tsv.gz".format(base_url, commit)
+    copy_gain_df = pd.read_csv(file, index_col=0, sep='\t')
+
+    file = "{}/{}/data/mutation_burden_freeze.tsv".format(base_url, commit)
+    mut_burden_df = pd.read_csv(file, index_col=0, sep='\t')
+
+    return (
+        sample_freeze_df,
+        mutation_df,
+        copy_loss_df,
+        copy_gain_df,
+        mut_burden_df
+    )
+
+def load_sample_info(verbose=False):
+    if verbose:
+        print('Loading sample info...', file=sys.stderr)
+    return pd.read_csv(cfg.sample_info, sep='\t', index_col='sample_id')
 
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
                          use_pancancer=False, num_folds=4, fold_no=1,
@@ -96,4 +200,56 @@ def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
             train_df = cancer_type_df.iloc[train_ixs]
             test_df = cancer_type_df.iloc[test_ixs]
     return train_df, test_df
+
+def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
+                      seed, algorithm, data_type):
+    """
+    Given an input results file, summarize and output all pertinent files
+
+    Arguments
+    ---------
+    results: a results object output from `get_threshold_metrics`
+    gene: the gene being predicted
+    holdout_cancer_type: the cancer type being used as holdout data
+    signal: the signal of interest
+    z_dim: the internal bottleneck dimension of the compression model
+    seed: the seed used to compress the data
+    algorithm: the algorithm used to compress the data
+    data_type: the type of data (either training, testing, or cv)
+    """
+    results_append_list = [
+        gene,
+        holdout_cancer_type,
+        signal,
+        z_dim,
+        seed,
+        algorithm,
+        data_type,
+    ]
+
+    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
+
+    roc_df_ = results["roc_df"]
+    pr_df_ = results["pr_df"]
+
+    roc_df_ = roc_df_.assign(
+        predictor=gene,
+        signal=signal,
+        z_dim=z_dim,
+        seed=seed,
+        algorithm=algorithm,
+        data_type=data_type,
+    )
+
+    pr_df_ = pr_df_.assign(
+        predictor=gene,
+        signal=signal,
+        z_dim=z_dim,
+        seed=seed,
+        algorithm=algorithm,
+        data_type=data_type,
+    )
+
+    return metrics_out_, roc_df_, pr_df_
+
 
