@@ -113,6 +113,8 @@ else:
     y_copy_number_df = pd.DataFrame()
     include_copy = False
 
+# Construct labels from mutation/CNV information, and filter for
+# cancer types without an extreme label imbalance
 y_df = process_y_matrix(
     y_mutation=y_mutation_df,
     y_copy=y_copy_number_df,
