@@ -42,6 +42,7 @@ def load_expression_data(scale_input=False, verbose=False):
 
     return rnaseq_df
 
+
 def load_pancancer_data(gene_list, verbose=False):
     """Load pan-cancer relevant data from previous Greene Lab repos.
 
@@ -94,6 +95,7 @@ def load_pancancer_data(gene_list, verbose=False):
 
     return genes_df, pancan_data
 
+
 def load_top_50():
     """Load top 50 mutated genes in TCGA from BioBombe repo.
 
@@ -107,6 +109,7 @@ def load_top_50():
             base_url, commit)
     genes_df = pd.read_csv(file, sep='\t')
     return genes_df
+
 
 def load_pancancer_data_from_repo():
     """Load data to build feature matrices from pancancer repo. """
@@ -137,10 +140,12 @@ def load_pancancer_data_from_repo():
         mut_burden_df
     )
 
+
 def load_sample_info(verbose=False):
     if verbose:
         print('Loading sample info...', file=sys.stderr)
     return pd.read_csv(cfg.sample_info, sep='\t', index_col='sample_id')
+
 
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
                          use_pancancer=False, num_folds=4, fold_no=1,
@@ -187,6 +192,7 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
 
     return rnaseq_train_df, rnaseq_test_df
 
+
 def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
     """Split data for a single cancer type into train and test sets."""
     kf = KFold(n_splits=num_folds, random_state=seed)
@@ -195,6 +201,7 @@ def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
             train_df = cancer_type_df.iloc[train_ixs]
             test_df = cancer_type_df.iloc[test_ixs]
     return train_df, test_df
+
 
 def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
                       seed, algorithm, data_type):
@@ -286,5 +293,4 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
     train_df = X_train_df.reindex(valid_features, axis='columns')
     test_df = X_test_df.reindex(valid_features, axis='columns')
     return train_df, test_df, gene_features
-
 

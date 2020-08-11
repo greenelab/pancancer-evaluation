@@ -90,6 +90,7 @@ def process_y_matrix(
 
     return y_df
 
+
 def process_y_matrix_cancertype(
     acronym, sample_freeze, mutation_burden, hyper_filter=5
 ):
@@ -120,6 +121,7 @@ def process_y_matrix_cancertype(
     count_df.columns = ["status", acronym]
 
     return y_df, count_df
+
 
 def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
                    add_mutation_covariate=True):
@@ -171,6 +173,7 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
 
     return use_samples, x_df, y, gene_features
 
+
 def standardize_gene_features(x_df, gene_features):
     """Standardize (take z-scores of) real-valued gene expression features.
 
@@ -186,6 +189,7 @@ def standardize_gene_features(x_df, gene_features):
         columns=x_df_gene.columns.copy()
     )
     return pd.concat((x_df_scaled, x_df_other), axis=1)
+
 
 def check_status(file):
     """
