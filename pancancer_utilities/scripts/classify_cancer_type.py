@@ -4,9 +4,9 @@ Script to run mutation classification for a given gene and cancer type.
 Adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/classify-with-raw-expression.py
 """
-import os
 import argparse
 import logging
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -56,15 +56,15 @@ if args.verbose:
 
 # create directory for the gene
 dirname = 'pancancer' if args.use_pancancer else 'single_cancer'
-gene_dir = os.path.join(args.results_dir, dirname, args.gene)
-os.makedirs(gene_dir, exist_ok=True)
+gene_dir = Path(args.results_dir, dirname, args.gene).resolve()
+gene_dir.mkdir(parents=True, exist_ok=True)
 
 # check if gene has been processed already
 # TODO: probably want to add a "resume" option for this in the future
 signal = 'shuffled' if args.shuffle_labels else 'signal'
-check_file = os.path.join(gene_dir,
-                          "{}_{}_{}_coefficients.tsv.gz".format(
-                              args.gene, args.holdout_cancer_type, signal))
+check_file = Path(gene_dir,
+                  "{}_{}_{}_coefficients.tsv.gz".format(
+                  args.gene, args.holdout_cancer_type, signal)).resolve()
 if check_status(check_file):
     exit('Results file already exists, exiting')
 
@@ -261,24 +261,22 @@ gene_coef_df.to_csv(
     check_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-output_file = os.path.join(
+output_file = Path(
     gene_dir, "{}_{}_{}_auc_threshold_metrics.tsv.gz".format(
-        gene_name, args.holdout_cancer_type, signal)
-)
+        gene_name, args.holdout_cancer_type, signal)).resolve()
 gene_auc_df.to_csv(
     output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-output_file = os.path.join(
+output_file = Path(
     gene_dir, "{}_{}_{}_aupr_threshold_metrics.tsv.gz".format(
-        gene_name, args.holdout_cancer_type, signal)
-)
+        gene_name, args.holdout_cancer_type, signal)).resolve()
 gene_aupr_df.to_csv(
     output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-output_file = os.path.join(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
-    gene_name, args.holdout_cancer_type, signal))
+output_file = Path(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
+    gene_name, args.holdout_cancer_type, signal)).resolve()
 gene_metrics_df.to_csv(
     output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
