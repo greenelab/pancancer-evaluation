@@ -86,6 +86,7 @@ def train_model(x_train, x_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
 
     return cv_pipeline, y_predict_train, y_predict_test, y_cv
 
+
 def extract_coefficients(cv_pipeline, feature_names, signal, seed):
     """
     Pull out the coefficients from the trained classifiers
@@ -113,6 +114,7 @@ def extract_coefficients(cv_pipeline, feature_names, signal, seed):
     )
 
     return coef_df
+
 
 def get_threshold_metrics(y_true, y_pred, drop=False):
     """
@@ -144,6 +146,7 @@ def get_threshold_metrics(y_true, y_pred, drop=False):
     aupr = average_precision_score(y_true, y_pred, average="weighted")
 
     return {"auroc": auroc, "aupr": aupr, "roc_df": roc_df, "pr_df": pr_df}
+
 
 def summarize_results(results, gene, holdout_cancer_type, signal, seed,
                       data_type, fold_no):

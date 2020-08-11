@@ -4,10 +4,9 @@ Script to run mutation classification for a given gene and cancer type.
 Adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/classify-with-raw-expression.py
 """
-import os
 import argparse
 import logging
-import pickle as pkl
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -16,8 +15,8 @@ import pancancer_utilities.config as cfg
 import pancancer_utilities.data_utilities as du
 from pancancer_utilities.tcga_utilities import (
     process_y_matrix,
-    process_y_matrix_cancertype,
     align_matrices,
+    standardize_gene_features,
     check_status
 )
 from pancancer_utilities.classify_utilities import (
@@ -26,6 +25,10 @@ from pancancer_utilities.classify_utilities import (
     get_threshold_metrics,
     summarize_results
 )
+
+#########################################
+### 1. Process command line arguments ###
+#########################################
 
 p = argparse.ArgumentParser()
 p.add_argument('--gene', type=str, required=True,
@@ -41,12 +44,33 @@ p.add_argument('--results_dir', default=cfg.results_dir,
 p.add_argument('--seed', type=int, default=cfg.default_seed)
 p.add_argument('--shuffle_labels', action='store_true',
                help='Include flag to shuffle labels as a negative control')
+p.add_argument('--subset_mad_genes', type=int, default=-1,
+               help='If included, subset gene features to this number of\
+                     features having highest mean absolute deviation.')
 p.add_argument('--verbose', action='store_true')
 args = p.parse_args()
 
 np.random.seed(args.seed)
 if args.verbose:
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+
+# create directory for the gene
+dirname = 'pancancer' if args.use_pancancer else 'single_cancer'
+gene_dir = Path(args.results_dir, dirname, args.gene).resolve()
+gene_dir.mkdir(parents=True, exist_ok=True)
+
+# check if gene has been processed already
+# TODO: probably want to add a "resume" option for this in the future
+signal = 'shuffled' if args.shuffle_labels else 'signal'
+check_file = Path(gene_dir,
+                  "{}_{}_{}_coefficients.tsv.gz".format(
+                  args.gene, args.holdout_cancer_type, signal)).resolve()
+if check_status(check_file):
+    exit('Results file already exists, exiting')
+
+#######################################################
+### 2. Load gene expression and mutation label data ###
+#######################################################
 
 # load and unpack pancancer data
 genes_df, pancan_data = du.load_pancancer_data([args.gene], verbose=args.verbose)
@@ -85,19 +109,9 @@ gene_aupr_list = []
 gene_coef_list = []
 gene_metrics_list = []
 
-# create directory for the gene
-dirname = 'pancancer' if args.use_pancancer else 'single_cancer'
-gene_dir = os.path.join(args.results_dir, dirname, gene_name)
-os.makedirs(gene_dir, exist_ok=True)
-
-# check if this experiment has been run already
-# TODO: probably want to add a "resume" option for this in the future
-signal = 'shuffled' if args.shuffle_labels else 'signal'
-check_file = os.path.join(gene_dir,
-                          "{}_{}_{}_coefficients.tsv.gz".format(
-                              gene_name, args.holdout_cancer_type, signal))
-if check_status(check_file):
-    exit()
+#################################################
+### 3. Process labels and filter cancer types ###
+#################################################
 
 # process the y matrix for the given gene or pathway
 y_mutation_df = mutation_df.loc[:, gene_name]
@@ -128,32 +142,54 @@ y_df = process_y_matrix(
     hyper_filter=5
 )
 
+use_samples, rnaseq_df, y_df, gene_features = align_matrices(
+    x_file_or_df=rnaseq_df,
+    y=y_df,
+    add_cancertype_covariate=args.use_pancancer,
+    add_mutation_covariate=True
+)
+
 # shuffle mutation status labels if necessary
 if args.shuffle_labels:
     y_df.status = np.random.permutation(y_df.status.values)
 
+############################################
+### 4. Split data and fit/evaluate model ###
+############################################
+
 for fold_no in range(args.num_folds):
 
-    X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
-       rnaseq_df, sample_info_df, args.holdout_cancer_type,
-       num_folds=args.num_folds, fold_no=fold_no,
-       use_pancancer=args.use_pancancer, seed=args.seed)
+    logging.debug('Splitting data and preprocessing features...')
 
+    # split data into train and test sets
     try:
-        train_samples, X_train_df, y_train_df = align_matrices(
-            x_file_or_df=X_train_raw_df, y=y_df, add_cancertype_covariate=False
-        )
-        test_samples, X_test_df, y_test_df = align_matrices(
-            x_file_or_df=X_test_raw_df, y=y_df, add_cancertype_covariate=False
-        )
+        X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
+           rnaseq_df, sample_info_df, args.holdout_cancer_type,
+           num_folds=args.num_folds, fold_no=fold_no,
+           use_pancancer=args.use_pancancer, seed=args.seed)
     except ValueError:
         exit('No test samples found for cancer type: {}, gene: {}\n'.format(
                args.holdout_cancer_type, args.gene))
 
+    y_train_df = y_df.reindex(X_train_raw_df.index)
+    y_test_df = y_df.reindex(X_test_raw_df.index)
+
+    # data processing/feature selection, needs to happen for train and
+    # test sets independently
+    if args.subset_mad_genes > 0:
+        X_train_raw_df, X_test_raw_df, gene_features_filtered = du.subset_by_mad(
+            X_train_raw_df, X_test_raw_df, gene_features, args.subset_mad_genes
+        )
+        X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
+        X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
+    else:
+        X_train_df = standardize_gene_features(X_train_raw_df, gene_features)
+        X_test_df = standardize_gene_features(X_test_raw_df, gene_features)
+
     # fit the model
     logging.debug('Training model for fold {}'.format(fold_no))
-    logging.debug(X_train_df.shape)
-    logging.debug(X_test_df.shape)
+    logging.debug('-- training dimensions: {}'.format(X_train_df.shape))
+    logging.debug('-- testing dimensions: {}'.format(X_test_df.shape))
     cv_pipeline, y_pred_train_df, y_pred_test_df, y_cv_df = train_model(
         x_train=X_train_df,
         x_test=X_test_df,
@@ -212,35 +248,35 @@ for fold_no in range(args.num_folds):
 
     gene_coef_list.append(coef_df)
 
+#######################################
+### 5. Save results to output files ###
+#######################################
 
 gene_auc_df = pd.concat(gene_auc_list)
 gene_aupr_df = pd.concat(gene_aupr_list)
 gene_coef_df = pd.concat(gene_coef_list)
 gene_metrics_df = pd.concat(gene_metrics_list)
 
-# save metric dataframes and label info to files
 gene_coef_df.to_csv(
     check_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-output_file = os.path.join(
+output_file = Path(
     gene_dir, "{}_{}_{}_auc_threshold_metrics.tsv.gz".format(
-        gene_name, args.holdout_cancer_type, signal)
-)
+        gene_name, args.holdout_cancer_type, signal)).resolve()
 gene_auc_df.to_csv(
     output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-output_file = os.path.join(
+output_file = Path(
     gene_dir, "{}_{}_{}_aupr_threshold_metrics.tsv.gz".format(
-        gene_name, args.holdout_cancer_type, signal)
-)
+        gene_name, args.holdout_cancer_type, signal)).resolve()
 gene_aupr_df.to_csv(
     output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
 
-output_file = os.path.join(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
-    gene_name, args.holdout_cancer_type, signal))
+output_file = Path(gene_dir, "{}_{}_{}_classify_metrics.tsv.gz".format(
+    gene_name, args.holdout_cancer_type, signal)).resolve()
 gene_metrics_df.to_csv(
     output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
 )
