@@ -264,7 +264,7 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
     ---------
     X_train_df: training data, samples x genes
     X_test_df: test data, samples x genes
-    gene_features: numpy array of gene features
+    gene_features: numpy bool array, indicating which features are genes (and should be subsetted/standardized)
     subset_mad_genes (int): number of genes to take
 
     Returns
