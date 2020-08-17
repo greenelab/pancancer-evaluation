@@ -2,10 +2,12 @@ import os
 import sys
 import argparse
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 import pancancer_utilities.config as cfg
+import pancancer_utilities.data_utilities as du
 from pancancer_utilities.models.mutation_prediction import MutationPrediction
 
 # genes and cancer types to run experiments for
@@ -21,8 +23,9 @@ def process_args():
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
                    help='TODO document this option')
-    p.add_argument('--holdout_cancer_types', type=str, required=True,
-                   help='Provide a cancer type to hold out; train on all others.')
+    p.add_argument('--holdout_cancer_types', nargs='*', default=None,
+                   help='Provide a list of cancer types to hold out. Uses all'
+                        'possibilities from TCGA if none are provided.')
     p.add_argument('--num_folds', type=int, default=4,
                    help='Number of folds of cross-validation to run')
     p.add_argument('--use_pancancer', action='store_true',
@@ -46,8 +49,20 @@ def process_args():
     elif (args.gene_set != 'custom' and args.custom_genes is not None):
         p.error('must use option --gene_set=\'custom\' if custom genes are included')
 
+    tcga_cancer_types = get_tcga_cancer_types(args.verbose)
+    if args.holdout_cancer_types is None:
+        args.holdout_cancer_types = tcga_cancer_types
+    else:
+        not_in_tcga = set(args.holdout_cancer_types) - set(tcga_cancer_types)
+        if len(not_in_tcga) > 0:
+            p.error('some cancer types not present in TCGA: {}'.format(
+                ' '.join(not_in_tcga)))
+
     return args
 
+def get_tcga_cancer_types(verbose):
+    sample_info_df = du.load_sample_info(verbose)
+    return list(np.unique(sample_info_df.cancer_type))
 
 if __name__ == '__main__':
 
@@ -72,7 +87,7 @@ if __name__ == '__main__':
                                         use_pancancer=False,
                                         shuffle_labels=False)
 
-        print(gene_name)
-        print(predictor.X_df.shape)
-        print(predictor.y_df.shape)
+        print(f'{gene_name}')
+        for cancer_type in args.holdout_cancer_types:
+            print(f'-- {cancer_type}')
 
