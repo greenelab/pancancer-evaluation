@@ -35,7 +35,7 @@ def process_args():
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--shuffle_labels', action='store_true',
                    help='Include flag to shuffle labels as a negative control')
-    p.add_argument('--subset_mad_genes', type=int, default=-1,
+    p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='If included, subset gene features to this number of\
                          features having highest mean absolute deviation.')
     p.add_argument('--verbose', action='store_true')
@@ -49,7 +49,8 @@ def process_args():
     elif (args.gene_set != 'custom' and args.custom_genes is not None):
         p.error('must use option --gene_set=\'custom\' if custom genes are included')
 
-    tcga_cancer_types = get_tcga_cancer_types(args.verbose)
+    sample_info_df = du.load_sample_info(args.verbose)
+    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
     if args.holdout_cancer_types is None:
         args.holdout_cancer_types = tcga_cancer_types
     else:
@@ -58,11 +59,8 @@ def process_args():
             p.error('some cancer types not present in TCGA: {}'.format(
                 ' '.join(not_in_tcga)))
 
-    return args
+    return args, sample_info_df
 
-def get_tcga_cancer_types(verbose):
-    sample_info_df = du.load_sample_info(verbose)
-    return list(np.unique(sample_info_df.cancer_type))
 
 if __name__ == '__main__':
 
@@ -70,24 +68,30 @@ if __name__ == '__main__':
     ### 1. Process command line arguments ###
     #########################################
 
-    args = process_args()
+    args, sample_info_df = process_args()
 
     predictor = MutationPrediction(seed=args.seed,
                                    results_dir=args.results_dir,
+                                   subset_mad_genes=args.subset_mad_genes,
                                    verbose=args.verbose)
 
     genes_df = predictor.load_gene_set(args.gene_set)
     num_genes = len(genes_df)
 
     for gene_idx, gene_series in genes_df.iterrows():
-        gene_name = gene_series.gene
+        gene = gene_series.gene
         classification = gene_series.classification
 
-        predictor.process_data_for_gene(gene_name, classification,
-                                        use_pancancer=False,
-                                        shuffle_labels=False)
+        # TODO: probably want to do this for all combos of
+        # use_pancancer and shuffle_labels
+        predictor.process_data_for_gene(gene, classification,
+                                        use_pancancer=args.use_pancancer,
+                                        shuffle_labels=args.shuffle_labels)
 
-        print(f'{gene_name}')
+        print(f'{gene}')
         for cancer_type in args.holdout_cancer_types:
-            print(f'-- {cancer_type}')
+            predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
+                                             args.num_folds, args.use_pancancer,
+                                             args.shuffle_labels)
+            exit()
 
