@@ -1,6 +1,7 @@
 import sys
 import typing
 import logging
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -127,14 +128,21 @@ class MutationPrediction():
         }
 
         for fold_no in range(num_folds):
-
             try:
-                X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
-                   self.X_df, sample_info, cancer_type,
-                   num_folds=num_folds, fold_no=fold_no,
-                   use_pancancer=use_pancancer, seed=self.seed)
+                # if labels are extremely imbalanced, scikit-learn KFold used
+                # here will throw n_splits warnings, then we'll hit a ValueError
+                # later on when training the model.
+                #
+                # so, we ignore the warnings here, then catch the error later on
+                # to allow the calling function to skip these cases without a
+                # bunch of warning spam.
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
+                       self.X_df, sample_info, cancer_type,
+                       num_folds=num_folds, fold_no=fold_no,
+                       use_pancancer=use_pancancer, seed=self.seed)
             except ValueError:
-                # TODO: this should just skip, not exit
                 raise NoTestSamplesError(
                     'No test samples found for cancer type: {}, '
                     'gene: {}\n'.format(cancer_type, gene)
@@ -146,16 +154,23 @@ class MutationPrediction():
             X_train_df, X_test_df = self._preprocess_data(X_train_raw_df, X_test_raw_df)
 
             try:
-                cv_pipeline, y_pred_train_df, y_pred_test_df, y_cv_df = train_model(
-                    x_train=X_train_df,
-                    x_test=X_test_df,
-                    y_train=y_train_df,
-                    alphas=cfg.alphas,
-                    l1_ratios=cfg.l1_ratios,
-                    seed=self.seed,
-                    n_folds=cfg.folds,
-                    max_iter=cfg.max_iter
-                )
+                # also ignore warnings here, same deal as above
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    model_results = train_model(
+                        x_train=X_train_df,
+                        x_test=X_test_df,
+                        y_train=y_train_df,
+                        alphas=cfg.alphas,
+                        l1_ratios=cfg.l1_ratios,
+                        seed=self.seed,
+                        n_folds=cfg.folds,
+                        max_iter=cfg.max_iter
+                    )
+                    (cv_pipeline,
+                     y_pred_train_df,
+                     y_pred_test_df,
+                     y_cv_df) = model_results
             except ValueError:
                 raise OneClassError(
                     'Only one class present in test set for cancer type: {}, '
@@ -172,10 +187,19 @@ class MutationPrediction():
             coef_df = coef_df.assign(gene=gene)
             coef_df = coef_df.assign(fold=fold_no)
 
-            metric_df, gene_auc_df, gene_aupr_df = self._get_metrics(
-                y_train_df, y_test_df, y_cv_df, y_pred_train_df, y_pred_test_df,
-                gene, cancer_type, signal, fold_no
-            )
+            try:
+                # also ignore warnings here, same deal as above
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    metric_df, gene_auc_df, gene_aupr_df = self._get_metrics(
+                        y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                        y_pred_test_df, gene, cancer_type, signal, fold_no
+                    )
+            except ValueError:
+                raise OneClassError(
+                    'Only one class present in test set for cancer type: {}, '
+                    'gene: {}\n'.format(cancer_type, gene)
+                )
 
             self.results['gene_metrics'].append(metric_df)
             self.results['gene_auc'].append(gene_auc_df)

@@ -1,5 +1,6 @@
 import sys
 import argparse
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -31,6 +32,8 @@ def process_args():
     p.add_argument('--holdout_cancer_types', nargs='*', default=None,
                    help='Provide a list of cancer types to hold out. Uses all'
                         'possibilities from TCGA if none are provided.')
+    p.add_argument('--log_file', default=None,
+                   help='Name of file to log skipped cancer types to')
     p.add_argument('--num_folds', type=int, default=4,
                    help='Number of folds of cross-validation to run')
     p.add_argument('--use_pancancer', action='store_true',
@@ -63,6 +66,9 @@ def process_args():
         if len(not_in_tcga) > 0:
             p.error('some cancer types not present in TCGA: {}'.format(
                 ' '.join(not_in_tcga)))
+
+    if args.log_file is None:
+        args.log_file = Path(args.results_dir, 'log_skipped.txt').resolve()
 
     return args, sample_info_df
 
@@ -101,10 +107,20 @@ if __name__ == '__main__':
                 predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
                                                  args.num_folds, args.use_pancancer,
                                                  args.shuffle_labels)
-            except (NoTestSamplesError, OneClassError):
+            except NoTestSamplesError:
                 if args.verbose:
-                    print('Skipping due to class imbalance: gene {}, '
+                    print('Skipping due to no test samples: gene {}, '
                           'cancer type {}'.format(gene, cancer_type),
                           file=sys.stderr)
+                with open(args.log_file, 'a') as f:
+                    f.write(f'{gene}\t{cancer_type}\tno_test_samples\n')
+                continue
+            except OneClassError:
+                if args.verbose:
+                    print('Skipping due to one holdout class: gene {}, '
+                          'cancer type {}'.format(gene, cancer_type),
+                          file=sys.stderr)
+                with open(args.log_file, 'a') as f:
+                    f.write(f'{gene}\t{cancer_type}\tone_class\n')
                 continue
 
