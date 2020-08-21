@@ -1,5 +1,6 @@
 import sys
 import argparse
+import itertools as it
 from pathlib import Path
 
 import numpy as np
@@ -30,22 +31,18 @@ def process_args():
                    default='top_50',
                    help='TODO document this option')
     p.add_argument('--holdout_cancer_types', nargs='*', default=None,
-                   help='Provide a list of cancer types to hold out. Uses all'
-                        'possibilities from TCGA if none are provided.')
+                   help='provide a list of cancer types to hold out, uses all '
+                        'possibilities from TCGA if none are provided')
     p.add_argument('--log_file', default=None,
-                   help='Name of file to log skipped cancer types to')
+                   help='name of file to log skipped cancer types to')
     p.add_argument('--num_folds', type=int, default=4,
-                   help='Number of folds of cross-validation to run')
-    p.add_argument('--use_pancancer', action='store_true',
-                   help='Whether or not to use pan-cancer data in model training')
+                   help='number of folds of cross-validation to run')
     p.add_argument('--results_dir', default=cfg.results_dir,
-                   help='Where to write results to')
+                   help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--shuffle_labels', action='store_true',
-                   help='Include flag to shuffle labels as a negative control')
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
-                   help='If included, subset gene features to this number of\
-                         features having highest mean absolute deviation.')
+                   help='if included, subset gene features to this number of '
+                        'features having highest mean absolute deviation')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -88,51 +85,58 @@ if __name__ == '__main__':
                                    debug=args.debug)
 
     genes_df = predictor.load_gene_set(args.gene_set)
-    num_genes = len(genes_df)
 
-    outer_progress = tqdm(genes_df.iterrows(),
-                          total=genes_df.shape[0],
-                          ncols=100,
-                          file=sys.stdout)
+    # want to run experiments for all combinations of use_pancancer and
+    # shuffle_labels
+    for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
 
-    for gene_idx, gene_series in outer_progress:
-        gene = gene_series.gene
-        classification = gene_series.classification
-        outer_progress.set_description('gene: {}'.format(gene))
+        if args.verbose:
+            print('use_pancancer: {}, shuffle_labels: {}'.format(
+                use_pancancer, shuffle_labels))
 
-        # TODO: figure out how best to do this for all combos of
-        # use_pancancer and shuffle_labels
-        predictor.process_data_for_gene(gene, classification,
-                                        use_pancancer=args.use_pancancer,
-                                        shuffle_labels=args.shuffle_labels)
-
-        inner_progress = tqdm(args.holdout_cancer_types,
+        outer_progress = tqdm(genes_df.iterrows(),
+                              total=genes_df.shape[0],
                               ncols=100,
                               file=sys.stdout)
 
-        for cancer_type in inner_progress:
+        for gene_idx, gene_series in outer_progress:
+            gene = gene_series.gene
+            classification = gene_series.classification
+            outer_progress.set_description('gene: {}'.format(gene))
 
-            inner_progress.set_description('cancer type: {}'.format(cancer_type))
+            # TODO: figure out how best to do this for all combos of
+            # use_pancancer and shuffle_labels
+            predictor.process_data_for_gene(gene, classification,
+                                            use_pancancer=use_pancancer,
+                                            shuffle_labels=shuffle_labels)
 
-            try:
-                predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
-                                                 args.num_folds, args.use_pancancer,
-                                                 args.shuffle_labels)
-            except NoTestSamplesError:
-                if args.verbose:
-                    print('Skipping due to no test samples: gene {}, '
-                          'cancer type {}'.format(gene, cancer_type),
-                          file=sys.stderr)
-                with open(args.log_file, 'a') as f:
-                    f.write(f'{gene}\t{cancer_type}\tno_test_samples\n')
-                continue
-            except OneClassError:
-                if args.verbose:
-                    print('Skipping due to one holdout class: gene {}, '
-                          'cancer type {}'.format(gene, cancer_type),
-                          file=sys.stderr)
-                with open(args.log_file, 'a') as f:
-                    f.write(f'{gene}\t{cancer_type}\tone_class\n')
-                continue
+            inner_progress = tqdm(args.holdout_cancer_types,
+                                  ncols=100,
+                                  file=sys.stdout)
+
+            for cancer_type in inner_progress:
+
+                inner_progress.set_description('cancer type: {}'.format(cancer_type))
+
+                try:
+                    predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
+                                                     args.num_folds, use_pancancer,
+                                                     shuffle_labels)
+                except NoTestSamplesError:
+                    if args.verbose:
+                        print('Skipping due to no test samples: gene {}, '
+                              'cancer type {}'.format(gene, cancer_type),
+                              file=sys.stderr)
+                    with open(args.log_file, 'a') as f:
+                        f.write(f'{gene}\t{cancer_type}\tno_test_samples\n')
+                    continue
+                except OneClassError:
+                    if args.verbose:
+                        print('Skipping due to one holdout class: gene {}, '
+                              'cancer type {}'.format(gene, cancer_type),
+                              file=sys.stderr)
+                    with open(args.log_file, 'a') as f:
+                        f.write(f'{gene}\t{cancer_type}\tone_class\n')
+                    continue
 
 
