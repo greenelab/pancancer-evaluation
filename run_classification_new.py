@@ -90,19 +90,30 @@ if __name__ == '__main__':
     genes_df = predictor.load_gene_set(args.gene_set)
     num_genes = len(genes_df)
 
-    for gene_idx, gene_series in genes_df.iterrows():
+    outer_progress = tqdm(genes_df.iterrows(),
+                          total=genes_df.shape[0],
+                          ncols=100,
+                          file=sys.stdout)
+
+    for gene_idx, gene_series in outer_progress:
         gene = gene_series.gene
         classification = gene_series.classification
+        outer_progress.set_description('gene: {}'.format(gene))
 
-        # TODO: probably want to do this for all combos of
+        # TODO: figure out how best to do this for all combos of
         # use_pancancer and shuffle_labels
         predictor.process_data_for_gene(gene, classification,
                                         use_pancancer=args.use_pancancer,
                                         shuffle_labels=args.shuffle_labels)
 
-        print(f'{gene}')
-        for cancer_type in args.holdout_cancer_types:
-            print(f'{cancer_type}')
+        inner_progress = tqdm(args.holdout_cancer_types,
+                              ncols=100,
+                              file=sys.stdout)
+
+        for cancer_type in inner_progress:
+
+            inner_progress.set_description('cancer type: {}'.format(cancer_type))
+
             try:
                 predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
                                                  args.num_folds, args.use_pancancer,
@@ -123,4 +134,5 @@ if __name__ == '__main__':
                 with open(args.log_file, 'a') as f:
                     f.write(f'{gene}\t{cancer_type}\tone_class\n')
                 continue
+
 
