@@ -1,4 +1,3 @@
-import os
 import sys
 import argparse
 
@@ -19,6 +18,8 @@ def process_args():
     p = argparse.ArgumentParser()
     p.add_argument('--custom_genes', nargs='*', default=None,
                    help='currently this needs to be a subset of top_50')
+    p.add_argument('--debug', action='store_true',
+                   help='use subset of data for fast debugging')
     p.add_argument('--gene_set', type=str,
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
@@ -73,7 +74,8 @@ if __name__ == '__main__':
     predictor = MutationPrediction(seed=args.seed,
                                    results_dir=args.results_dir,
                                    subset_mad_genes=args.subset_mad_genes,
-                                   verbose=args.verbose)
+                                   verbose=args.verbose,
+                                   debug=args.debug)
 
     genes_df = predictor.load_gene_set(args.gene_set)
     num_genes = len(genes_df)
@@ -90,8 +92,8 @@ if __name__ == '__main__':
 
         print(f'{gene}')
         for cancer_type in args.holdout_cancer_types:
+            print(f'{cancer_type}')
             predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
                                              args.num_folds, args.use_pancancer,
                                              args.shuffle_labels)
-            exit()
 

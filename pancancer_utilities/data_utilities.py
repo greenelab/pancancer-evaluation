@@ -13,22 +13,28 @@ from sklearn.preprocessing import MinMaxScaler
 
 import pancancer_utilities.config as cfg
 
-def load_expression_data(scale_input=False, verbose=False):
+def load_expression_data(scale_input=False, verbose=False, debug=False):
     """Load and preprocess saved TCGA gene expression data.
 
     Arguments
     ---------
     scale_input (bool): whether or not to scale the expression data
     verbose (bool): whether or not to print verbose output
+    debug (bool): whether or not to subset data for faster debugging
 
     Returns
     -------
     rnaseq_df: samples x genes expression dataframe
     """
-    if verbose:
-        print('Loading gene expression data...', file=sys.stderr)
-
-    rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
+    if debug:
+        if verbose:
+            print('Loading subset of gene expression data for debugging...',
+                  file=sys.stderr)
+        rnaseq_df = pd.read_csv(cfg.test_expression, index_col=0, sep='\t')
+    else:
+        if verbose:
+            print('Loading gene expression data...', file=sys.stderr)
+        rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
 
     # Scale RNAseq matrix the same way RNAseq was scaled for
     # compression algorithms

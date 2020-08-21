@@ -34,7 +34,8 @@ class MutationPrediction():
                  seed=cfg.default_seed,
                  results_dir=cfg.results_dir,
                  subset_mad_genes=-1,
-                 verbose=False):
+                 verbose=False,
+                 debug=False):
         """
         Initialize mutation prediction model/data
 
@@ -50,7 +51,7 @@ class MutationPrediction():
         self.verbose = verbose
 
         # load and store data in memory
-        self._load_data()
+        self._load_data(debug=debug)
 
 
     def load_gene_set(self, gene_set='top_50'):
@@ -263,7 +264,7 @@ class MutationPrediction():
         )
 
 
-    def _load_data(self):
+    def _load_data(self, debug=False):
         """Load and store relevant data.
 
         This data does not vary based on the gene/cancer type being considered
@@ -271,7 +272,7 @@ class MutationPrediction():
 
         Arguments:
         ----------
-        gene_set (str): which gene set to run experiments for
+        debug (bool): whether or not to subset data for faster debugging
         """
         # load and unpack pancancer data
         # this data is described in more detail in the load_pancancer_data docstring
@@ -283,7 +284,8 @@ class MutationPrediction():
          self.mut_burden_df) = pancan_data
 
         # load expression data
-        self.rnaseq_df = du.load_expression_data(verbose=self.verbose)
+        self.rnaseq_df = du.load_expression_data(verbose=self.verbose,
+                                                 debug=debug)
         self.sample_info_df = du.load_sample_info(verbose=self.verbose)
 
 
