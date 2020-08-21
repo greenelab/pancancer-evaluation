@@ -135,24 +135,33 @@ class MutationPrediction():
                    use_pancancer=use_pancancer, seed=self.seed)
             except ValueError:
                 # TODO: this should just skip, not exit
-                exit('No test samples found for cancer type: {}, gene: {}\n'.format(
-                       cancer_type, gene))
+                raise NoTestSamplesError(
+                    'No test samples found for cancer type: {}, '
+                    'gene: {}\n'.format(cancer_type, gene)
+                )
 
             y_train_df = self.y_df.reindex(X_train_raw_df.index)
             y_test_df = self.y_df.reindex(X_test_raw_df.index)
 
             X_train_df, X_test_df = self._preprocess_data(X_train_raw_df, X_test_raw_df)
 
-            cv_pipeline, y_pred_train_df, y_pred_test_df, y_cv_df = train_model(
-                x_train=X_train_df,
-                x_test=X_test_df,
-                y_train=y_train_df,
-                alphas=cfg.alphas,
-                l1_ratios=cfg.l1_ratios,
-                seed=self.seed,
-                n_folds=cfg.folds,
-                max_iter=cfg.max_iter
-            )
+            try:
+                cv_pipeline, y_pred_train_df, y_pred_test_df, y_cv_df = train_model(
+                    x_train=X_train_df,
+                    x_test=X_test_df,
+                    y_train=y_train_df,
+                    alphas=cfg.alphas,
+                    l1_ratios=cfg.l1_ratios,
+                    seed=self.seed,
+                    n_folds=cfg.folds,
+                    max_iter=cfg.max_iter
+                )
+            except ValueError:
+                raise OneClassError(
+                    'Only one class present in test set for cancer type: {}, '
+                    'gene: {}\n'.format(cancer_type, gene)
+                )
+
             # get coefficients
             coef_df = extract_coefficients(
                 cv_pipeline=cv_pipeline,
@@ -353,4 +362,27 @@ class MutationPrediction():
             X_test_df = standardize_gene_features(X_test_raw_df, self.gene_features)
         return X_train_df, X_test_df
 
+
+class NoTestSamplesError(Exception):
+    """
+    Custom exception to raise when there are insufficient test samples for a
+    given cancer type.
+
+    This allows calling scripts to choose how to handle this case (e.g. to
+    print an error message and continue, or to abort execution).
+    """
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class OneClassError(Exception):
+    """
+    Custom exception to raise when there is only one class present in the
+    test set for the given cancer type.
+
+    This allows calling scripts to choose how to handle this case (e.g. to
+    print an error message and continue, or to abort execution).
+    """
+    def __init__(self, *args):
+        super().__init__(*args)
 

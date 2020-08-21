@@ -7,7 +7,11 @@ from tqdm import tqdm
 
 import pancancer_utilities.config as cfg
 import pancancer_utilities.data_utilities as du
-from pancancer_utilities.models.mutation_prediction import MutationPrediction
+from pancancer_utilities.models.mutation_prediction import (
+    MutationPrediction,
+    NoTestSamplesError,
+    OneClassError
+)
 
 # genes and cancer types to run experiments for
 # just hardcoding these for now, might choose them systematically later
@@ -93,7 +97,14 @@ if __name__ == '__main__':
         print(f'{gene}')
         for cancer_type in args.holdout_cancer_types:
             print(f'{cancer_type}')
-            predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
-                                             args.num_folds, args.use_pancancer,
-                                             args.shuffle_labels)
+            try:
+                predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
+                                                 args.num_folds, args.use_pancancer,
+                                                 args.shuffle_labels)
+            except (NoTestSamplesError, OneClassError):
+                if args.verbose:
+                    print('Skipping due to class imbalance: gene {}, '
+                          'cancer type {}'.format(gene, cancer_type),
+                          file=sys.stderr)
+                continue
 
