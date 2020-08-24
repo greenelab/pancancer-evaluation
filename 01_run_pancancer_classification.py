@@ -83,7 +83,13 @@ if __name__ == '__main__':
     args.results_dir.mkdir(parents=True, exist_ok=True)
 
     # create empty log file if it doesn't exist
-    log_columns = ['gene', 'cancer_type', 'skip_reason']
+    log_columns = [
+        'gene',
+        'cancer_type',
+        'use_pancancer',
+        'shuffle_labels',
+        'skip_reason'
+    ]
     if args.log_file.exists() and args.log_file.is_file():
         log_df = pd.read_csv(args.log_file, sep='\t')
     else:
@@ -107,7 +113,7 @@ if __name__ == '__main__':
 
         if args.verbose:
             print('use_pancancer: {}, shuffle_labels: {}'.format(
-                use_pancancer, shuffle_labels), file=sys.stderr)
+                use_pancancer, shuffle_labels))
 
         outer_progress = tqdm(genes_df.iterrows(),
                               total=genes_df.shape[0],
@@ -142,7 +148,9 @@ if __name__ == '__main__':
                               'gene {}, cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
                     cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns, [gene, cancer_type, 'file_exists'])),
+                        dict(zip(log_columns,
+                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                             )),
                         index=[0]
                     )
                 except NoTestSamplesError:
@@ -151,7 +159,9 @@ if __name__ == '__main__':
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
                     cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns, [gene, cancer_type, 'no_test_samples'])),
+                        dict(zip(log_columns,
+                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
+                             )),
                         index=[0]
                     )
                 except OneClassError:
@@ -160,7 +170,9 @@ if __name__ == '__main__':
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
                     cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns, [gene, cancer_type, 'one_class'])),
+                        dict(zip(log_columns,
+                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
+                             )),
                         index=[0]
                     )
 
