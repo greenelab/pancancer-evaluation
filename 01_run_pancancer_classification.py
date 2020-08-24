@@ -12,7 +12,8 @@ import pancancer_evaluation.utilities.data_utilities as du
 from pancancer_evaluation.mutation_prediction import (
     MutationPrediction,
     NoTestSamplesError,
-    OneClassError
+    OneClassError,
+    ResultsFileExistsError
 )
 
 # genes and cancer types to run experiments for
@@ -66,19 +67,29 @@ def process_args():
             p.error('some cancer types not present in TCGA: {}'.format(
                 ' '.join(not_in_tcga)))
 
+    args.results_dir = Path(args.results_dir).resolve()
+
     if args.log_file is None:
-        args.log_file = Path(args.results_dir, 'log_skipped.txt').resolve()
+        args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
 
     return args, sample_info_df
 
 
 if __name__ == '__main__':
 
-    #########################################
-    ### 1. Process command line arguments ###
-    #########################################
-
+    # process command line arguments
     args, sample_info_df = process_args()
+
+    # create results dir if it doesn't exist
+    args.results_dir.mkdir(parents=True, exist_ok=True)
+
+    # create empty log file if it doesn't exist
+    log_columns = ['gene', 'cancer_type', 'skip_reason']
+    if args.log_file.exists() and args.log_file.is_file():
+        log_df = pd.read_csv(args.log_file, sep='\t')
+    else:
+        log_df = pd.DataFrame(columns=log_columns)
+        log_df.to_csv(args.log_file, sep='\t')
 
     predictor = MutationPrediction(seed=args.seed,
                                    results_dir=args.results_dir,
@@ -97,7 +108,7 @@ if __name__ == '__main__':
 
         if args.verbose:
             print('use_pancancer: {}, shuffle_labels: {}'.format(
-                use_pancancer, shuffle_labels))
+                use_pancancer, shuffle_labels), file=sys.stderr)
 
         outer_progress = tqdm(genes_df.iterrows(),
                               total=genes_df.shape[0],
@@ -120,6 +131,7 @@ if __name__ == '__main__':
             for cancer_type in inner_progress:
 
                 inner_progress.set_description('cancer type: {}'.format(cancer_type))
+                cancer_type_log_df = None
 
                 try:
                     predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
@@ -130,24 +142,31 @@ if __name__ == '__main__':
                         print('Skipping because results file exists already: '
                               'gene {}, cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    with open(args.log_file, 'a') as f:
-                        f.write(f'{gene}\t{cancer_type}\tfile_exists\n')
-                    continue
+                    cancer_type_log_df = pd.DataFrame(
+                        dict(zip(log_columns, [gene, cancer_type, 'file_exists'])),
+                        index=[0]
+                    )
                 except NoTestSamplesError:
                     if args.verbose:
                         print('Skipping due to no test samples: gene {}, '
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    with open(args.log_file, 'a') as f:
-                        f.write(f'{gene}\t{cancer_type}\tno_test_samples\n')
-                    continue
+                    cancer_type_log_df = pd.DataFrame(
+                        dict(zip(log_columns, [gene, cancer_type, 'no_test_samples'])),
+                        index=[0]
+                    )
                 except OneClassError:
                     if args.verbose:
                         print('Skipping due to one holdout class: gene {}, '
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    with open(args.log_file, 'a') as f:
-                        f.write(f'{gene}\t{cancer_type}\tone_class\n')
-                    continue
+                    cancer_type_log_df = pd.DataFrame(
+                        dict(zip(log_columns, [gene, cancer_type, 'one_class'])),
+                        index=[0]
+                    )
+
+                if cancer_type_log_df is not None:
+                    cancer_type_log_df.to_csv(args.log_file, mode='a', sep='\t',
+                                              index=False, header=False)
 
 
