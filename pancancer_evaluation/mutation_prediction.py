@@ -155,9 +155,10 @@ class MutationPrediction():
                           "{}_{}_{}_coefficients.tsv.gz".format(
                               gene, cancer_type, signal)).resolve()
         if check_status(check_file):
-            print('Results file already exists for gene {} and cancer {}, skipping'.format(
-                      gene, cancer_type), file=sys.stderr)
-            return
+            raise ResultsFileExistsError(
+                'Results file already exists for cancer type: {}, '
+                'gene: {}\n'.format(cancer_type, gene)
+            )
         self.check_file = check_file
 
         self.results = {
@@ -443,6 +444,18 @@ class OneClassError(Exception):
     """
     Custom exception to raise when there is only one class present in the
     test set for the given cancer type.
+
+    This allows calling scripts to choose how to handle this case (e.g. to
+    print an error message and continue, or to abort execution).
+    """
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class ResultsFileExistsError(Exception):
+    """
+    Custom exception to raise when the results file already exists for the
+    given gene and cancer type.
 
     This allows calling scripts to choose how to handle this case (e.g. to
     print an error message and continue, or to abort execution).

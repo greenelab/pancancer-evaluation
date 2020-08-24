@@ -125,6 +125,14 @@ if __name__ == '__main__':
                     predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
                                                      args.num_folds, use_pancancer,
                                                      shuffle_labels)
+                except ResultsFileExistsError:
+                    if args.verbose:
+                        print('Skipping because results file exists already: '
+                              'gene {}, cancer type {}'.format(gene, cancer_type),
+                              file=sys.stderr)
+                    with open(args.log_file, 'a') as f:
+                        f.write(f'{gene}\t{cancer_type}\tfile_exists\n')
+                    continue
                 except NoTestSamplesError:
                     if args.verbose:
                         print('Skipping due to no test samples: gene {}, '
