@@ -42,7 +42,12 @@ class MutationPrediction():
 
         Arguments
         ---------
-
+        seed (int): seed for random number generator
+        results_dir (str): where to write results files
+        subset_mad_genes (int): how many genes to keep (top by mean absolute deviation).
+                                -1 doesn't do any filtering (all genes will be kept).
+        verbose (bool): whether or not to write verbose output
+        debug (bool): if True, use a subset of expression data for quick debugging
         """
         # save relevant parameters
         np.random.seed(seed)
@@ -56,9 +61,21 @@ class MutationPrediction():
 
 
     def load_gene_set(self, gene_set='top_50'):
-        """Load gene set data from previous GitHub repos."""
+        """
+        Load gene set data from previous GitHub repos.
 
-        # TODO: how to generalize this info (oncogene/TSG) past these gene sets?
+        Arguments
+        ---------
+        gene_set (str): which predefined gene set to use, or 'custom' for custom list.
+
+        Returns
+        -------
+        genes_df (pd.DataFrame): list of genes to run cross-validation experiments for,
+                                 contains gene names and oncogene/TSG classifications
+
+        TODO: still not sure how to generalize oncogene/TSG info past these
+        predefined gene sets, should eventually look into how to do this
+        """
         if self.verbose:
             print('Loading gene label data...', file=sys.stderr)
 
@@ -74,17 +91,25 @@ class MutationPrediction():
         return genes_df
 
 
-    def run_experiments(self):
-        """Main function to run experiments for provided parameters."""
-        pass
-
-
     def process_data_for_gene(self,
                               gene,
                               classification,
                               use_pancancer=False,
                               shuffle_labels=False):
+        """
+        Prepare to run cancer type experiments for a given gene.
 
+        This has to be rerun for each gene, since the data is filtered based
+        on label proportions for the given gene in each cancer type.
+
+        Arguments
+        ---------
+        gene (str): gene to run experiments for
+        classification (str): 'oncogene' or 'TSG'; most likely cancer function for
+                              the given gene
+        use_pancancer (bool): whether or not to use pancancer data
+        shuffle_labels (bool): whether or not to shuffle labels (negative control)
+        """
         self._make_gene_dir(gene, use_pancancer)
 
         y_df_raw = self._generate_labels(gene, classification)
@@ -107,8 +132,23 @@ class MutationPrediction():
 
     def run_cv_for_cancer_type(self, gene, cancer_type, sample_info,
                                num_folds, use_pancancer, shuffle_labels):
-        # TODO: this should be coupled to process_data_for_gene, since
-        # use_pancancer and shuffle_labels has to be the same between calls
+        """
+        Run cross-validation experiments for a given gene/cancer type combination,
+        then write them to files in the results directory. If the relevant files
+        already exist, skip this experiment.
+
+        Arguments
+        ---------
+        gene (str): gene to run experiments for
+        cancer_type (str): cancer type in TCGA to hold out
+        sample_info (pd.DataFrame): dataframe with TCGA sample information
+        num_folds (int): number of cross-validation folds to run
+        use_pancancer (bool): whether or not to use pancancer data
+        shuffle_labels (bool): whether or not to shuffle labels (negative control)
+
+        TODO: this should eventually be coupled to process_data_for_gene, since
+        use_pancancer and shuffle_labels has to be the same between calls
+        """
 
         signal = 'shuffled' if shuffle_labels else 'signal'
         check_file = Path(self.gene_dir,

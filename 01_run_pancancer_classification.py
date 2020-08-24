@@ -29,10 +29,12 @@ def process_args():
     p.add_argument('--gene_set', type=str,
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
-                   help='TODO document this option')
+                   help='choose which gene set to use. top_50 and vogelstein are '
+                        'predefined gene sets (see data_utilities), and custom allows '
+                        'any gene or set of genes in TCGA, specified in --custom_genes')
     p.add_argument('--holdout_cancer_types', nargs='*', default=None,
                    help='provide a list of cancer types to hold out, uses all '
-                        'possibilities from TCGA if none are provided')
+                        'cancer types in TCGA if none are provided')
     p.add_argument('--log_file', default=None,
                    help='name of file to log skipped cancer types to')
     p.add_argument('--num_folds', type=int, default=4,
@@ -86,8 +88,11 @@ if __name__ == '__main__':
 
     genes_df = predictor.load_gene_set(args.gene_set)
 
-    # want to run experiments for all combinations of use_pancancer and
-    # shuffle_labels
+    # we want to run mutation prediction experiments:
+    # * for all combinations of use_pancancer and shuffle_labels
+    #   (shuffled labels acts as our lower baseline)
+    # * for all genes in the given gene set
+    # * for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
 
         if args.verbose:
@@ -104,8 +109,6 @@ if __name__ == '__main__':
             classification = gene_series.classification
             outer_progress.set_description('gene: {}'.format(gene))
 
-            # TODO: figure out how best to do this for all combos of
-            # use_pancancer and shuffle_labels
             predictor.process_data_for_gene(gene, classification,
                                             use_pancancer=use_pancancer,
                                             shuffle_labels=shuffle_labels)
