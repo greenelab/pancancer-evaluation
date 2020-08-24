@@ -89,10 +89,10 @@ if __name__ == '__main__':
     genes_df = predictor.load_gene_set(args.gene_set)
 
     # we want to run mutation prediction experiments:
-    # * for all combinations of use_pancancer and shuffle_labels
+    # - for all combinations of use_pancancer and shuffle_labels
     #   (shuffled labels acts as our lower baseline)
-    # * for all genes in the given gene set
-    # * for all cancer types in the given holdout cancer types (or all of TCGA)
+    # - for all genes in the given gene set
+    # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
 
         if args.verbose:

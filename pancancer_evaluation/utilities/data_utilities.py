@@ -110,7 +110,7 @@ def load_top_50():
 
 def load_vogelstein():
     """Load list of cancer-relevant genes from Vogelstein and Kinzler,
-    Nature Medicine 2004.
+    Nature Medicine 2004 (https://doi.org/10.1038/nm1087)
 
     These genes and their oncogene or TSG status were precomputed in
     the pancancer repo, so we just load them from there.
