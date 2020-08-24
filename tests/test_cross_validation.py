@@ -4,8 +4,8 @@ Test cases for cross-validation code in data_utilities.py
 import pytest
 import pandas as pd
 
-import pancancer_utilities.config as cfg
-import pancancer_utilities.data_utilities as du
+import pancancer_evaluation.config as cfg
+import pancancer_evaluation.utilities.data_utilities as du
 
 @pytest.fixture(scope='module')
 def expression_data():
