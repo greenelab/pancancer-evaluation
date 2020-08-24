@@ -7,15 +7,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import pancancer_utilities.config as cfg
-import pancancer_utilities.data_utilities as du
-from pancancer_utilities.tcga_utilities import (
+import pancancer_evaluation.config as cfg
+import pancancer_evaluation.utilities.data_utilities as du
+from pancancer_evaluation.utilities.tcga_utilities import (
     process_y_matrix,
     align_matrices,
     standardize_gene_features,
     check_status
 )
-from pancancer_utilities.classify_utilities import (
+from pancancer_evaluation.utilities.classify_utilities import (
     train_model,
     extract_coefficients,
     get_threshold_metrics,

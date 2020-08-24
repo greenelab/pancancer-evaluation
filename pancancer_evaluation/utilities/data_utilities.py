@@ -11,7 +11,7 @@ import pickle as pkl
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
 
-import pancancer_utilities.config as cfg
+import pancancer_evaluation.config as cfg
 
 def load_expression_data(scale_input=False, verbose=False, debug=False):
     """Load and preprocess saved TCGA gene expression data.
