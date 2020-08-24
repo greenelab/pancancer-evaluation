@@ -1,3 +1,7 @@
+"""
+Script to run pan-cancer classification experiments for all chosen combinations
+of gene and cancer type.
+"""
 import sys
 import argparse
 import itertools as it
