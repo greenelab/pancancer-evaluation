@@ -16,11 +16,6 @@ from pancancer_evaluation.mutation_prediction import (
     ResultsFileExistsError
 )
 
-# genes and cancer types to run experiments for
-# just hardcoding these for now, might choose them systematically later
-genes = ['TP53', 'PTEN', 'KRAS', 'BRAF', 'TTN']
-cancer_types = ['BRCA', 'THCA', 'SKCM', 'GBM', 'SARC']
-
 def process_args():
     p = argparse.ArgumentParser()
     p.add_argument('--custom_genes', nargs='*', default=None,
