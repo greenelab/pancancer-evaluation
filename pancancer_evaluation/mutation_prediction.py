@@ -161,7 +161,7 @@ class MutationPrediction():
             )
         self.check_file = check_file
 
-        self.results = {
+        results = {
             'gene_metrics': [],
             'gene_auc': [],
             'gene_aupr': [],
@@ -242,13 +242,12 @@ class MutationPrediction():
                     'gene: {}\n'.format(cancer_type, gene)
                 )
 
-            self.results['gene_metrics'].append(metric_df)
-            self.results['gene_auc'].append(gene_auc_df)
-            self.results['gene_aupr'].append(gene_aupr_df)
-            self.results['gene_coef'].append(coef_df)
+            results['gene_metrics'].append(metric_df)
+            results['gene_auc'].append(gene_auc_df)
+            results['gene_aupr'].append(gene_aupr_df)
+            results['gene_coef'].append(coef_df)
 
-        self._save_results(gene, cancer_type, signal)
-        del self.results
+        self._save_results(results, gene, cancer_type, signal)
 
 
     def _get_metrics(self,
@@ -306,11 +305,11 @@ class MutationPrediction():
         return metric_df, gene_auc_df, gene_aupr_df
 
 
-    def _save_results(self, gene, cancer_type, signal):
-        gene_auc_df = pd.concat(self.results['gene_auc'])
-        gene_aupr_df = pd.concat(self.results['gene_aupr'])
-        gene_coef_df = pd.concat(self.results['gene_coef'])
-        gene_metrics_df = pd.concat(self.results['gene_metrics'])
+    def _save_results(self, results, gene, cancer_type, signal):
+        gene_auc_df = pd.concat(results['gene_auc'])
+        gene_aupr_df = pd.concat(results['gene_aupr'])
+        gene_coef_df = pd.concat(results['gene_coef'])
+        gene_metrics_df = pd.concat(results['gene_metrics'])
 
         gene_coef_df.to_csv(
             self.check_file, sep="\t", index=False, compression="gzip",
