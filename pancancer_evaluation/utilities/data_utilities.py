@@ -11,24 +11,30 @@ import pickle as pkl
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
 
-import pancancer_utilities.config as cfg
+import pancancer_evaluation.config as cfg
 
-def load_expression_data(scale_input=False, verbose=False):
+def load_expression_data(scale_input=False, verbose=False, debug=False):
     """Load and preprocess saved TCGA gene expression data.
 
     Arguments
     ---------
     scale_input (bool): whether or not to scale the expression data
     verbose (bool): whether or not to print verbose output
+    debug (bool): whether or not to subset data for faster debugging
 
     Returns
     -------
     rnaseq_df: samples x genes expression dataframe
     """
-    if verbose:
-        print('Loading gene expression data...', file=sys.stderr)
-
-    rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
+    if debug:
+        if verbose:
+            print('Loading subset of gene expression data for debugging...',
+                  file=sys.stderr)
+        rnaseq_df = pd.read_csv(cfg.test_expression, index_col=0, sep='\t')
+    else:
+        if verbose:
+            print('Loading gene expression data...', file=sys.stderr)
+        rnaseq_df = pd.read_csv(cfg.rnaseq_data, index_col=0, sep='\t')
 
     # Scale RNAseq matrix the same way RNAseq was scaled for
     # compression algorithms
@@ -43,7 +49,7 @@ def load_expression_data(scale_input=False, verbose=False):
     return rnaseq_df
 
 
-def load_pancancer_data(gene_list, verbose=False):
+def load_pancancer_data(verbose=False):
     """Load pan-cancer relevant data from previous Greene Lab repos.
 
     Data being loaded includes:
@@ -63,21 +69,12 @@ def load_pancancer_data(gene_list, verbose=False):
 
     Arguments
     ---------
-    gene_list: list of genes to load mutation data for
     verbose (bool): whether or not to print verbose output
 
     Returns
     -------
-    genes_df: list of top 50 most mutated genes (generated in BioBombe)
     pancan_data: TCGA "data freeze" mutation information described above
     """
-    if verbose:
-        print('Loading gene label data...', file=sys.stderr)
-
-    genes_df = load_top_50()
-    if gene_list is not None:
-        genes_df = genes_df[genes_df['gene'].isin(gene_list)]
-        genes_df.reset_index(drop=True, inplace=True)
 
     # loading this data from the pancancer repo is very slow, so we
     # cache it in a pickle to speed up loading
@@ -93,7 +90,7 @@ def load_pancancer_data(gene_list, verbose=False):
         with open(cfg.pancan_data, 'wb') as f:
             pkl.dump(pancan_data, f)
 
-    return genes_df, pancan_data
+    return pancan_data
 
 
 def load_top_50():
@@ -107,6 +104,23 @@ def load_top_50():
 
     file = "{}/{}/9.tcga-classify/data/top50_mutated_genes.tsv".format(
             base_url, commit)
+    genes_df = pd.read_csv(file, sep='\t')
+    return genes_df
+
+
+def load_vogelstein():
+    """Load list of cancer-relevant genes from Vogelstein and Kinzler,
+    Nature Medicine 2004 (https://doi.org/10.1038/nm1087)
+
+    These genes and their oncogene or TSG status were precomputed in
+    the pancancer repo, so we just load them from there.
+    """
+    base_url = "https://github.com/greenelab/pancancer/raw"
+    commit = "2a0683b68017fb226f4053e63415e4356191734f"
+
+    file = "{}/{}/data/vogelstein_cancergenes.tsv".format(
+            base_url, commit)
+
     genes_df = pd.read_csv(file, sep='\t')
     return genes_df
 
