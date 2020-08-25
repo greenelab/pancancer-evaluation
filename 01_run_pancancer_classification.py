@@ -111,9 +111,8 @@ if __name__ == '__main__':
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
 
-        if args.verbose:
-            print('use_pancancer: {}, shuffle_labels: {}'.format(
-                use_pancancer, shuffle_labels))
+        print('use_pancancer: {}, shuffle_labels: {}'.format(
+            use_pancancer, shuffle_labels))
 
         outer_progress = tqdm(genes_df.iterrows(),
                               total=genes_df.shape[0],
