@@ -185,10 +185,12 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
     rnaseq_test_df (pd.DataFrame): samples x genes test data
     """
 
-    # subset sample info to samples in filtered expression data
+    # subset sample info to samples in pre-filtered expression data
     sample_info_df = sample_info_df.reindex(rnaseq_df.index)
 
     # generate id for stratification
+    # this is a concatenation of cancer type and sample/tumor type, since we want
+    # to stratify by both
     sample_info_df = sample_info_df.assign(
         id_for_stratification = sample_info_df.cancer_type.str.cat(
                                                 sample_info_df.sample_type)
@@ -203,7 +205,7 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
         stratify_counts)
     sample_info_df.loc[sample_info_df.stratify_samples_count < num_folds, 'id_for_stratification'] = 'other'
 
-    # now do stratified CV splitting
+    # now do stratified CV splitting and return the desired fold
     kf = StratifiedKFold(n_splits=num_folds, random_state=seed)
     for fold, (train_ixs, test_ixs) in enumerate(
             kf.split(rnaseq_df, sample_info_df.id_for_stratification)):
