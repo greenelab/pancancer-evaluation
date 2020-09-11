@@ -93,10 +93,9 @@ if __name__ == '__main__':
     genes_df = predictor.load_gene_set(args.gene_set)
 
     # we want to run mutation prediction experiments:
-    # - for all combinations of use_pancancer and shuffle_labels
+    # - for true labels and shuffled labels
     #   (shuffled labels acts as our lower baseline)
     # - for all genes in the given gene set
-    # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for shuffle_labels in (False, True):
 
         print('shuffle_labels: {}'.format(shuffle_labels))
