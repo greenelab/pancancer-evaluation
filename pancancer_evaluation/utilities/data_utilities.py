@@ -178,6 +178,7 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
     sample_info_df (pd.DataFrame): maps samples to cancer types
     num_folds (int): number of cross-validation folds
     fold_no (int): cross-validation fold to hold out
+    seed (int): seed for deterministic splits
 
     Returns
     -------
@@ -203,7 +204,9 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
     )
     sample_info_df.stratify_samples_count = sample_info_df.stratify_samples_count.replace(
         stratify_counts)
-    sample_info_df.loc[sample_info_df.stratify_samples_count < num_folds, 'id_for_stratification'] = 'other'
+    sample_info_df.loc[
+        sample_info_df.stratify_samples_count < num_folds, 'id_for_stratification'
+    ] = 'other'
 
     # now do stratified CV splitting and return the desired fold
     kf = StratifiedKFold(n_splits=num_folds, random_state=seed)
@@ -212,7 +215,7 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
         if fold == fold_no:
             train_df = rnaseq_df.iloc[train_ixs]
             test_df = rnaseq_df.iloc[test_ixs]
-    return train_df, test_df
+    return train_df, test_df, sample_info_df
 
 
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,

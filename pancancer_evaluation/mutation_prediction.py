@@ -173,7 +173,7 @@ class MutationPrediction():
                 # bunch of warning spam.
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    X_train_raw_df, X_test_raw_df = du.split_stratified(
+                    X_train_raw_df, X_test_raw_df, _ = du.split_stratified(
                        self.X_df, sample_info, num_folds=num_folds,
                        fold_no=fold_no, seed=self.seed)
             except ValueError:
