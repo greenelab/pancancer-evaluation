@@ -44,11 +44,10 @@ def compare_results(single_cancer_df,
                     correction_alpha=0.05,
                     verbose=False):
 
-    if (pancancer_df is None) or (compare_datasets == 'single_cancer_control'):
+    # TODO: should name these something different probably
+    if pancancer_df is None:
         results_df = compare_control(single_cancer_df, identifier, metric, verbose)
-    elif compare_datasets == 'pancancer_control':
-        results_df = compare_control(pancancer_df, identifier, metric, verbose)
-    elif compare_datasets == 'single_vs_pancancer':
+    else:
         results_df = compare_experiment(single_cancer_df, pancancer_df,
                                         identifier, metric, verbose)
     if correction:
