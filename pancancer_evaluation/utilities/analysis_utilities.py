@@ -130,3 +130,16 @@ def compare_experiment(single_cancer_df,
 
     return pd.DataFrame(results, columns=['identifier', 'delta_mean', 'p_value'])
 
+
+def get_venn(g1, g2):
+    """Given 2 sets, calculate the intersection/disjoint union.
+
+    Output is formatted to work with matplotlib_venn. TODO better documentation
+    """
+    s1, s2 = set(g1), set(g2)
+    s_inter = list(s1 & s2)
+    s1_only = list(s1 - s2)
+    s2_only = list(s2 - s1)
+    return ((s1_only, s2_only, s_inter),
+            (len(s1_only), len(s2_only), len(s_inter)))
+
