@@ -8,7 +8,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pickle as pkl
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
 
 import pancancer_evaluation.config as cfg
@@ -121,7 +121,11 @@ def load_vogelstein():
     file = "{}/{}/data/vogelstein_cancergenes.tsv".format(
             base_url, commit)
 
-    genes_df = pd.read_csv(file, sep='\t')
+    genes_df = (
+        pd.read_csv(file, sep='\t')
+          .rename(columns={'Gene Symbol'   : 'gene',
+                           'Classification*': 'classification'})
+    )
     return genes_df
 
 
@@ -159,6 +163,59 @@ def load_sample_info(verbose=False):
     if verbose:
         print('Loading sample info...', file=sys.stderr)
     return pd.read_csv(cfg.sample_info, sep='\t', index_col='sample_id')
+
+
+def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
+                     seed=cfg.default_seed):
+    """Split expression data into train and test sets.
+
+    The train and test sets will both contain data from all cancer types,
+    in roughly equal proportions.
+
+    Arguments
+    ---------
+    rnaseq_df (pd.DataFrame): samples x genes expression dataframe
+    sample_info_df (pd.DataFrame): maps samples to cancer types
+    num_folds (int): number of cross-validation folds
+    fold_no (int): cross-validation fold to hold out
+    seed (int): seed for deterministic splits
+
+    Returns
+    -------
+    rnaseq_train_df (pd.DataFrame): samples x genes train data
+    rnaseq_test_df (pd.DataFrame): samples x genes test data
+    """
+
+    # subset sample info to samples in pre-filtered expression data
+    sample_info_df = sample_info_df.reindex(rnaseq_df.index)
+
+    # generate id for stratification
+    # this is a concatenation of cancer type and sample/tumor type, since we want
+    # to stratify by both
+    sample_info_df = sample_info_df.assign(
+        id_for_stratification = sample_info_df.cancer_type.str.cat(
+                                                sample_info_df.sample_type)
+    )
+    # recode stratification id if they are singletons or near-singletons,
+    # since these won't work with StratifiedKFold
+    stratify_counts = sample_info_df.id_for_stratification.value_counts().to_dict()
+    sample_info_df = sample_info_df.assign(
+        stratify_samples_count = sample_info_df.id_for_stratification
+    )
+    sample_info_df.stratify_samples_count = sample_info_df.stratify_samples_count.replace(
+        stratify_counts)
+    sample_info_df.loc[
+        sample_info_df.stratify_samples_count < num_folds, 'id_for_stratification'
+    ] = 'other'
+
+    # now do stratified CV splitting and return the desired fold
+    kf = StratifiedKFold(n_splits=num_folds, random_state=seed)
+    for fold, (train_ixs, test_ixs) in enumerate(
+            kf.split(rnaseq_df, sample_info_df.id_for_stratification)):
+        if fold == fold_no:
+            train_df = rnaseq_df.iloc[train_ixs]
+            test_df = rnaseq_df.iloc[test_ixs]
+    return train_df, test_df, sample_info_df
 
 
 def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,

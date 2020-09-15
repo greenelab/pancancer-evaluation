@@ -124,9 +124,16 @@ if __name__ == '__main__':
             classification = gene_series.classification
             outer_progress.set_description('gene: {}'.format(gene))
 
-            predictor.process_data_for_gene(gene, classification,
-                                            use_pancancer=use_pancancer,
-                                            shuffle_labels=shuffle_labels)
+            try:
+                predictor.process_data_for_gene(gene, classification,
+                                                use_pancancer=use_pancancer,
+                                                shuffle_labels=shuffle_labels)
+            except KeyError:
+                # this might happen if the given gene isn't in the mutation data
+                # (or has a different alias, TODO check for this later)
+                print('Gene {} not found in mutation data, skipping'.format(gene),
+                      file=sys.stderr)
+                continue
 
             inner_progress = tqdm(args.holdout_cancer_types,
                                   ncols=100,
