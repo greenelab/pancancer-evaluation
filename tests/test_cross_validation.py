@@ -89,7 +89,7 @@ def test_stratified_cv(expression_data):
     #
     # note that the absolute scale of the proportions can vary quite a bit,
     # but on a relative scale they should be pretty close
-    for ix1, ix2 in it.combinations(range(num_folds), 2):
+    for ix1, ix2 in it.permutations(range(num_folds), 2):
         assert np.allclose(train_proportions[ix1], train_proportions[ix2], rtol=1.0)
         assert np.allclose(test_proportions[ix1], test_proportions[ix2], rtol=1.0)
         assert np.allclose(train_proportions[ix1], test_proportions[ix2], rtol=1.0)

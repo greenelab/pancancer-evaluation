@@ -72,21 +72,23 @@ def compare_control(results_df,
     unique_identifiers = np.unique(results_df[identifier].values)
 
     for id_str in unique_identifiers:
-        signal_results = results_df[
-            (results_df[identifier] == id_str) &
-            (results_df.data_type == 'test') &
-            (results_df.signal == 'signal')
-        ][metric].values
-        shuffled_results = results_df[
-            (results_df[identifier] == id_str) &
-            (results_df.data_type == 'test') &
-            (results_df.signal == 'shuffled')
-        ][metric].values
+
+        conditions = ((results_df[identifier] == id_str) &
+                      (results_df.data_type == 'test') &
+                      (results_df.signal == 'signal'))
+        signal_results = results_df[conditions][metric].values
+
+        conditions = ((results_df[identifier] == id_str) &
+                      (results_df.data_type == 'test') &
+                     (results_df.signal == 'shuffled'))
+        shuffled_results = results_df[conditions][metric].values
+
         if signal_results.shape != shuffled_results.shape:
             if verbose:
                 print('shapes unequal for {}, skipping'.format(id_str),
                       file=sys.stderr)
             continue
+
         delta_mean = np.mean(signal_results) - np.mean(shuffled_results)
         p_value = ttest_ind(signal_results, shuffled_results)[1]
         results.append([id_str, delta_mean, p_value])

@@ -114,17 +114,8 @@ if __name__ == '__main__':
             try:
                 predictor.process_data_for_gene(gene, classification,
                                                 use_pancancer=True,
+                                                check_gene_file=True,
                                                 shuffle_labels=shuffle_labels)
-            except KeyError:
-                # this might happen if the given gene isn't in the mutation data
-                # (or has a different alias, TODO check for this later)
-                print('Gene {} not found in mutation data, skipping'.format(gene),
-                      file=sys.stderr)
-                continue
-
-            try:
-                predictor.run_cv_stratified(gene, sample_info_df,
-                                            args.num_folds, shuffle_labels)
             except ResultsFileExistsError:
                 if args.verbose:
                     print('Skipping because results file exists already: gene {}'.format(
@@ -135,6 +126,19 @@ if __name__ == '__main__':
                          )),
                     index=[0]
                 )
+                cancer_type_log_df.to_csv(args.log_file, mode='a', sep='\t',
+                                          index=False, header=False)
+                continue
+            except KeyError:
+                # this might happen if the given gene isn't in the mutation data
+                # (or has a different alias, TODO check for this later)
+                print('Gene {} not found in mutation data, skipping'.format(gene),
+                      file=sys.stderr)
+                continue
+
+            try:
+                predictor.run_cv_stratified(gene, sample_info_df,
+                                            args.num_folds, shuffle_labels)
             except NoTestSamplesError:
                 if args.verbose:
                     print('Skipping due to no test samples: gene {}'.format(

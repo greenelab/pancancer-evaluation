@@ -95,6 +95,7 @@ class MutationPrediction():
                               gene,
                               classification,
                               use_pancancer=False,
+                              check_gene_file=False,
                               shuffle_labels=False):
         """
         Prepare to run cancer type experiments for a given gene.
@@ -111,6 +112,17 @@ class MutationPrediction():
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
         self._make_gene_dir(gene, use_pancancer)
+
+        if check_gene_file:
+            signal = 'shuffled' if shuffle_labels else 'signal'
+            check_file = Path(self.gene_dir,
+                              "{}_{}_coefficients.tsv.gz".format(
+                                  gene, signal)).resolve()
+            if check_status(check_file):
+                raise ResultsFileExistsError(
+                    'Results file already exists for gene: {}\n'.format(gene)
+                )
+            self.check_file = check_file
 
         y_df_raw = self._generate_labels(gene, classification)
 
@@ -145,22 +157,13 @@ class MutationPrediction():
         TODO: this should eventually be coupled to process_data_for_gene, since
         shuffle_labels has to be the same between calls
         """
-        signal = 'shuffled' if shuffle_labels else 'signal'
-        check_file = Path(self.gene_dir,
-                          "{}_{}_coefficients.tsv.gz".format(
-                              gene, signal)).resolve()
-        if check_status(check_file):
-            raise ResultsFileExistsError(
-                'Results file already exists for gene: {}\n'.format(gene)
-            )
-        self.check_file = check_file
-
         results = {
             'gene_metrics': [],
             'gene_auc': [],
             'gene_aupr': [],
             'gene_coef': []
         }
+        signal = 'shuffled' if shuffle_labels else 'signal'
 
         for fold_no in range(num_folds):
             try:
