@@ -134,7 +134,18 @@ def compare_experiment(single_cancer_df,
 def get_venn(g1, g2):
     """Given 2 sets, calculate the intersection/disjoint union.
 
-    Output is formatted to work with matplotlib_venn. TODO better documentation
+    Output is formatted to work with matplotlib_venn.
+
+    Arguments
+    ---------
+    g1 (list): list of genes, or any strings
+    g2 (list): second list of genes, or any strings
+
+    Returns
+    -------
+    venn_sets (tuple): objects only in g1, objects only in g2, objects in both
+                       (in that order)
+    venn_counts (tuple): lengths of above sets
     """
     s1, s2 = set(g1), set(g2)
     s_inter = list(s1 & s2)
