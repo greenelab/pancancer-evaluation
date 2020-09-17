@@ -3,7 +3,6 @@ import sys
 
 import numpy as np
 import pandas as pd
-# TODO should this be a paired t-test?
 from scipy.stats import ttest_ind
 
 def load_prediction_results(results_dir, train_set_descriptor):
@@ -42,8 +41,35 @@ def compare_results(single_cancer_df,
                     correction_method='fdr_bh',
                     correction_alpha=0.05,
                     verbose=False):
+    """Compare cross-validation results between two experimental conditions.
 
-    # TODO: should name these something different probably
+    Main uses for this are comparing an experiment against its negative control
+    (shuffled labels), and for comparing two experimental conditions against
+    one another.
+
+    Note that this currently uses an unpaired t-test to compare results.
+    TODO this could probably use a paired t-test, but need to verify that
+    CV folds are actually the same between runs
+
+    Arguments
+    ---------
+    single_cancer_df (pd.DataFrame): either a single dataframe to compare against
+                                     its negative control, or the single-cancer
+                                     dataframe
+    pancancer_df (pd.DataFrame): if provided, a second dataframe to compare against
+                                 single_cancer_df
+    identifier (str): column to use as the sample identifier
+    metric (str): column to use as the evaluation metric
+    correction (bool): whether or not to use a multiple testing correction
+    correction_method (str): which method to use for multiple testing correction
+                             (from options in statsmodels.stats.multitest)
+    correction_alpha (float): significance cutoff to use
+    verbose (bool): if True, print verbose output to stderr
+
+    Returns
+    -------
+    results_df (pd.DataFrame): identifiers and results of statistical test
+    """
     if pancancer_df is None:
         results_df = compare_control(single_cancer_df, identifier, metric, verbose)
     else:
@@ -63,10 +89,7 @@ def compare_control(results_df,
                     identifier='gene',
                     metric='auroc',
                     verbose=False):
-    """which gene/cancer type combinations beat the negative control baseline?
 
-    TODO better documentation
-    """
     results = []
     unique_identifiers = np.unique(results_df[identifier].values)
 
@@ -106,10 +129,7 @@ def compare_experiment(single_cancer_df,
                        identifier='gene',
                        metric='auroc',
                        verbose=False):
-    """which gene/cancer type combinations benefit from pan-cancer data?
 
-    TODO better documentation
-    """
     results = []
     single_cancer_ids = np.unique(single_cancer_df[identifier].values)
     pancancer_ids = np.unique(pancancer_df[identifier].values)
