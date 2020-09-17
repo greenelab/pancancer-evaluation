@@ -36,7 +36,6 @@ def load_prediction_results(results_dir, train_set_descriptor):
 
 def compare_results(single_cancer_df,
                     pancancer_df=None,
-                    compare_datasets='single_cancer_control',
                     identifier='gene',
                     metric='auroc',
                     correction=False,
@@ -89,6 +88,12 @@ def compare_control(results_df,
                       file=sys.stderr)
             continue
 
+        if (signal_results.size == 0) or (shuffled_results.size == 0):
+            if verbose:
+                print('size 0 results array for {}, skipping'.format(id_str),
+                      file=sys.stderr)
+            continue
+
         delta_mean = np.mean(signal_results) - np.mean(shuffled_results)
         p_value = ttest_ind(signal_results, shuffled_results)[1]
         results.append([id_str, delta_mean, p_value])
@@ -111,21 +116,29 @@ def compare_experiment(single_cancer_df,
     unique_identifiers = list(set(single_cancer_ids).intersection(pancancer_ids))
 
     for id_str in unique_identifiers:
-        single_cancer_results = single_cancer_df[
-            (single_cancer_df[identifier] == id_str) &
-            (single_cancer_df.data_type == 'test') &
-            (single_cancer_df.signal == 'signal')
-        ][metric].values
-        pancancer_results = pancancer_df[
-            (pancancer_df[identifier] == id_str) &
-            (pancancer_df.data_type == 'test') &
-            (pancancer_df.signal == 'signal')
-        ][metric].values
+
+        conditions = ((single_cancer_df[identifier] == id_str) &
+                      (single_cancer_df.data_type == 'test') &
+                      (single_cancer_df.signal == 'signal'))
+        single_cancer_results = single_cancer_df[conditions][metric].values
+
+        conditions = ((pancancer_df[identifier] == id_str) &
+                      (pancancer_df.data_type == 'test') &
+                      (pancancer_df.signal == 'signal'))
+        pancancer_results = pancancer_df[conditions][metric].values
+
         if single_cancer_results.shape != pancancer_results.shape:
             if verbose:
                 print('shapes unequal for {}, skipping'.format(id_str),
                       file=sys.stderr)
             continue
+
+        if (single_cancer_results.size == 0) or (pancancer_results.size == 0):
+            if verbose:
+                print('size 0 results array for {}, skipping'.format(id_str),
+                      file=sys.stderr)
+            continue
+
         delta_mean = np.mean(pancancer_results) - np.mean(single_cancer_results)
         p_value = ttest_ind(single_cancer_results, pancancer_results)[1]
         results.append([id_str, delta_mean, p_value])
