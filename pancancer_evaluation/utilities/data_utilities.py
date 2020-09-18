@@ -209,7 +209,7 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
     ] = 'other'
 
     # now do stratified CV splitting and return the desired fold
-    kf = StratifiedKFold(n_splits=num_folds, random_state=seed)
+    kf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
     for fold, (train_ixs, test_ixs) in enumerate(
             kf.split(rnaseq_df, sample_info_df.id_for_stratification)):
         if fold == fold_no:
@@ -266,7 +266,7 @@ def split_by_cancer_type(rnaseq_df, sample_info_df, holdout_cancer_type,
 
 def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
     """Split data for a single cancer type into train and test sets."""
-    kf = KFold(n_splits=num_folds, random_state=seed)
+    kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
     for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
         if fold == fold_no:
             train_df = cancer_type_df.iloc[train_ixs]
