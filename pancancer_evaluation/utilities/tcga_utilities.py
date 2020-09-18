@@ -148,7 +148,7 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
         x_df = x_file_or_df
 
     # select samples to use, assuming y has already been filtered by cancer type
-    use_samples = set(y.index).intersection(set(x_df.index))
+    use_samples = y.index.intersection(x_df.index)
     x_df = x_df.reindex(use_samples)
     y = y.reindex(use_samples)
 
