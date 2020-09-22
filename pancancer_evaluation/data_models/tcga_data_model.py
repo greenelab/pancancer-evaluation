@@ -134,6 +134,18 @@ class TCGADataModel():
         self.gene_features = gene_features
 
 
+    def check_cancer_type_file(self, gene, cancer_type, shuffle_labels):
+        signal = 'shuffled' if shuffle_labels else 'signal'
+        check_file = Path(self.gene_dir,
+                          "{}_{}_{}_coefficients.tsv.gz".format(
+                              gene, cancer_type, signal)).resolve()
+        if check_status(check_file):
+            raise ResultsFileExistsError(
+                'Results file already exists for gene: {}\n'.format(gene)
+            )
+        self.check_file = check_file
+
+
     def _load_data(self, debug=False):
         """Load and store relevant data.
 
