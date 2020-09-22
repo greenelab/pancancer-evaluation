@@ -21,7 +21,10 @@ from sklearn.model_selection import GridSearchCV
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.tcga_utilities as tu
-from pancancer_evaluation.exceptions import OneClassError
+from pancancer_evaluation.exceptions import (
+    OneClassError,
+    NoTestSamplesError
+)
 
 def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
                        use_pancancer, shuffle_labels):

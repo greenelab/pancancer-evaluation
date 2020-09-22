@@ -43,4 +43,3 @@ cancer_type_gene_info = [('TP53', 'TSG', 'BRCA'),
                          ('KRAS', 'Oncogene', 'COAD'),
                          ('KRAS', 'Oncogene', 'READ'),
                          ('ARID1A', 'TSG', 'UCEC')]
-# cancer_type_gene_info = [('KRAS', 'Oncogene', 'PAAD')]
