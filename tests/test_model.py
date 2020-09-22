@@ -18,6 +18,7 @@ def data_model():
     sample_info_df = du.load_sample_info()
     return tcga_data, sample_info_df
 
+
 @pytest.mark.parametrize("gene_info", cfg.stratified_gene_info)
 def test_stratified_prediction(data_model, gene_info):
     """Regression test for prediction using stratified cross-validation"""
@@ -33,7 +34,21 @@ def test_stratified_prediction(data_model, gene_info):
     old_results = np.loadtxt(results_file)
     assert np.allclose(metrics_df['auroc'].values, old_results)
 
-def test_cancer_type_prediction(data_model):
+
+@pytest.mark.parametrize("gene_info", cfg.cancer_type_gene_info)
+def test_cancer_type_prediction(data_model, gene_info):
     """Regression test for prediction using cancer type cross-validation"""
-    assert True
+    tcga_data, sample_info_df = data_model
+    gene, classification, cancer_type = gene_info
+    tcga_data.process_data_for_gene(gene, classification,
+                                    check_gene_file=True,
+                                    shuffle_labels=False)
+    results = cu.run_cv_cancer_type(tcga_data, gene, cancer_type,
+                                    sample_info_df, num_folds=4,
+                                    use_pancancer=False,
+                                    shuffle_labels=False)
+    metrics_df = pd.concat(results['gene_metrics'])
+    results_file = cfg.test_cancer_type_results.format(gene, cancer_type)
+    old_results = np.loadtxt(results_file)
+    assert np.allclose(metrics_df['auroc'].values, old_results)
 

@@ -16,6 +16,7 @@ sample_info = data_dir / 'tcga_sample_identifiers.tsv'
 test_data_dir = repo_root / 'tests' / 'data'
 test_expression = test_data_dir / 'expression_subsampled.tsv.gz'
 test_stratified_results = str(test_data_dir / 'stratified_results_{}.tsv')
+test_cancer_type_results = str(test_data_dir / 'cancer_type_results_{}_{}.tsv')
 
 # parameters for classification using raw gene expression
 num_features_raw = 8000
@@ -35,3 +36,11 @@ default_seed = 42
 stratified_gene_info = [('TP53', 'TSG'),
                         ('KRAS', 'Oncogene'),
                         ('ARID1A', 'TSG')]
+
+# gene/classification/cancer type combos for stratified CV model tests
+cancer_type_gene_info = [('TP53', 'TSG', 'BRCA'),
+                         ('TP53', 'TSG', 'LGG'),
+                         ('KRAS', 'Oncogene', 'COAD'),
+                         ('KRAS', 'Oncogene', 'READ'),
+                         ('ARID1A', 'TSG', 'UCEC')]
+# cancer_type_gene_info = [('KRAS', 'Oncogene', 'PAAD')]

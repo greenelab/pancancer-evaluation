@@ -21,6 +21,119 @@ from sklearn.model_selection import GridSearchCV
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.tcga_utilities as tu
+from pancancer_evaluation.exceptions import OneClassError
+
+def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
+                       use_pancancer, shuffle_labels):
+    """
+    Run cross-validation experiments for a given gene/cancer type combination,
+    then write them to files in the results directory. If the relevant files
+    already exist, skip this experiment.
+
+    Arguments
+    ---------
+    gene (str): gene to run experiments for
+    cancer_type (str): cancer type in TCGA to hold out
+    sample_info (pd.DataFrame): dataframe with TCGA sample information
+    num_folds (int): number of cross-validation folds to run
+    use_pancancer (bool): whether or not to use pancancer data
+    shuffle_labels (bool): whether or not to shuffle labels (negative control)
+
+    TODO: what class variables does data_model need to have? should document
+    """
+    # TODO: check file?
+    results = {
+        'gene_metrics': [],
+        'gene_auc': [],
+        'gene_aupr': [],
+        'gene_coef': []
+    }
+    signal = 'shuffled' if shuffle_labels else 'signal'
+
+    for fold_no in range(num_folds):
+        try:
+            # if labels are extremely imbalanced, scikit-learn KFold used
+            # here will throw n_splits warnings, then we'll hit a ValueError
+            # later on when training the model.
+            #
+            # so, we ignore the warnings here, then catch the error later on
+            # to allow the calling function to skip these cases without a
+            # bunch of warning spam.
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
+                   data_model.X_df, sample_info, cancer_type,
+                   num_folds=num_folds, fold_no=fold_no,
+                   use_pancancer=use_pancancer, seed=data_model.seed)
+        except ValueError:
+            raise NoTestSamplesError(
+                'No test samples found for cancer type: {}, '
+                'gene: {}\n'.format(cancer_type, gene)
+            )
+
+        y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
+        y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
+
+        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
+                                                   data_model.gene_features,
+                                                   data_model.subset_mad_genes)
+
+        try:
+            # also ignore warnings here, same deal as above
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                model_results = train_model(
+                    X_train=X_train_df,
+                    X_test=X_test_df,
+                    y_train=y_train_df,
+                    alphas=cfg.alphas,
+                    l1_ratios=cfg.l1_ratios,
+                    seed=data_model.seed,
+                    n_folds=cfg.folds,
+                    max_iter=cfg.max_iter
+                )
+                (cv_pipeline,
+                 y_pred_train_df,
+                 y_pred_test_df,
+                 y_cv_df) = model_results
+        except ValueError:
+            raise OneClassError(
+                'Only one class present in test set for cancer type: {}, '
+                'gene: {}\n'.format(cancer_type, gene)
+            )
+
+        # get coefficients
+        coef_df = extract_coefficients(
+            cv_pipeline=cv_pipeline,
+            feature_names=X_train_df.columns,
+            signal=signal,
+            seed=data_model.seed
+        )
+        coef_df = coef_df.assign(gene=gene)
+        coef_df = coef_df.assign(fold=fold_no)
+
+        try:
+            # also ignore warnings here, same deal as above
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                metric_df, gene_auc_df, gene_aupr_df = get_metrics(
+                    y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                    y_pred_test_df, gene, cancer_type, signal,
+                    data_model.seed, fold_no
+                )
+        except ValueError:
+            raise OneClassError(
+                'Only one class present in test set for cancer type: {}, '
+                'gene: {}\n'.format(cancer_type, gene)
+            )
+
+        results['gene_metrics'].append(metric_df)
+        results['gene_auc'].append(gene_auc_df)
+        results['gene_aupr'].append(gene_aupr_df)
+        results['gene_coef'].append(coef_df)
+
+    return results
+
 
 def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
     """
@@ -93,6 +206,8 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
             raise OneClassError(
                 'Only one class present in test set for gene: {}\n'.format(gene)
             )
+
+        # TODO: separate below into another function (one returns raw results)
 
         # get coefficients
         coef_df = extract_coefficients(
