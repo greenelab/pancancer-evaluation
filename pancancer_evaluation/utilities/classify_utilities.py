@@ -125,9 +125,6 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
 
     return results
 
-    # TODO calling script should call this separately
-    data_model._save_results_stratified(results, gene, signal)
-
 
 def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, max_iter=1000):
     """
