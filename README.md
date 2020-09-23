@@ -12,17 +12,18 @@ biological significance/interpretation of mutation prediction from gene
 expression.
 
 Broad research questions and analysis plan:
-    * Replicate results from BioBombe repo for stratified train/test sets
-    * Set up cross-validation holding out individual cancer types, and compare
-      results to negative control with shuffled labels
-    * Comparison of pan-cancer and single-cancer training sets: when does adding
-      pan-cancer data help? Does it ever hurt?
-    * Learning curve experiments: Is the effect of added data dependent on the
-      number of samples for the cancer type in question, or the label balance for
-      the driver gene in question?
-    * External validation, generalization to other ICGC or pediatric cancer
-      datasets: how/when can we use pan-cancer data to help?
-    * More to come
+
+* Replicate results from BioBombe repo for stratified train/test sets
+* Set up cross-validation holding out individual cancer types, and compare
+  results to negative control with shuffled labels
+* Comparison of pan-cancer and single-cancer training sets: when does adding
+  pan-cancer data help? Does it ever hurt?
+* Learning curve experiments: Is the effect of added data dependent on the
+  number of samples for the cancer type in question, or the label balance for
+  the driver gene in question?
+* External validation, generalization to other ICGC or pediatric cancer
+  datasets: how/when can we use pan-cancer data to help?
+* More to come
 
 Issues are mostly up-to-date for future ideas/research directions (filter by
 the "research question" tag), as well as known bugs/limitations of the code
