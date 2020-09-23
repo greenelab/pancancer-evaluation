@@ -18,6 +18,8 @@ def data_model():
     sample_info_df = du.load_sample_info()
     return tcga_data, sample_info_df
 
+def test_simple(data_model):
+    assert data_model is not None
 
 @pytest.mark.parametrize("gene_info", cfg.stratified_gene_info)
 def test_stratified_prediction(data_model, gene_info):
