@@ -14,9 +14,8 @@ import pancancer_evaluation.utilities.data_utilities as du
 def data_model():
     """Load data model and sample info data"""
     # TODO: define results dir?
-    # tcga_data = TCGADataModel(debug=True)
+    tcga_data = TCGADataModel(debug=True)
     # sample_info_df = du.load_sample_info()
-    tcga_data = []
     sample_info_df = []
     return tcga_data, sample_info_df
 
