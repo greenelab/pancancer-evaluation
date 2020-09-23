@@ -134,6 +134,11 @@ if __name__ == '__main__':
                 # (or has a different alias, TODO check for this later)
                 print('Gene {} not found in mutation data, skipping'.format(gene),
                       file=sys.stderr)
+                cancer_type_log_df = du.generate_log_df(
+                    log_columns,
+                    [gene, 'N/A', use_pancancer, shuffle_labels, 'gene_not_found']
+                )
+                du.write_log_file(cancer_type_log_df, args.log_file)
                 continue
 
             inner_progress = tqdm(args.holdout_cancer_types,
@@ -156,33 +161,27 @@ if __name__ == '__main__':
                         print('Skipping because results file exists already: '
                               'gene {}, cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns,
-                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
-                             )),
-                        index=[0]
+                    cancer_type_log_df = du.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
                     )
                 except NoTestSamplesError:
                     if args.verbose:
                         print('Skipping due to no test samples: gene {}, '
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns,
-                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
-                             )),
-                        index=[0]
+                    cancer_type_log_df = du.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
                     )
                 except OneClassError:
                     if args.verbose:
                         print('Skipping due to one holdout class: gene {}, '
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns,
-                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
-                             )),
-                        index=[0]
+                    cancer_type_log_df = du.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
                     )
                 else:
                     # only save results if no exceptions
@@ -194,7 +193,5 @@ if __name__ == '__main__':
                                                 shuffle_labels)
 
                 if cancer_type_log_df is not None:
-                    cancer_type_log_df.to_csv(args.log_file, mode='a', sep='\t',
-                                              index=False, header=False)
-
+                    du.write_log_file(cancer_type_log_df, args.log_file)
 

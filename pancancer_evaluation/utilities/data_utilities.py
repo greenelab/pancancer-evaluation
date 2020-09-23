@@ -392,3 +392,13 @@ def save_results_cancer_type(gene_dir, check_file, results, gene, cancer_type,
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
+
+def generate_log_df(log_columns, log_values):
+    """Generate and format log output."""
+    return pd.DataFrame(dict(zip(log_columns, log_values)), index=[0])
+
+
+def write_log_file(log_df, log_file):
+    """Append log output to log file."""
+    log_df.to_csv(log_file, mode='a', sep='\t', index=False, header=False)
+
