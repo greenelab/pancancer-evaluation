@@ -23,4 +23,4 @@ jobs:
 
             - name: Run tests
               run: |
-                $CONDA/bin/pytest tests/
+                $CONDA/bin/pytest tests/test_model.py
