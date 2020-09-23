@@ -21,7 +21,8 @@ def data_model():
 def test_simple(data_model):
     assert data_model is not None
 
-@pytest.mark.parametrize("gene_info", cfg.stratified_gene_info)
+# @pytest.mark.parametrize("gene_info", cfg.stratified_gene_info)
+@pytest.mark.skip
 def test_stratified_prediction(data_model, gene_info):
     """Regression test for prediction using stratified cross-validation"""
     tcga_data, sample_info_df = data_model
@@ -37,7 +38,8 @@ def test_stratified_prediction(data_model, gene_info):
     assert np.allclose(metrics_df['auroc'].values, old_results)
 
 
-@pytest.mark.parametrize("gene_info", cfg.cancer_type_gene_info)
+# @pytest.mark.parametrize("gene_info", cfg.cancer_type_gene_info)
+@pytest.mark.skip
 def test_cancer_type_prediction(data_model, gene_info):
     """Regression test for prediction using cancer type cross-validation"""
     tcga_data, sample_info_df = data_model
