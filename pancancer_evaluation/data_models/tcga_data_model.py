@@ -28,7 +28,8 @@ class TCGADataModel():
                  results_dir=cfg.results_dir,
                  subset_mad_genes=-1,
                  verbose=False,
-                 debug=False):
+                 debug=False,
+                 test=False):
         """
         Initialize mutation prediction model/data
 
@@ -40,6 +41,7 @@ class TCGADataModel():
                                 -1 doesn't do any filtering (all genes will be kept).
         verbose (bool): whether or not to write verbose output
         debug (bool): if True, use a subset of expression data for quick debugging
+        test (bool): if True, don't save results to files
         """
         # save relevant parameters
         np.random.seed(seed)
@@ -47,9 +49,10 @@ class TCGADataModel():
         self.results_dir = results_dir
         self.subset_mad_genes = subset_mad_genes
         self.verbose = verbose
+        self.test = test
 
         # load and store data in memory
-        self._load_data(debug=debug)
+        self._load_data(debug=debug, test=self.test)
 
 
     def load_gene_set(self, gene_set='top_50'):
@@ -146,7 +149,7 @@ class TCGADataModel():
         self.check_file = check_file
 
 
-    def _load_data(self, debug=False):
+    def _load_data(self, debug=False, test=False):
         """Load and store relevant data.
 
         This data does not vary based on the gene/cancer type being considered
@@ -155,6 +158,7 @@ class TCGADataModel():
         Arguments:
         ----------
         debug (bool): whether or not to subset data for faster debugging
+        test (bool): whether or not to subset columns in mutation data, for testing
         """
         # load expression data
         self.rnaseq_df = du.load_expression_data(verbose=self.verbose,
@@ -163,11 +167,11 @@ class TCGADataModel():
 
         # load and unpack pancancer data
         # this data is described in more detail in the load_pancancer_data docstring
-        if debug:
+        if test:
             # for debugging/testing, just load a subset of pancancer data,
             # this is much faster than loading mutation data for all genes
             pancan_data = du.load_pancancer_data(verbose=self.verbose,
-                                                 debug=True,
+                                                 test=True,
                                                  subset_columns=cfg.test_genes)
         else:
             pancan_data = du.load_pancancer_data(verbose=self.verbose)

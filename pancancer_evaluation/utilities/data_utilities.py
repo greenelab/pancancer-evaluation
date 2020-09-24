@@ -50,7 +50,7 @@ def load_expression_data(scale_input=False, verbose=False, debug=False):
     return rnaseq_df
 
 
-def load_pancancer_data(verbose=False, debug=False, subset_columns=None):
+def load_pancancer_data(verbose=False, test=False, subset_columns=None):
     """Load pan-cancer relevant data from previous Greene Lab repos.
 
     Data being loaded includes:
@@ -79,7 +79,7 @@ def load_pancancer_data(verbose=False, debug=False, subset_columns=None):
 
     # loading this data from the pancancer repo is very slow, so we
     # cache it in a pickle to speed up loading
-    if debug:
+    if test:
         data_filepath = cfg.test_pancan_data
     else:
         data_filepath = cfg.pancan_data
