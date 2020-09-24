@@ -156,19 +156,27 @@ class TCGADataModel():
         ----------
         debug (bool): whether or not to subset data for faster debugging
         """
+        # load expression data
+        self.rnaseq_df = du.load_expression_data(verbose=self.verbose,
+                                                 debug=debug)
+        self.sample_info_df = du.load_sample_info(verbose=self.verbose)
+
         # load and unpack pancancer data
         # this data is described in more detail in the load_pancancer_data docstring
-        pancan_data = du.load_pancancer_data(verbose=self.verbose)
+        if debug:
+            # for debugging/testing, just load a subset of pancancer data,
+            # this is much faster than loading mutation data for all genes
+            pancan_data = du.load_pancancer_data(verbose=self.verbose,
+                                                 debug=True,
+                                                 subset_columns=cfg.test_genes)
+        else:
+            pancan_data = du.load_pancancer_data(verbose=self.verbose)
+
         (self.sample_freeze_df,
          self.mutation_df,
          self.copy_loss_df,
          self.copy_gain_df,
          self.mut_burden_df) = pancan_data
-
-        # load expression data
-        self.rnaseq_df = du.load_expression_data(verbose=self.verbose,
-                                                 debug=debug)
-        self.sample_info_df = du.load_sample_info(verbose=self.verbose)
 
 
     def _make_gene_dir(self, gene, use_pancancer):

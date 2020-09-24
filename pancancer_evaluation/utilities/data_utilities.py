@@ -50,7 +50,7 @@ def load_expression_data(scale_input=False, verbose=False, debug=False):
     return rnaseq_df
 
 
-def load_pancancer_data(verbose=False):
+def load_pancancer_data(verbose=False, debug=False, subset_columns=None):
     """Load pan-cancer relevant data from previous Greene Lab repos.
 
     Data being loaded includes:
@@ -79,16 +79,21 @@ def load_pancancer_data(verbose=False):
 
     # loading this data from the pancancer repo is very slow, so we
     # cache it in a pickle to speed up loading
-    if os.path.exists(cfg.pancan_data):
+    if debug:
+        data_filepath = cfg.test_pancan_data
+    else:
+        data_filepath = cfg.pancan_data
+
+    if os.path.exists(data_filepath):
         if verbose:
             print('Loading pan-cancer data from cached pickle file...', file=sys.stderr)
-        with open(cfg.pancan_data, 'rb') as f:
+        with open(data_filepath, 'rb') as f:
             pancan_data = pkl.load(f)
     else:
         if verbose:
             print('Loading pan-cancer data from repo (warning: slow)...', file=sys.stderr)
-        pancan_data = load_pancancer_data_from_repo()
-        with open(cfg.pancan_data, 'wb') as f:
+        pancan_data = load_pancancer_data_from_repo(subset_columns)
+        with open(data_filepath, 'wb') as f:
             pkl.dump(pancan_data, f)
 
     return pancan_data
@@ -130,7 +135,7 @@ def load_vogelstein():
     return genes_df
 
 
-def load_pancancer_data_from_repo():
+def load_pancancer_data_from_repo(subset_columns=None):
     """Load data to build feature matrices from pancancer repo. """
 
     base_url = "https://github.com/greenelab/pancancer/raw"
@@ -150,6 +155,13 @@ def load_pancancer_data_from_repo():
 
     file = "{}/{}/data/mutation_burden_freeze.tsv".format(base_url, commit)
     mut_burden_df = pd.read_csv(file, index_col=0, sep='\t')
+
+    if subset_columns is not None:
+        # don't reindex sample_freeze_df or mut_burden_df
+        # they don't have gene-valued columns
+        mutation_df = mutation_df.reindex(subset_columns, axis='columns')
+        copy_loss_df = copy_loss_df.reindex(subset_columns, axis='columns')
+        copy_gain_df = copy_gain_df.reindex(subset_columns, axis='columns')
 
     return (
         sample_freeze_df,

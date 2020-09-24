@@ -14,16 +14,14 @@ import pancancer_evaluation.utilities.data_utilities as du
 def data_model():
     """Load data model and sample info data"""
     # TODO: define results dir?
-    tcga_data = TCGADataModel(debug=True)
-    # sample_info_df = du.load_sample_info()
-    sample_info_df = []
+    tcga_data = TCGADataModel(debug=True, verbose=True)
+    sample_info_df = du.load_sample_info()
     return tcga_data, sample_info_df
 
 def test_simple(data_model):
     assert data_model is not None
 
-# @pytest.mark.parametrize("gene_info", cfg.stratified_gene_info)
-@pytest.mark.skip
+@pytest.mark.parametrize("gene_info", cfg.stratified_gene_info)
 def test_stratified_prediction(data_model, gene_info):
     """Regression test for prediction using stratified cross-validation"""
     tcga_data, sample_info_df = data_model
@@ -39,8 +37,7 @@ def test_stratified_prediction(data_model, gene_info):
     assert np.allclose(metrics_df['auroc'].values, old_results)
 
 
-# @pytest.mark.parametrize("gene_info", cfg.cancer_type_gene_info)
-@pytest.mark.skip
+@pytest.mark.parametrize("gene_info", cfg.cancer_type_gene_info)
 def test_cancer_type_prediction(data_model, gene_info):
     """Regression test for prediction using cancer type cross-validation"""
     tcga_data, sample_info_df = data_model
