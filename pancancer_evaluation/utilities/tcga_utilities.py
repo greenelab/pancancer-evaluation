@@ -21,6 +21,7 @@ def process_y_matrix(
     filter_prop,
     output_directory,
     hyper_filter=5,
+    test=False,
 ):
     """
     Combine copy number and mutation data and filter cancer-types to build y matrix
@@ -37,6 +38,7 @@ def process_y_matrix(
     filter_prop: the proportion of positives or negatives required per cancer-type
     output_directory: the name of the directory to store the gene summary
     hyper_filter: the number of std dev above log10 mutation burden to filter
+    test: if true, don't write filtering info to disk
 
     Returns
     -------
@@ -79,9 +81,10 @@ def process_y_matrix(
         suffixes=("_count", "_proportion"),
     ).merge(filter_disease_df, left_index=True, right_index=True)
 
-    filter_file = "{}_filtered_cancertypes.tsv".format(gene)
-    filter_file = os.path.join(output_directory, filter_file)
-    disease_stats_df.to_csv(filter_file, sep="\t")
+    if not test:
+        filter_file = "{}_filtered_cancertypes.tsv".format(gene)
+        filter_file = os.path.join(output_directory, filter_file)
+        disease_stats_df.to_csv(filter_file, sep="\t")
 
     # Filter
     use_diseases = disease_stats_df.query("disease_included").index.tolist()
@@ -174,6 +177,24 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
     return use_samples, x_df, y, gene_features
 
 
+def preprocess_data(X_train_raw_df, X_test_raw_df, gene_features, subset_mad_genes=-1):
+    """
+    Data processing and feature selection, if applicable.
+
+    Note this needs to happen for train and test sets independently.
+    """
+    if subset_mad_genes > 0:
+        X_train_raw_df, X_test_raw_df, gene_features_filtered = subset_by_mad(
+            X_train_raw_df, X_test_raw_df, gene_features, subset_mad_genes
+        )
+        X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
+        X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
+    else:
+        X_train_df = standardize_gene_features(X_train_raw_df, gene_features)
+        X_test_df = standardize_gene_features(X_test_raw_df, gene_features)
+    return X_train_df, X_test_df
+
+
 def standardize_gene_features(x_df, gene_features):
     """Standardize (take z-scores of) real-valued gene expression features.
 
@@ -191,18 +212,43 @@ def standardize_gene_features(x_df, gene_features):
     return pd.concat((x_df_scaled, x_df_other), axis=1)
 
 
-def check_status(file):
-    """
-    Check the status of a gene or cancer-type application
+def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbose=False):
+    """Subset features by mean absolute deviation.
+
+    Takes the top subset_mad_genes genes (sorted in descending order),
+    calculated on the training set.
 
     Arguments
     ---------
-    file: the file to check if it exists. If exists, then there is no need to rerun
+    X_train_df: training data, samples x genes
+    X_test_df: test data, samples x genes
+    gene_features: numpy bool array, indicating which features are genes (and should be subsetted/standardized)
+    subset_mad_genes (int): number of genes to take
 
     Returns
     -------
-    boolean if the file exists or not
+    (train_df, test_df, gene_features) datasets with filtered features
     """
-    import os
-    return os.path.isfile(file)
+    if verbose:
+        print('Taking subset of gene features', file=sys.stderr)
+
+    mad_genes_df = (
+        X_train_df.loc[:, gene_features]
+                  .mad(axis=0)
+                  .sort_values(ascending=False)
+                  .reset_index()
+    )
+    mad_genes_df.columns = ['gene_id', 'mean_absolute_deviation']
+    mad_genes = mad_genes_df.iloc[:subset_mad_genes, :].gene_id.astype(str).values
+
+    non_gene_features = X_train_df.columns.values[~gene_features]
+    valid_features = np.concatenate((mad_genes, non_gene_features))
+
+    gene_features = np.concatenate((
+        np.ones(mad_genes.shape[0]).astype('bool'),
+        np.zeros(non_gene_features.shape[0]).astype('bool')
+    ))
+    train_df = X_train_df.reindex(valid_features, axis='columns')
+    test_df = X_test_df.reindex(valid_features, axis='columns')
+    return train_df, test_df, gene_features
 

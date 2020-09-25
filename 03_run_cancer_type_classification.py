@@ -12,13 +12,15 @@ import pandas as pd
 from tqdm import tqdm
 
 import pancancer_evaluation.config as cfg
-import pancancer_evaluation.utilities.data_utilities as du
-from pancancer_evaluation.mutation_prediction import (
-    MutationPrediction,
+from pancancer_evaluation.data_models.tcga_data_model import TCGADataModel
+from pancancer_evaluation.exceptions import (
     NoTestSamplesError,
     OneClassError,
     ResultsFileExistsError
 )
+from pancancer_evaluation.utilities.classify_utilities import run_cv_cancer_type
+import pancancer_evaluation.utilities.data_utilities as du
+import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
@@ -96,13 +98,12 @@ if __name__ == '__main__':
         log_df = pd.DataFrame(columns=log_columns)
         log_df.to_csv(args.log_file, sep='\t')
 
-    predictor = MutationPrediction(seed=args.seed,
-                                   results_dir=args.results_dir,
-                                   subset_mad_genes=args.subset_mad_genes,
-                                   verbose=args.verbose,
-                                   debug=args.debug)
+    tcga_data = TCGADataModel(seed=args.seed,
+                              subset_mad_genes=args.subset_mad_genes,
+                              verbose=args.verbose,
+                              debug=args.debug)
 
-    genes_df = predictor.load_gene_set(args.gene_set)
+    genes_df = tcga_data.load_gene_set(args.gene_set)
 
     # we want to run mutation prediction experiments:
     # - for all combinations of use_pancancer and shuffle_labels
@@ -125,7 +126,10 @@ if __name__ == '__main__':
             outer_progress.set_description('gene: {}'.format(gene))
 
             try:
-                predictor.process_data_for_gene(gene, classification,
+                gene_dir = fu.make_gene_dir(args.results_dir, gene,
+                                            use_pancancer=use_pancancer)
+                tcga_data.process_data_for_gene(gene, classification,
+                                                gene_dir,
                                                 use_pancancer=use_pancancer,
                                                 shuffle_labels=shuffle_labels)
             except KeyError:
@@ -133,6 +137,11 @@ if __name__ == '__main__':
                 # (or has a different alias, TODO check for this later)
                 print('Gene {} not found in mutation data, skipping'.format(gene),
                       file=sys.stderr)
+                cancer_type_log_df = fu.generate_log_df(
+                    log_columns,
+                    [gene, 'N/A', use_pancancer, shuffle_labels, 'gene_not_found']
+                )
+                fu.write_log_file(cancer_type_log_df, args.log_file)
                 continue
 
             inner_progress = tqdm(args.holdout_cancer_types,
@@ -145,45 +154,47 @@ if __name__ == '__main__':
                 cancer_type_log_df = None
 
                 try:
-                    predictor.run_cv_for_cancer_type(gene, cancer_type, sample_info_df,
-                                                     args.num_folds, use_pancancer,
-                                                     shuffle_labels)
+                    check_file = fu.check_cancer_type_file(gene_dir, gene,
+                                                           cancer_type, shuffle_labels)
+                    results = run_cv_cancer_type(tcga_data, gene, cancer_type,
+                                                 sample_info_df, args.num_folds,
+                                                 use_pancancer, shuffle_labels)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '
                               'gene {}, cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns,
-                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
-                             )),
-                        index=[0]
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
                     )
                 except NoTestSamplesError:
                     if args.verbose:
                         print('Skipping due to no test samples: gene {}, '
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns,
-                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
-                             )),
-                        index=[0]
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
                     )
                 except OneClassError:
                     if args.verbose:
                         print('Skipping due to one holdout class: gene {}, '
                               'cancer type {}'.format(gene, cancer_type),
                               file=sys.stderr)
-                    cancer_type_log_df = pd.DataFrame(
-                        dict(zip(log_columns,
-                                 [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
-                             )),
-                        index=[0]
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
                     )
+                else:
+                    # only save results if no exceptions
+                    fu.save_results_cancer_type(gene_dir,
+                                                check_file,
+                                                results,
+                                                gene,
+                                                cancer_type,
+                                                shuffle_labels)
 
                 if cancer_type_log_df is not None:
-                    cancer_type_log_df.to_csv(args.log_file, mode='a', sep='\t',
-                                              index=False, header=False)
-
+                    fu.write_log_file(cancer_type_log_df, args.log_file)
 

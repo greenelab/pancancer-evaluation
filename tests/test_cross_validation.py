@@ -74,6 +74,7 @@ def test_stratified_cv(expression_data):
 
         assert train_df.shape[0] + test_df.shape[0] == rnaseq_df.shape[0]
 
+        # calculate proportion of each stratification group in train/test sets
         train_df = train_df.merge(stratify_df, left_index=True, right_index=True)
         test_df = test_df.merge(stratify_df, left_index=True, right_index=True)
         train_counts = train_df.id_for_stratification.value_counts()
@@ -83,7 +84,7 @@ def test_stratified_cv(expression_data):
         train_proportions.append(train_fold_props)
         test_proportions.append(test_fold_props)
 
-    # check that proportions of each stratification are approximately
+    # check that proportions of each stratification group are approximately
     # the same between folds (in other words, check that stratified CV is
     # working properly)
     #
@@ -93,3 +94,4 @@ def test_stratified_cv(expression_data):
         assert np.allclose(train_proportions[ix1], train_proportions[ix2], rtol=1.0)
         assert np.allclose(test_proportions[ix1], test_proportions[ix2], rtol=1.0)
         assert np.allclose(train_proportions[ix1], test_proportions[ix2], rtol=1.0)
+
