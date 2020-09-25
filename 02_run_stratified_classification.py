@@ -18,8 +18,9 @@ from pancancer_evaluation.exceptions import (
     OneClassError,
     ResultsFileExistsError
 )
-import pancancer_evaluation.utilities.data_utilities as du
 from pancancer_evaluation.utilities.classify_utilities import run_cv_stratified
+import pancancer_evaluation.utilities.data_utilities as du
+import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
@@ -123,22 +124,22 @@ if __name__ == '__main__':
                 if args.verbose:
                     print('Skipping because results file exists already: gene {}'.format(
                         gene), file=sys.stderr)
-                cancer_type_log_df = du.generate_log_df(
+                cancer_type_log_df = fu.generate_log_df(
                     log_columns,
                     [gene, True, shuffle_labels, 'file_exists']
                 )
-                du.write_log_file(cancer_type_log_df, args.log_file)
+                fu.write_log_file(cancer_type_log_df, args.log_file)
                 continue
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
                 # (or has a different alias, TODO we could check for this later)
                 print('Gene {} not found in mutation data, skipping'.format(gene),
                       file=sys.stderr)
-                cancer_type_log_df = du.generate_log_df(
+                cancer_type_log_df = fu.generate_log_df(
                     log_columns,
                     [gene, True, shuffle_labels, 'gene_not_found']
                 )
-                du.write_log_file(cancer_type_log_df, args.log_file)
+                fu.write_log_file(cancer_type_log_df, args.log_file)
                 continue
 
             try:
@@ -148,7 +149,7 @@ if __name__ == '__main__':
                 if args.verbose:
                     print('Skipping due to no test samples: gene {}'.format(
                         gene), file=sys.stderr)
-                cancer_type_log_df = du.generate_log_df(
+                cancer_type_log_df = fu.generate_log_df(
                     log_columns,
                     [gene, True, shuffle_labels, 'no_test_samples']
                 )
@@ -156,18 +157,18 @@ if __name__ == '__main__':
                 if args.verbose:
                     print('Skipping due to one holdout class: gene {}'.format(
                         gene), file=sys.stderr)
-                cancer_type_log_df = du.generate_log_df(
+                cancer_type_log_df = fu.generate_log_df(
                     log_columns,
                     [gene, True, shuffle_labels, 'one_class']
                 )
             else:
                 # only save results if no exceptions
-                du.save_results_stratified(tcga_data.gene_dir,
+                fu.save_results_stratified(tcga_data.gene_dir,
                                            tcga_data.check_file,
                                            results,
                                            gene,
                                            shuffle_labels)
 
             if cancer_type_log_df is not None:
-                du.write_log_file(cancer_type_log_df, args.log_file)
+                fu.write_log_file(cancer_type_log_df, args.log_file)
 
