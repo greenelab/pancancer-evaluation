@@ -27,7 +27,7 @@ from pancancer_evaluation.exceptions import (
 )
 
 def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
-                       use_pancancer, shuffle_labels):
+                       use_pancancer, use_pancancer_only, shuffle_labels):
     """
     Run cross-validation experiments for a given gene/cancer type combination,
     then write them to files in the results directory. If the relevant files
@@ -40,6 +40,7 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
     use_pancancer (bool): whether or not to use pancancer data
+    use_pancancer_only (bool): whether or not to use only pancancer data
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
 
     TODO: what class variables does data_model need to have? should document

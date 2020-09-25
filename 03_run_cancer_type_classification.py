@@ -41,6 +41,9 @@ def process_args():
                    help='name of file to log skipped cancer types to')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
+    p.add_argument('--pancancer_only', action='store_true',
+                   help='if included, omit test cancer type data from training '
+                        'set for pancancer experiments')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
@@ -156,9 +159,18 @@ if __name__ == '__main__':
                 try:
                     check_file = fu.check_cancer_type_file(gene_dir, gene,
                                                            cancer_type, shuffle_labels)
+                    # this is true if we want to use all pancancer data (not just
+                    # non-testing pancancer data)
+                    use_pancancer_cv = (use_pancancer and not args.pancancer_only)
+                    # this is true if we want to use only non-testing pancancer data
+                    # (i.e. if the pancancer_only flag is included)
+                    use_pancancer_only = (use_pancancer and args.pancancer_only)
+                    # make sure these flags are mutually exclusive (they should be)
+                    assert not (use_pancancer_cv and use_pancancer_only)
                     results = run_cv_cancer_type(tcga_data, gene, cancer_type,
                                                  sample_info_df, args.num_folds,
-                                                 use_pancancer, shuffle_labels)
+                                                 use_pancancer_cv, use_pancancer_only,
+                                                 shuffle_labels)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '
