@@ -97,7 +97,7 @@ class TCGADataModel():
         gene (str): gene to run experiments for
         classification (str): 'oncogene' or 'TSG'; most likely cancer function for
                               the given gene
-        gene_dir (str): directory to write output to
+        gene_dir (str): directory to write output to, if None don't write output
         use_pancancer (bool): whether or not to use pancancer data
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
@@ -179,7 +179,8 @@ class TCGADataModel():
             filter_count=cfg.filter_count,
             filter_prop=cfg.filter_prop,
             output_directory=gene_dir,
-            hyper_filter=5
+            hyper_filter=5,
+            test=self.test
         )
         return y_df
 

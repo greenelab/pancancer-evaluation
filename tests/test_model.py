@@ -27,6 +27,7 @@ def test_stratified_prediction(data_model, gene_info):
     tcga_data, sample_info_df = data_model
     gene, classification = gene_info
     tcga_data.process_data_for_gene(gene, classification,
+                                    gene_dir=None,
                                     check_gene_file=True,
                                     shuffle_labels=False)
     results = cu.run_cv_stratified(tcga_data, gene, sample_info_df,
@@ -43,6 +44,7 @@ def test_cancer_type_prediction(data_model, gene_info):
     tcga_data, sample_info_df = data_model
     gene, classification, cancer_type = gene_info
     tcga_data.process_data_for_gene(gene, classification,
+                                    gene_dir=None,
                                     check_gene_file=True,
                                     shuffle_labels=False)
     results = cu.run_cv_cancer_type(tcga_data, gene, cancer_type,
