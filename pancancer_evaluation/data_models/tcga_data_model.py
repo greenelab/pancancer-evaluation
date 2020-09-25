@@ -54,7 +54,6 @@ class TCGADataModel():
         # load and store data in memory
         self._load_data(debug=debug, test=self.test)
 
-
     def load_gene_set(self, gene_set='top_50'):
         """
         Load gene set data from previous GitHub repos.
@@ -84,7 +83,6 @@ class TCGADataModel():
             genes_df = genes_df[genes_df['gene'].isin(gene_set)]
 
         return genes_df
-
 
     def process_data_for_gene(self,
                               gene,
@@ -136,7 +134,6 @@ class TCGADataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
-
     def check_cancer_type_file(self, gene, cancer_type, shuffle_labels):
         signal = 'shuffled' if shuffle_labels else 'signal'
         check_file = Path(self.gene_dir,
@@ -147,7 +144,6 @@ class TCGADataModel():
                 'Results file already exists for gene: {}\n'.format(gene)
             )
         self.check_file = check_file
-
 
     def _load_data(self, debug=False, test=False):
         """Load and store relevant data.
@@ -182,14 +178,12 @@ class TCGADataModel():
          self.copy_gain_df,
          self.mut_burden_df) = pancan_data
 
-
     def _make_gene_dir(self, gene, use_pancancer):
         # create directory for the gene
         dirname = 'pancancer' if use_pancancer else 'single_cancer'
         gene_dir = Path(self.results_dir, dirname, gene).resolve()
         gene_dir.mkdir(parents=True, exist_ok=True)
         self.gene_dir = gene_dir
-
 
     def _generate_labels(self, gene, classification):
         # process the y matrix for the given gene or pathway
@@ -221,7 +215,6 @@ class TCGADataModel():
             hyper_filter=5
         )
         return y_df
-
 
     def _filter_data_for_gene(self, rnaseq_df, y_df, use_pancancer):
         use_samples, rnaseq_df, y_df, gene_features = align_matrices(
