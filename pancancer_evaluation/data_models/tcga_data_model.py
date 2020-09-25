@@ -10,10 +10,8 @@ import pancancer_evaluation.utilities.data_utilities as du
 from pancancer_evaluation.utilities.tcga_utilities import (
     process_y_matrix,
     align_matrices,
-    standardize_gene_features,
-    check_status
+    standardize_gene_features
 )
-from pancancer_evaluation.exceptions import ResultsFileExistsError
 
 class TCGADataModel():
     """
@@ -25,7 +23,6 @@ class TCGADataModel():
 
     def __init__(self,
                  seed=cfg.default_seed,
-                 results_dir=cfg.results_dir,
                  subset_mad_genes=-1,
                  verbose=False,
                  debug=False,
@@ -36,7 +33,6 @@ class TCGADataModel():
         Arguments
         ---------
         seed (int): seed for random number generator
-        results_dir (str): where to write results files
         subset_mad_genes (int): how many genes to keep (top by mean absolute deviation).
                                 -1 doesn't do any filtering (all genes will be kept).
         verbose (bool): whether or not to write verbose output
@@ -46,7 +42,6 @@ class TCGADataModel():
         # save relevant parameters
         np.random.seed(seed)
         self.seed = seed
-        self.results_dir = results_dir
         self.subset_mad_genes = subset_mad_genes
         self.verbose = verbose
         self.test = test
@@ -87,6 +82,7 @@ class TCGADataModel():
     def process_data_for_gene(self,
                               gene,
                               classification,
+                              gene_dir,
                               use_pancancer=False,
                               check_gene_file=False,
                               shuffle_labels=False):
@@ -101,23 +97,11 @@ class TCGADataModel():
         gene (str): gene to run experiments for
         classification (str): 'oncogene' or 'TSG'; most likely cancer function for
                               the given gene
+        gene_dir (str): directory to write output to
         use_pancancer (bool): whether or not to use pancancer data
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
-        self._make_gene_dir(gene, use_pancancer)
-
-        if check_gene_file:
-            signal = 'shuffled' if shuffle_labels else 'signal'
-            check_file = Path(self.gene_dir,
-                              "{}_{}_coefficients.tsv.gz".format(
-                                  gene, signal)).resolve()
-            if check_status(check_file):
-                raise ResultsFileExistsError(
-                    'Results file already exists for gene: {}\n'.format(gene)
-                )
-            self.check_file = check_file
-
-        y_df_raw = self._generate_labels(gene, classification)
+        y_df_raw = self._generate_labels(gene, classification, gene_dir)
 
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
@@ -134,16 +118,6 @@ class TCGADataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
-    def check_cancer_type_file(self, gene, cancer_type, shuffle_labels):
-        signal = 'shuffled' if shuffle_labels else 'signal'
-        check_file = Path(self.gene_dir,
-                          "{}_{}_{}_coefficients.tsv.gz".format(
-                              gene, cancer_type, signal)).resolve()
-        if check_status(check_file):
-            raise ResultsFileExistsError(
-                'Results file already exists for gene: {}\n'.format(gene)
-            )
-        self.check_file = check_file
 
     def _load_data(self, debug=False, test=False):
         """Load and store relevant data.
@@ -178,14 +152,7 @@ class TCGADataModel():
          self.copy_gain_df,
          self.mut_burden_df) = pancan_data
 
-    def _make_gene_dir(self, gene, use_pancancer):
-        # create directory for the gene
-        dirname = 'pancancer' if use_pancancer else 'single_cancer'
-        gene_dir = Path(self.results_dir, dirname, gene).resolve()
-        gene_dir.mkdir(parents=True, exist_ok=True)
-        self.gene_dir = gene_dir
-
-    def _generate_labels(self, gene, classification):
+    def _generate_labels(self, gene, classification, gene_dir):
         # process the y matrix for the given gene or pathway
         y_mutation_df = self.mutation_df.loc[:, gene]
 
@@ -211,7 +178,7 @@ class TCGADataModel():
             mutation_burden=self.mut_burden_df,
             filter_count=cfg.filter_count,
             filter_prop=cfg.filter_prop,
-            output_directory=self.gene_dir,
+            output_directory=gene_dir,
             hyper_filter=5
         )
         return y_df

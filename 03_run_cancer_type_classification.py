@@ -99,7 +99,6 @@ if __name__ == '__main__':
         log_df.to_csv(args.log_file, sep='\t')
 
     tcga_data = TCGADataModel(seed=args.seed,
-                              results_dir=args.results_dir,
                               subset_mad_genes=args.subset_mad_genes,
                               verbose=args.verbose,
                               debug=args.debug)
@@ -127,7 +126,10 @@ if __name__ == '__main__':
             outer_progress.set_description('gene: {}'.format(gene))
 
             try:
+                gene_dir = fu.make_gene_dir(args.results_dir, gene,
+                                            use_pancancer=use_pancancer)
                 tcga_data.process_data_for_gene(gene, classification,
+                                                gene_dir,
                                                 use_pancancer=use_pancancer,
                                                 shuffle_labels=shuffle_labels)
             except KeyError:
@@ -152,8 +154,8 @@ if __name__ == '__main__':
                 cancer_type_log_df = None
 
                 try:
-                    tcga_data.check_cancer_type_file(gene, cancer_type,
-                                                     shuffle_labels)
+                    check_file = fu.check_cancer_type_file(gene_dir, gene,
+                                                           cancer_type, shuffle_labels)
                     results = run_cv_cancer_type(tcga_data, gene, cancer_type,
                                                  sample_info_df, args.num_folds,
                                                  use_pancancer, shuffle_labels)
@@ -186,8 +188,8 @@ if __name__ == '__main__':
                     )
                 else:
                     # only save results if no exceptions
-                    fu.save_results_cancer_type(tcga_data.gene_dir,
-                                                tcga_data.check_file,
+                    fu.save_results_cancer_type(gene_dir,
+                                                check_file,
                                                 results,
                                                 gene,
                                                 cancer_type,

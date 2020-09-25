@@ -252,19 +252,3 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
     test_df = X_test_df.reindex(valid_features, axis='columns')
     return train_df, test_df, gene_features
 
-
-def check_status(file):
-    """
-    Check the status of a gene or cancer-type application
-
-    Arguments
-    ---------
-    file: the file to check if it exists. If exists, then there is no need to rerun
-
-    Returns
-    -------
-    boolean if the file exists or not
-    """
-    import os
-    return os.path.isfile(file)
-

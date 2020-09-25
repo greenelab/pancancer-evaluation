@@ -87,7 +87,6 @@ if __name__ == '__main__':
     sample_info_df = du.load_sample_info(args.verbose)
 
     tcga_data = TCGADataModel(seed=args.seed,
-                              results_dir=args.results_dir,
                               subset_mad_genes=args.subset_mad_genes,
                               verbose=args.verbose,
                               debug=args.debug)
@@ -114,7 +113,12 @@ if __name__ == '__main__':
             outer_progress.set_description('gene: {}'.format(gene))
 
             try:
+                gene_dir = fu.make_gene_dir(args.results_dir, gene,
+                                            use_pancancer=True)
+                check_file = fu.check_gene_file(gene_dir, gene,
+                                                shuffle_labels=shuffle_labels)
                 tcga_data.process_data_for_gene(gene, classification,
+                                                gene_dir,
                                                 use_pancancer=True,
                                                 check_gene_file=True,
                                                 shuffle_labels=shuffle_labels)
@@ -163,8 +167,8 @@ if __name__ == '__main__':
                 )
             else:
                 # only save results if no exceptions
-                fu.save_results_stratified(tcga_data.gene_dir,
-                                           tcga_data.check_file,
+                fu.save_results_stratified(gene_dir,
+                                           check_file,
                                            results,
                                            gene,
                                            shuffle_labels)
