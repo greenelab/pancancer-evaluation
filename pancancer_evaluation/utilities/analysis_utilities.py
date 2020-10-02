@@ -23,6 +23,7 @@ def load_prediction_results(results_dir, train_set_descriptor):
         if not os.path.isdir(gene_dir): continue
         for results_file in os.listdir(gene_dir):
             if 'classify' not in results_file: continue
+            if results_file[0] == '.': continue
             full_results_file = os.path.join(gene_dir, results_file)
             gene_results_df = pd.read_csv(full_results_file, sep='\t')
             gene_results_df['train_set'] = train_set_descriptor
