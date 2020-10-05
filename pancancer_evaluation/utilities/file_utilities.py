@@ -84,9 +84,13 @@ def write_log_file(log_df, log_file):
     log_df.to_csv(log_file, mode='a', sep='\t', index=False, header=False)
 
 
-def make_gene_dir(results_dir, gene, use_pancancer):
+def make_gene_dir(results_dir, gene, use_pancancer_cv, use_pancancer_only):
     """Create a directory for the given gene."""
-    dirname = 'pancancer' if use_pancancer else 'single_cancer'
+    dirname = 'single_cancer'
+    if use_pancancer_cv:
+        dirname = 'pancancer'
+    elif use_pancancer_only:
+        dirname = 'pancancer_only'
     gene_dir = Path(results_dir, dirname, gene).resolve()
     gene_dir.mkdir(parents=True, exist_ok=True)
     return gene_dir

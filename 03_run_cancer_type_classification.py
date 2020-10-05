@@ -114,6 +114,14 @@ if __name__ == '__main__':
     # - for all genes in the given gene set
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
+        # use_pancancer_cv is true if we want to use all pancancer data (not just
+        # non-testing pancancer data)
+        use_pancancer_cv = (use_pancancer and not args.pancancer_only)
+        # use_pancancer_only is true if we want to use only non-testing pancancer data
+        # (i.e. if the pancancer_only flag is included)
+        use_pancancer_only = (use_pancancer and args.pancancer_only)
+        # make sure these flags are mutually exclusive (they should be)
+        assert not (use_pancancer_cv and use_pancancer_only)
 
         print('use_pancancer: {}, shuffle_labels: {}'.format(
             use_pancancer, shuffle_labels))
@@ -130,7 +138,8 @@ if __name__ == '__main__':
 
             try:
                 gene_dir = fu.make_gene_dir(args.results_dir, gene,
-                                            use_pancancer=use_pancancer)
+                                            use_pancancer_cv=use_pancancer_cv,
+                                            use_pancancer_only=use_pancancer_only)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=use_pancancer,
@@ -159,14 +168,6 @@ if __name__ == '__main__':
                 try:
                     check_file = fu.check_cancer_type_file(gene_dir, gene,
                                                            cancer_type, shuffle_labels)
-                    # this is true if we want to use all pancancer data (not just
-                    # non-testing pancancer data)
-                    use_pancancer_cv = (use_pancancer and not args.pancancer_only)
-                    # this is true if we want to use only non-testing pancancer data
-                    # (i.e. if the pancancer_only flag is included)
-                    use_pancancer_only = (use_pancancer and args.pancancer_only)
-                    # make sure these flags are mutually exclusive (they should be)
-                    assert not (use_pancancer_cv and use_pancancer_only)
                     results = run_cv_cancer_type(tcga_data, gene, cancer_type,
                                                  sample_info_df, args.num_folds,
                                                  use_pancancer_cv, use_pancancer_only,
