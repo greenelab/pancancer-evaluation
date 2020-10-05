@@ -70,7 +70,7 @@ def test_cv_pancancer_only(expression_data, cancer_type):
     # type in the training set)
     train_df_pancancer, test_df_pancancer = du.split_by_cancer_type(
             rnaseq_df, sample_info_df, cancer_type,
-            use_only_pancancer=True)
+            use_pancancer_only=True)
 
     assert train_df_pancancer.shape[1] == test_df_pancancer.shape[1]
     assert train_df_pancancer.shape[1] == rnaseq_df.shape[1]

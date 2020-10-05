@@ -235,7 +235,7 @@ def split_by_cancer_type(rnaseq_df,
                          sample_info_df,
                          holdout_cancer_type,
                          use_pancancer=False,
-                         use_only_pancancer=False,
+                         use_pancancer_only=False,
                          num_folds=4,
                          fold_no=1,
                          seed=cfg.default_seed):
@@ -252,7 +252,7 @@ def split_by_cancer_type(rnaseq_df,
     sample_info_df (pd.DataFrame): maps samples to cancer types
     holdout_cancer_type (str): cancer type to hold out
     use_pancancer (bool): whether or not to include pan-cancer data in train set
-    use_only_pancancer (bool): if True, use only pan-cancer data as train set
+    use_pancancer_only (bool): if True, use only pan-cancer data as train set
                                (i.e. without data from the held-out cancer type)
     num_folds (int): number of cross-validation folds
     fold_no (int): cross-validation fold to hold out
@@ -271,7 +271,7 @@ def split_by_cancer_type(rnaseq_df,
     cancer_type_train_df, rnaseq_test_df = split_single_cancer_type(
             cancer_type_df, num_folds, fold_no, seed)
 
-    if use_pancancer or use_only_pancancer:
+    if use_pancancer or use_pancancer_only:
         pancancer_sample_ids = (
             sample_info_df.loc[~(sample_info_df.cancer_type == holdout_cancer_type)]
             .index
@@ -280,7 +280,7 @@ def split_by_cancer_type(rnaseq_df,
 
     if use_pancancer:
         rnaseq_train_df = pd.concat((pancancer_df, cancer_type_train_df))
-    elif use_only_pancancer:
+    elif use_pancancer_only:
         rnaseq_train_df = pancancer_df
     else:
         rnaseq_train_df = cancer_type_train_df

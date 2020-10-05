@@ -67,8 +67,11 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
                 warnings.simplefilter("ignore")
                 X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
                    data_model.X_df, sample_info, cancer_type,
-                   num_folds=num_folds, fold_no=fold_no,
-                   use_pancancer=use_pancancer, seed=data_model.seed)
+                   num_folds=num_folds,
+                   fold_no=fold_no,
+                   use_pancancer=use_pancancer,
+                   use_pancancer_only=use_pancancer_only,
+                   seed=data_model.seed)
         except ValueError:
             raise NoTestSamplesError(
                 'No test samples found for cancer type: {}, '
