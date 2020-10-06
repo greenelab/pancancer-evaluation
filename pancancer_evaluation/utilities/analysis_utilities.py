@@ -247,3 +247,11 @@ def get_cancer_type_covariates(coefs, tcga_cancer_types):
     except IndexError:
         return []
 
+def get_mad_proportion(coefs, mad_genes):
+    """Count the proportion of coefficients in the top n MAD genes"""
+    try:
+        mad_coefs = [l for l in list(zip(*coefs))[0] if l in mad_genes]
+        return len(mad_coefs) / len(coefs)
+    except IndexError:
+        return 0.0
+
