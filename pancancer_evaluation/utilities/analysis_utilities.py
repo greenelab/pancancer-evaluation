@@ -239,3 +239,11 @@ def get_venn(g1, g2):
     return ((s1_only, s2_only, s_inter),
             (len(s1_only), len(s2_only), len(s_inter)))
 
+
+def get_cancer_type_covariates(coefs, tcga_cancer_types):
+    """Count the number of nonzero cancer type covariates"""
+    try:
+        return [l for l in list(zip(*coefs))[0] if l in tcga_cancer_types]
+    except IndexError:
+        return []
+
