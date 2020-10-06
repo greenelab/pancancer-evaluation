@@ -247,6 +247,13 @@ def get_cancer_type_covariates(coefs, tcga_cancer_types):
     except IndexError:
         return []
 
+def get_mutation_covariate(coefs):
+    """Check if the mutation covariate is nonzero"""
+    try:
+        return ('log10_mut' in list(zip(*coefs))[0])
+    except IndexError:
+        return False
+
 def get_mad_proportion(coefs, mad_genes):
     """Count the proportion of coefficients in the top n MAD genes"""
     try:
