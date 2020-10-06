@@ -14,6 +14,7 @@ from tqdm import tqdm
 import pancancer_evaluation.config as cfg
 from pancancer_evaluation.data_models.tcga_data_model import TCGADataModel
 from pancancer_evaluation.exceptions import (
+    NoTrainSamplesError,
     NoTestSamplesError,
     OneClassError,
     ResultsFileExistsError
@@ -180,6 +181,15 @@ if __name__ == '__main__':
                     cancer_type_log_df = fu.generate_log_df(
                         log_columns,
                         [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                    )
+                except NoTrainSamplesError:
+                    if args.verbose:
+                        print('Skipping due to no train samples: gene {}, '
+                              'cancer type {}'.format(gene, cancer_type),
+                              file=sys.stderr)
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
                     )
                 except NoTestSamplesError:
                     if args.verbose:

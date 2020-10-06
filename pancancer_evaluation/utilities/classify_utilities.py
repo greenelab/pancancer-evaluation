@@ -23,6 +23,7 @@ import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.tcga_utilities as tu
 from pancancer_evaluation.exceptions import (
     OneClassError,
+    NoTrainSamplesError,
     NoTestSamplesError
 )
 
@@ -75,6 +76,13 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
         except ValueError:
             raise NoTestSamplesError(
                 'No test samples found for cancer type: {}, '
+                'gene: {}\n'.format(cancer_type, gene)
+            )
+
+        if X_train_raw_df.shape[0] == 0:
+            # this might happen in pancancer only case
+            raise NoTrainSamplesError(
+                'No train samples found for cancer type: {}, '
                 'gene: {}\n'.format(cancer_type, gene)
             )
 
