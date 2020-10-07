@@ -33,6 +33,56 @@ def load_prediction_results(results_dir, train_set_descriptor):
             results_df = pd.concat((results_df, gene_results_df))
     return results_df
 
+
+def generate_nonzero_coefficients(results_dir):
+    """Generate coefficients from mutation prediction model fits.
+
+    Loading all coefficients into memory at once is prohibitive, so we generate
+    them individually and analyze/summarize in analysis scripts.
+
+    Arguments
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+
+    Yields
+    ------
+    identifier (str): identifier for given coefficients
+    coefs (dict): list of nonzero coefficients for each fold of CV, for the
+                  given identifier
+    """
+    coefs = {}
+    all_features = None
+    # TODO: could probably write a generator to de-duplicate this outer loop
+    for gene_name in os.listdir(results_dir):
+        gene_dir = os.path.join(results_dir, gene_name)
+        if not os.path.isdir(gene_dir): continue
+        for coefs_file in os.listdir(gene_dir):
+            if coefs_file[0] == '.': continue
+            if 'signal' not in coefs_file: continue
+            if 'coefficients' not in coefs_file: continue
+            cancer_type = coefs_file.split('_')[1]
+            full_coefs_file = os.path.join(gene_dir, coefs_file)
+            coefs_df = pd.read_csv(full_coefs_file, sep='\t')
+            if all_features is None:
+                all_features = np.unique(coefs_df.feature.values)
+            identifier = '{}_{}'.format(gene_name, cancer_type)
+            coefs = process_coefs(coefs_df)
+            yield identifier, coefs
+
+
+def process_coefs(coefs_df):
+    """Process and return nonzero coefficients for a single identifier"""
+    id_coefs = []
+    for fold in np.sort(np.unique(coefs_df.fold.values)):
+        conditions = ((coefs_df.fold == fold) &
+                      (coefs_df['abs'] > 0))
+        nz_coefs_df = coefs_df[conditions]
+        id_coefs.append(list(zip(nz_coefs_df.feature.values,
+                                 nz_coefs_df.weight.values)))
+    return id_coefs
+
+
 def compare_results(single_cancer_df,
                     pancancer_df=None,
                     identifier='gene',
@@ -188,4 +238,27 @@ def get_venn(g1, g2):
     s2_only = list(s2 - s1)
     return ((s1_only, s2_only, s_inter),
             (len(s1_only), len(s2_only), len(s_inter)))
+
+
+def get_cancer_type_covariates(coefs, tcga_cancer_types):
+    """Count the number of nonzero cancer type covariates"""
+    try:
+        return [l for l in list(zip(*coefs))[0] if l in tcga_cancer_types]
+    except IndexError:
+        return []
+
+def get_mutation_covariate(coefs):
+    """Check if the mutation covariate is nonzero"""
+    try:
+        return ('log10_mut' in list(zip(*coefs))[0])
+    except IndexError:
+        return False
+
+def get_mad_proportion(coefs, mad_genes):
+    """Count the proportion of coefficients in the top n MAD genes"""
+    try:
+        mad_coefs = [l for l in list(zip(*coefs))[0] if l in mad_genes]
+        return len(mad_coefs) / len(coefs)
+    except IndexError:
+        return 0.0
 
