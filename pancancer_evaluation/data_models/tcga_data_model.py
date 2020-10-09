@@ -74,7 +74,7 @@ class TCGADataModel():
             genes_df = du.load_vogelstein()
         else:
             assert isinstance(gene_set, typing.List)
-            genes_df = du.load_top_50()
+            genes_df = du.load_vogelstein()
             genes_df = genes_df[genes_df['gene'].isin(gene_set)]
 
         return genes_df

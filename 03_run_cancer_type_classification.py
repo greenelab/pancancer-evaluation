@@ -14,6 +14,7 @@ from tqdm import tqdm
 import pancancer_evaluation.config as cfg
 from pancancer_evaluation.data_models.tcga_data_model import TCGADataModel
 from pancancer_evaluation.exceptions import (
+    NoTrainSamplesError,
     NoTestSamplesError,
     OneClassError,
     ResultsFileExistsError
@@ -41,6 +42,9 @@ def process_args():
                    help='name of file to log skipped cancer types to')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
+    p.add_argument('--pancancer_only', action='store_true',
+                   help='if included, omit test cancer type data from training '
+                        'set for pancancer experiments')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
@@ -111,6 +115,14 @@ if __name__ == '__main__':
     # - for all genes in the given gene set
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
+        # use_pancancer_cv is true if we want to use all pancancer data (not just
+        # non-testing pancancer data)
+        use_pancancer_cv = (use_pancancer and not args.pancancer_only)
+        # use_pancancer_only is true if we want to use only non-testing pancancer data
+        # (i.e. if the pancancer_only flag is included)
+        use_pancancer_only = (use_pancancer and args.pancancer_only)
+        # make sure these flags are mutually exclusive (they should be)
+        assert not (use_pancancer_cv and use_pancancer_only)
 
         print('use_pancancer: {}, shuffle_labels: {}'.format(
             use_pancancer, shuffle_labels))
@@ -127,7 +139,8 @@ if __name__ == '__main__':
 
             try:
                 gene_dir = fu.make_gene_dir(args.results_dir, gene,
-                                            use_pancancer=use_pancancer)
+                                            use_pancancer_cv=use_pancancer_cv,
+                                            use_pancancer_only=use_pancancer_only)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=use_pancancer,
@@ -158,7 +171,8 @@ if __name__ == '__main__':
                                                            cancer_type, shuffle_labels)
                     results = run_cv_cancer_type(tcga_data, gene, cancer_type,
                                                  sample_info_df, args.num_folds,
-                                                 use_pancancer, shuffle_labels)
+                                                 use_pancancer_cv, use_pancancer_only,
+                                                 shuffle_labels)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '
@@ -167,6 +181,15 @@ if __name__ == '__main__':
                     cancer_type_log_df = fu.generate_log_df(
                         log_columns,
                         [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                    )
+                except NoTrainSamplesError:
+                    if args.verbose:
+                        print('Skipping due to no train samples: gene {}, '
+                              'cancer type {}'.format(gene, cancer_type),
+                              file=sys.stderr)
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
                     )
                 except NoTestSamplesError:
                     if args.verbose:

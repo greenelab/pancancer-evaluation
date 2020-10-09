@@ -23,11 +23,12 @@ import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.tcga_utilities as tu
 from pancancer_evaluation.exceptions import (
     OneClassError,
+    NoTrainSamplesError,
     NoTestSamplesError
 )
 
 def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
-                       use_pancancer, shuffle_labels):
+                       use_pancancer, use_pancancer_only, shuffle_labels):
     """
     Run cross-validation experiments for a given gene/cancer type combination,
     then write them to files in the results directory. If the relevant files
@@ -40,6 +41,7 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
     use_pancancer (bool): whether or not to use pancancer data
+    use_pancancer_only (bool): whether or not to use only pancancer data
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
 
     TODO: what class variables does data_model need to have? should document
@@ -66,11 +68,21 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
                 warnings.simplefilter("ignore")
                 X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
                    data_model.X_df, sample_info, cancer_type,
-                   num_folds=num_folds, fold_no=fold_no,
-                   use_pancancer=use_pancancer, seed=data_model.seed)
+                   num_folds=num_folds,
+                   fold_no=fold_no,
+                   use_pancancer=use_pancancer,
+                   use_pancancer_only=use_pancancer_only,
+                   seed=data_model.seed)
         except ValueError:
             raise NoTestSamplesError(
                 'No test samples found for cancer type: {}, '
+                'gene: {}\n'.format(cancer_type, gene)
+            )
+
+        if X_train_raw_df.shape[0] == 0:
+            # this might happen in pancancer only case
+            raise NoTrainSamplesError(
+                'No train samples found for cancer type: {}, '
                 'gene: {}\n'.format(cancer_type, gene)
             )
 

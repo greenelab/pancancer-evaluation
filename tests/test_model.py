@@ -50,6 +50,7 @@ def test_cancer_type_prediction(data_model, gene_info):
     results = cu.run_cv_cancer_type(tcga_data, gene, cancer_type,
                                     sample_info_df, num_folds=4,
                                     use_pancancer=False,
+                                    use_pancancer_only=False,
                                     shuffle_labels=False)
     metrics_df = pd.concat(results['gene_metrics'])
     results_file = cfg.test_cancer_type_results.format(gene, cancer_type)
