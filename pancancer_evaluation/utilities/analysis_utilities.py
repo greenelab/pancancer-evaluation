@@ -168,8 +168,12 @@ def compare_control(results_df,
                       file=sys.stderr)
             continue
 
-        delta_mean = np.mean(signal_results) - np.mean(shuffled_results)
-        p_value = ttest_ind(signal_results, shuffled_results)[1]
+        if np.array_equal(signal_results, shuffled_results):
+            delta_mean = 0
+            p_value = 1.0
+        else:
+            delta_mean = np.mean(signal_results) - np.mean(shuffled_results)
+            p_value = ttest_ind(signal_results, shuffled_results)[1]
         results.append([id_str, delta_mean, p_value])
 
     return pd.DataFrame(results, columns=['identifier', 'delta_mean', 'p_value'])
@@ -211,7 +215,12 @@ def compare_experiment(single_cancer_df,
             continue
 
         delta_mean = np.mean(pancancer_results) - np.mean(single_cancer_results)
-        p_value = ttest_ind(single_cancer_results, pancancer_results)[1]
+        if np.array_equal(pancancer_results, single_cancer_results):
+            delta_mean = 0
+            p_value = 1.0
+        else:
+            delta_mean = np.mean(pancancer_results) - np.mean(single_cancer_results)
+            p_value = ttest_ind(pancancer_results, single_cancer_results)[1]
         results.append([id_str, delta_mean, p_value])
 
     return pd.DataFrame(results, columns=['identifier', 'delta_mean', 'p_value'])
