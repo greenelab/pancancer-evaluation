@@ -272,3 +272,12 @@ def get_mad_proportion(coefs, mad_genes):
     except IndexError:
         return 0.0
 
+def compute_jaccard(v1, v2):
+    """Compute Jaccard similarity between two lists of terms."""
+    v1, v2 = set(v1), set(v2)
+    intersection = v1.intersection(v2)
+    union = v1.union(v2)
+    return ((len(intersection) / len(union) if len(union) != 0 else 0),
+            len(intersection),
+            len(union))
+
