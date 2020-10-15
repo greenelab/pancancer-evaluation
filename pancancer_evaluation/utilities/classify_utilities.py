@@ -30,8 +30,6 @@ from pancancer_evaluation.exceptions import (
 def classify_cross_cancer(data_model, train_identifier, test_identifier,
                           shuffle_labels=False):
     """TODO: document
-
-    TODO: what happens if train or test set has no samples after filtering?
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
 
@@ -64,7 +62,8 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
              y_cv_df) = model_results
     except ValueError:
         raise OneClassError(
-            'Only one class present in test set for gene: {}\n'.format(gene)
+            'Only one class present in train set for identifier: {}\n'.format(
+                train_identifier)
         )
 
     # get coefficients

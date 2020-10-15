@@ -101,7 +101,7 @@ if __name__ == '__main__':
             log_df = fu.generate_log_df(
                 log_columns,
                 [args.train_identifier, args.test_identifier,
-                 shuffle_labels, 'gene_not_found']
+                 shuffle_labels, 'id_not_found']
             )
             fu.write_log_file(log_df, args.log_file)
             continue
