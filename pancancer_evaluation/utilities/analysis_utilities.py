@@ -322,7 +322,8 @@ def compute_jaccard(v1, v2):
             len(union))
 
 
-def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison_df):
+def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison_df,
+                               train_set):
     """Compute average Jaccard similarity between cancer types, for the same gene."""
     unique_identifiers = list(set(i for i in per_gene_jaccard.keys()))
     inter_cancer_jaccard = []
@@ -361,7 +362,7 @@ def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison
             reject_null = 'one'
         else:
             reject_null = 'none'
-        inter_cancer_jaccard.append((id1, id2, np.mean(fold_jaccards), reject_null))
+        inter_cancer_jaccard.append((id1, id2, train_set, np.mean(fold_jaccards), reject_null))
     return pd.DataFrame(inter_cancer_jaccard,
-                        columns=['id1', 'id2', 'mean_jaccard', 'reject_null'])
+                        columns=['id1', 'id2', 'train_set', 'mean_jaccard', 'reject_null'])
 
