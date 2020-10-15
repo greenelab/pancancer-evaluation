@@ -193,7 +193,7 @@ class TCGADataModel():
         # load and unpack pancancer data
         # this data is described in more detail in the load_pancancer_data docstring
         if test:
-            # for debugging/testing, just load a subset of pancancer data,
+            # for testing, just load a subset of pancancer data,
             # this is much faster than loading mutation data for all genes
             pancan_data = du.load_pancancer_data(verbose=self.verbose,
                                                  test=True,

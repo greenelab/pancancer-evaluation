@@ -14,7 +14,7 @@ import pancancer_evaluation.utilities.data_utilities as du
 
 def generate_data_model():
     """Load data model and sample info data"""
-    tcga_data = TCGADataModel(debug=True)
+    tcga_data = TCGADataModel(debug=True, test=True)
     sample_info_df = du.load_sample_info()
     return tcga_data, sample_info_df
 
@@ -28,7 +28,6 @@ def generate_stratified_test_data(tcga_data, sample_info_df, verbose=False):
             print(output_file)
         # TODO: option to ignore checking all files?
         tcga_data.process_data_for_gene(gene, classification,
-                                        check_gene_file=True,
                                         shuffle_labels=False)
         results = cu.run_cv_stratified(tcga_data, gene, sample_info_df,
                                        num_folds=4, shuffle_labels=False)
@@ -45,7 +44,6 @@ def generate_cancer_type_test_data(tcga_data, sample_info_df, verbose=False):
             print(output_file)
         # TODO: option to ignore checking all files?
         tcga_data.process_data_for_gene(gene, classification,
-                                        check_gene_file=True,
                                         shuffle_labels=False)
         results = cu.run_cv_cancer_type(tcga_data, gene, cancer_type,
                                         sample_info_df, num_folds=4,
