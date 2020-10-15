@@ -118,6 +118,58 @@ class TCGADataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
+    def process_data_for_identifiers(self,
+                                     train_identifier,
+                                     test_identifier,
+                                     train_classification,
+                                     test_classification,
+                                     output_dir,
+                                     shuffle_labels=False):
+        """
+        Prepare to train model on a given gene/cancer type combination, and
+        test on another.
+
+        For now, we'll just re-process the data for every train/test identifier
+        pair, although there are probably clever ways to cache some of this
+        data if the process is slow.
+
+        Arguments
+        ---------
+        train_identifier (str): gene/cancer type combination to train on
+        test_identifier (str): gene/cancer type combination to test on
+        train_classification (str): 'oncogene' or 'TSG' for the training gene
+        test_classification (str): 'oncogene' or 'TSG' for the test gene
+        output_dir (str): directory to write output to, if None don't write output
+        shuffle_labels (bool): whether or not to shuffle labels (negative control)
+        """
+        train_gene, train_cancer_type = train_identifier.split('_')
+        test_gene, test_cancer_type = test_identifier.split('_')
+
+        y_train_df_raw = self._generate_labels(train_gene, train_classification,
+                                               output_dir)
+        y_test_df_raw = self._generate_labels(test_gene, test_classification,
+                                              output_dir)
+
+        # for these experiments we don't use cancer type covariate
+        filtered_train_data = self._filter_data_for_gene(
+            self.rnaseq_df,
+            y_train_df_raw,
+            use_pancancer=False
+        )
+        self.X_train_df, self.y_train_df, gene_features = filtered_train_data
+
+        filtered_test_data = self._filter_data_for_gene(
+            self.rnaseq_df,
+            y_test_df_raw,
+            use_pancancer=False
+        )
+        self.X_test_df, self.y_test_df, _ = filtered_test_data
+
+        if shuffle_labels:
+            self.y_train_df.status = np.random.permutation(
+                self.y_train_df.status.values)
+            self.y_test_df.status = np.random.permutation(
+                self.y_test_df.status.values)
 
     def _load_data(self, debug=False, test=False):
         """Load and store relevant data.

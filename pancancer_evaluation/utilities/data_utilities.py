@@ -135,6 +135,12 @@ def load_vogelstein():
     return genes_df
 
 
+def get_vogelstein_classification(gene):
+    """Get oncogene/TSG classification from Vogelstein data for given gene."""
+    genes_df = load_vogelstein()
+    return genes_df[genes_df.gene == gene].classification.iloc[0]
+
+
 def load_pancancer_data_from_repo(subset_columns=None):
     """Load data to build feature matrices from pancancer repo. """
 
