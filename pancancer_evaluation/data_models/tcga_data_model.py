@@ -156,14 +156,18 @@ class TCGADataModel():
             y_train_df_raw,
             use_pancancer=False
         )
-        self.X_train_df, self.y_train_df, gene_features = filtered_train_data
+        self.X_train_df, self.y_train_df, self.gene_features = filtered_train_data
 
         filtered_test_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_test_df_raw,
             use_pancancer=False
         )
-        self.X_test_df, self.y_test_df, _ = filtered_test_data
+        self.X_test_df, self.y_test_df, test_gene_features = filtered_test_data
+
+        # for the cross-cancer experiments these should always be equal
+        # (no added cancer type covariates, etc)
+        assert np.array_equal(self.gene_features, test_gene_features)
 
         if shuffle_labels:
             self.y_train_df.status = np.random.permutation(

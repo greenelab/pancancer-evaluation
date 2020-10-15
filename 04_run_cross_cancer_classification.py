@@ -20,7 +20,7 @@ from pancancer_evaluation.exceptions import (
     OneClassError,
     ResultsFileExistsError
 )
-# from pancancer_evaluation.utilities.classify_utilities import run_cv_cross_cancer
+from pancancer_evaluation.utilities.classify_utilities import classify_cross_cancer
 import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.file_utilities as fu
 
@@ -106,9 +106,8 @@ if __name__ == '__main__':
             fu.write_log_file(cancer_type_log_df, args.log_file)
             continue
 
-        print(args.train_identifier)
-        print(tcga_data.X_train_df.shape)
-        print(tcga_data.y_train_df.shape)
-        print(args.test_identifier)
-        print(tcga_data.X_test_df.shape)
-        print(tcga_data.y_test_df.shape)
+        results = classify_cross_cancer(tcga_data,
+                                        args.train_identifier,
+                                        args.test_identifier,
+                                        shuffle_labels)
+        print(results)
