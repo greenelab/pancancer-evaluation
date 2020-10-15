@@ -116,6 +116,16 @@ if __name__ == '__main__':
                                             args.train_identifier,
                                             args.test_identifier,
                                             shuffle_labels)
+        except ResultsFileExistsError:
+            if args.verbose:
+                print('Skipping because results file exists already: '
+                      'train identifier {}, test identifier {}'.format(
+                      args.train_identifier, args.test_identifier), file=sys.stderr)
+            log_df = fu.generate_log_df(
+                log_columns,
+                [args.train_identifier, args.test_identifier,
+                 shuffle_labels, 'file_exists']
+            )
         except NoTrainSamplesError:
             if args.verbose:
                 print('Skipping due to no train samples: train identifier {}, '

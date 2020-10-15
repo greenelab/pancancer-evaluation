@@ -84,7 +84,6 @@ class TCGADataModel():
                               classification,
                               gene_dir,
                               use_pancancer=False,
-                              check_gene_file=False,
                               shuffle_labels=False):
         """
         Prepare to run cancer type experiments for a given gene.

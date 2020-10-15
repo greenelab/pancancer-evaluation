@@ -163,7 +163,8 @@ def check_cross_cancer_file(output_dir, train_identifier, test_identifier,
                           train_identifier, test_identifier, signal)).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
-            'Results file already exists for gene: {}\n'.format(gene)
+            'Results file already exists for train identifier: {}, '
+            'test identifier: {}\n'.format(train_identifier, test_identifier)
         )
     return check_file
 
