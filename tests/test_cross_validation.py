@@ -120,3 +120,19 @@ def test_stratified_cv(expression_data):
         assert np.allclose(test_proportions[ix1], test_proportions[ix2], rtol=1.0)
         assert np.allclose(train_proportions[ix1], test_proportions[ix2], rtol=1.0)
 
+@pytest.mark.parametrize("train_test_cancer_type", [('BRCA', 'BRCA'),
+                                                    ('BRCA', 'COAD'),
+                                                    ('COAD', 'GBM')])
+def test_split_cancer_type(expression_data, train_test_cancer_type):
+    rnaseq_df, sample_info_df = expression_data
+    sample_info_df = sample_info_df.reindex(rnaseq_df.index)
+
+    train_cancer_type, test_cancer_type = train_test_cancer_type
+    train_df, test_df = du.split_cross_cancer_type(
+        rnaseq_df, sample_info_df, train_cancer_type, test_cancer_type
+    )
+    if train_cancer_type == test_cancer_type:
+        assert train_df.equals(test_df)
+    else:
+        assert len(train_df.index.intersection(test_df.index)) == 0
+
