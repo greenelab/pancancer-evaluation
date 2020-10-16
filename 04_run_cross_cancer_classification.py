@@ -36,19 +36,19 @@ def process_args():
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
-    p.add_argument('--train_identifier', required=True,
-                   help='gene and cancer type to train model on, separated by '
-                        'an underscore')
-    p.add_argument('--test_identifier', required=True,
-                   help='gene and cancer type to evaluate model on, separated '
-                        'by an underscore')
+    # p.add_argument('--train_identifier', required=True,
+    #                help='gene and cancer type to train model on, separated by '
+    #                     'an underscore')
+    # p.add_argument('--test_identifier', required=True,
+    #                help='gene and cancer type to evaluate model on, separated '
+    #                     'by an underscore')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
     args.results_dir = Path(args.results_dir).resolve()
 
     if args.log_file is None:
-        args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
+        args.log_file = Path(args.results_dir, 'log_skipped_cc.tsv').resolve()
 
     return args
 
@@ -78,93 +78,108 @@ if __name__ == '__main__':
                               verbose=args.verbose,
                               debug=args.debug)
 
-    for shuffle_labels in (False, True):
-        print('shuffle_labels: {}'.format(shuffle_labels))
-        try:
-            train_classification = du.get_vogelstein_classification(
-                args.train_identifier.split('_')[0])
-            test_classification = du.get_vogelstein_classification(
-                args.test_identifier.split('_')[0])
-            output_dir = Path(args.results_dir, 'cross_cancer').resolve()
-            output_dir.mkdir(parents=True, exist_ok=True)
-            tcga_data.process_data_for_identifiers(args.train_identifier,
-                                                   args.test_identifier,
-                                                   train_classification,
-                                                   test_classification,
-                                                   output_dir,
-                                                   shuffle_labels)
-        except (KeyError, IndexError) as e:
-            # this might happen if the given gene isn't in the mutation data
-            # (or has a different alias, TODO check for this later)
-            print('Identifier not found in mutation data, skipping',
-                  file=sys.stderr)
-            log_df = fu.generate_log_df(
-                log_columns,
-                [args.train_identifier, args.test_identifier,
-                 shuffle_labels, 'id_not_found']
-            )
-            fu.write_log_file(log_df, args.log_file)
-            continue
+    # TODO: these are the identifiers for proof of concept experiments,
+    # modify in future if necessary
+    identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
+                                                   cfg.cross_cancer_types)]
 
-        log_df = None
-        try:
-            check_file = fu.check_cross_cancer_file(output_dir,
-                                                    args.train_identifier,
-                                                    args.test_identifier,
-                                                    shuffle_labels)
-            results = classify_cross_cancer(tcga_data,
-                                            args.train_identifier,
-                                            args.test_identifier,
-                                            shuffle_labels)
-        except ResultsFileExistsError:
-            if args.verbose:
-                print('Skipping because results file exists already: '
-                      'train identifier {}, test identifier {}'.format(
-                      args.train_identifier, args.test_identifier), file=sys.stderr)
-            log_df = fu.generate_log_df(
-                log_columns,
-                [args.train_identifier, args.test_identifier,
-                 shuffle_labels, 'file_exists']
-            )
-        except NoTrainSamplesError:
-            if args.verbose:
-                print('Skipping due to no train samples: train identifier {}, '
-                      'test identifier {}'.format(args.train_identifier,
-                      args.test_identifier), file=sys.stderr)
-            log_df = fu.generate_log_df(
-                log_columns,
-                [args.train_identifier, args.test_identifier,
-                 shuffle_labels, 'no_train_samples']
-            )
-        except NoTestSamplesError:
-            if args.verbose:
-                print('Skipping due to no test samples: train identifier {}, '
-                      'test identifier {}'.format(args.train_identifier,
-                      args.test_identifier), file=sys.stderr)
-            log_df = fu.generate_log_df(
-                log_columns,
-                [args.train_identifier, args.test_identifier,
-                 shuffle_labels, 'no_test_samples']
-            )
-        except OneClassError:
-            if args.verbose:
-                print('Skipping due to one holdout class: train identifier {}, '
-                      'test identifier {}'.format(args.train_identifier,
-                      args.test_identifier), file=sys.stderr)
-            log_df = fu.generate_log_df(
-                log_columns,
-                [args.train_identifier, args.test_identifier,
-                 shuffle_labels, 'one_class']
-            )
-        else:
-            # only save results if no exceptions
-            fu.save_results_cross_cancer(output_dir,
-                                         check_file,
-                                         results,
-                                         args.train_identifier,
-                                         args.test_identifier,
-                                         shuffle_labels)
+    progress = tqdm(it.product(identifiers, identifiers),
+                    total=len(identifiers)**2,
+                    ncols=100,
+                    file=sys.stdout)
 
-        if log_df is not None:
-            fu.write_log_file(log_df, args.log_file)
+    for (train_identifier, test_identifier) in progress:
+
+        progress.set_description('train: {}, test: {}'.format(
+            train_identifier, test_identifier))
+
+        for shuffle_labels in (False, True):
+            # print('shuffle_labels: {}'.format(shuffle_labels))
+            try:
+                train_classification = du.get_vogelstein_classification(
+                    train_identifier.split('_')[0])
+                test_classification = du.get_vogelstein_classification(
+                    test_identifier.split('_')[0])
+                output_dir = Path(args.results_dir, 'cross_cancer').resolve()
+                output_dir.mkdir(parents=True, exist_ok=True)
+                tcga_data.process_data_for_identifiers(train_identifier,
+                                                       test_identifier,
+                                                       train_classification,
+                                                       test_classification,
+                                                       output_dir,
+                                                       shuffle_labels)
+            except (KeyError, IndexError) as e:
+                # this might happen if the given gene isn't in the mutation data
+                # (or has a different alias, TODO check for this later)
+                print('Identifier not found in mutation data, skipping',
+                      file=sys.stderr)
+                log_df = fu.generate_log_df(
+                    log_columns,
+                    [train_identifier, test_identifier,
+                     shuffle_labels, 'id_not_found']
+                )
+                fu.write_log_file(log_df, args.log_file)
+                continue
+
+            log_df = None
+            try:
+                check_file = fu.check_cross_cancer_file(output_dir,
+                                                        train_identifier,
+                                                        test_identifier,
+                                                        shuffle_labels)
+                results = classify_cross_cancer(tcga_data,
+                                                train_identifier,
+                                                test_identifier,
+                                                shuffle_labels)
+            except ResultsFileExistsError:
+                if args.verbose:
+                    print('Skipping because results file exists already: '
+                          'train identifier {}, test identifier {}'.format(
+                          train_identifier, test_identifier), file=sys.stderr)
+                log_df = fu.generate_log_df(
+                    log_columns,
+                    [train_identifier, test_identifier,
+                     shuffle_labels, 'file_exists']
+                )
+            except NoTrainSamplesError:
+                if args.verbose:
+                    print('Skipping due to no train samples: train identifier {}, '
+                          'test identifier {}'.format(train_identifier,
+                          test_identifier), file=sys.stderr)
+                log_df = fu.generate_log_df(
+                    log_columns,
+                    [train_identifier, test_identifier,
+                     shuffle_labels, 'no_train_samples']
+                )
+            except NoTestSamplesError:
+                if args.verbose:
+                    print('Skipping due to no test samples: train identifier {}, '
+                          'test identifier {}'.format(train_identifier,
+                          test_identifier), file=sys.stderr)
+                log_df = fu.generate_log_df(
+                    log_columns,
+                    [train_identifier, test_identifier,
+                     shuffle_labels, 'no_test_samples']
+                )
+            except OneClassError:
+                if args.verbose:
+                    print('Skipping due to one holdout class: train identifier {}, '
+                          'test identifier {}'.format(train_identifier,
+                          test_identifier), file=sys.stderr)
+                log_df = fu.generate_log_df(
+                    log_columns,
+                    [train_identifier, test_identifier,
+                     shuffle_labels, 'one_class']
+                )
+            else:
+                # only save results if no exceptions
+                fu.save_results_cross_cancer(output_dir,
+                                             check_file,
+                                             results,
+                                             train_identifier,
+                                             test_identifier,
+                                             shuffle_labels)
+
+            if log_df is not None:
+                fu.write_log_file(log_df, args.log_file)
 

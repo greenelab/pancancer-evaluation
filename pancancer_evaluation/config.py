@@ -47,3 +47,14 @@ cancer_type_gene_info = [('TP53', 'TSG', 'BRCA'),
                          ('KRAS', 'Oncogene', 'COAD'),
                          ('KRAS', 'Oncogene', 'READ'),
                          ('ARID1A', 'TSG', 'UCEC')]
+
+# genes for cross-cancer POC test
+cross_cancer_genes = [
+    'KRAS', 'HRAS', 'NRAS', 'BRAF', 'NF1', # RAS pathway genes
+    'TP53', 'CDKN2A', 'ATM', 'PTEN', 'RB1', # TSGs/DDR genes
+    'TTN' # control gene
+]
+# cancer types for cross-cancer POC test
+cross_cancer_types = [
+    'THCA', 'COAD', 'GBM', 'LGG', 'SKCM'
+]
