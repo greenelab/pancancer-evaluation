@@ -150,19 +150,19 @@ class TCGADataModel():
                                               output_dir)
 
         # for these experiments we don't use cancer type covariate
-        filtered_train_data = self._filter_data_for_gene(
+        filtered_train_data = self._filter_data_for_gene_and_cancer(
             self.rnaseq_df,
             y_train_df_raw,
-            use_pancancer=False
+            train_cancer_type
         )
-        self.X_train_df, self.y_train_df, self.gene_features = filtered_train_data
+        self.X_train_raw_df, self.y_train_df, self.gene_features = filtered_train_data
 
-        filtered_test_data = self._filter_data_for_gene(
+        filtered_test_data = self._filter_data_for_gene_and_cancer(
             self.rnaseq_df,
             y_test_df_raw,
-            use_pancancer=False
+            test_cancer_type
         )
-        self.X_test_df, self.y_test_df, test_gene_features = filtered_test_data
+        self.X_test_raw_df, self.y_test_df, test_gene_features = filtered_test_data
 
         # for the cross-cancer experiments these should always be equal
         # (no added cancer type covariates, etc)
@@ -247,4 +247,21 @@ class TCGADataModel():
             add_mutation_covariate=True
         )
         return rnaseq_df, y_df, gene_features
+
+    def _filter_data_for_gene_and_cancer(self, rnaseq_df, y_df, cancer_type):
+        use_samples, rnaseq_df, y_df, gene_features = align_matrices(
+            x_file_or_df=rnaseq_df,
+            y=y_df,
+            # assume we're training on a single cancer, so no cancer type covariate
+            add_cancertype_covariate=False,
+            add_mutation_covariate=True
+        )
+        cancer_type_sample_ids = (
+            self.sample_info_df.loc[self.sample_info_df.cancer_type == cancer_type]
+            .index
+        )
+        rnaseq_df_filtered = rnaseq_df.loc[
+            rnaseq_df.index.intersection(cancer_type_sample_ids), :
+        ]
+        return rnaseq_df_filtered, y_df, gene_features
 

@@ -305,47 +305,6 @@ def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
     return train_df, test_df
 
 
-def split_cross_cancer_type(rnaseq_df,
-                            sample_info_df,
-                            train_cancer_type,
-                            test_cancer_type,
-                            seed=cfg.default_seed):
-    """Split expression data into train and test sets.
-
-    The test set will contain data from a single cancer type. The train set
-    will also contain data from a single cancer type (either the same cancer
-    type = same dataset, or a different cancer type).
-
-    NOTE: this function does not do cross-validation, like the other "split"
-    functions do, it simply splits the data deterministically into a train and
-    test set. This means there is a possibility of the train and test data being
-    the same, if train_cancer_type and test_cancer_type are the same.
-
-    Arguments
-    ---------
-    rnaseq_df (pd.DataFrame): samples x genes expression dataframe
-    sample_info_df (pd.DataFrame): maps samples to cancer types
-    train_cancer_type (str): cancer type to use as training set
-    test_cancer_type (str): cancer type to use as test set
-
-    Returns
-    -------
-    rnaseq_train_df (pd.DataFrame): samples x genes train data
-    rnaseq_test_df (pd.DataFrame): samples x genes test data
-    """
-    train_cancer_sample_ids = (
-        sample_info_df.loc[sample_info_df.cancer_type == train_cancer_type]
-        .index
-    )
-    test_cancer_sample_ids = (
-        sample_info_df.loc[sample_info_df.cancer_type == test_cancer_type]
-        .index
-    )
-    rnaseq_train_df = rnaseq_df.loc[rnaseq_df.index.intersection(train_cancer_sample_ids), :]
-    rnaseq_test_df = rnaseq_df.loc[rnaseq_df.index.intersection(test_cancer_sample_ids), :]
-    return rnaseq_train_df, rnaseq_test_df
-
-
 def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
                       seed, algorithm, data_type):
     """

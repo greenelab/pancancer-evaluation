@@ -33,17 +33,32 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
 
-    X_train_raw_df = data_model.X_train_df
-    X_test_raw_df = data_model.X_test_df
-    y_train_df = data_model.y_train_df.reindex(X_train_raw_df.index)
-    y_test_df = data_model.y_test_df.reindex(X_test_raw_df.index)
-
-    X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
-                                               data_model.gene_features,
-                                               data_model.subset_mad_genes)
+    try:
+        X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
+                                                   data_model.X_test_raw_df,
+                                                   data_model.gene_features,
+                                                   data_model.subset_mad_genes)
+        y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
+    except ValueError:
+        if data_model.X_train_raw_df.shape[0] == 0:
+            raise NoTrainSamplesError(
+                'No train samples found for train identifier: {}'.format(
+                    train_identifier)
+            )
+        elif data_model.X_test_raw_df.shape[0] == 0:
+            raise NoTestSamplesError(
+                'No test samples found for test identifier: {}'.format(
+                    test_identifier)
+            )
 
     try:
-        # also ignore warnings here, same deal as above
+        # if labels are extremely imbalanced, scikit-learn GridSearchCV
+        # will throw warnings, then we'll hit a ValueError later on when
+        # training the model.
+        #
+        # so, we ignore the warnings here, then catch the error later on
+        # to allow the calling function to skip these cases without a
+        # bunch of warning spam.
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             model_results = train_model(
@@ -97,6 +112,7 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
     }
     return results
 
+
 def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
                        use_pancancer, use_pancancer_only, shuffle_labels):
     """
@@ -116,7 +132,6 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
 
     TODO: what class variables does data_model need to have? should document
     """
-    # TODO: check file?
     results = {
         'gene_metrics': [],
         'gene_auc': [],
