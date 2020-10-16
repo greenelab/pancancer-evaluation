@@ -263,5 +263,6 @@ class TCGADataModel():
         rnaseq_df_filtered = rnaseq_df.loc[
             rnaseq_df.index.intersection(cancer_type_sample_ids), :
         ]
+        y_df = y_df.reindex(rnaseq_df_filtered.index)
         return rnaseq_df_filtered, y_df, gene_features
 
