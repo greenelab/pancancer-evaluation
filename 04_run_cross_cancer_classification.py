@@ -80,8 +80,9 @@ if __name__ == '__main__':
 
     # TODO: these are the identifiers for proof of concept experiments,
     # modify in future if necessary
-    identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
-                                                   cfg.cross_cancer_types)]
+    # identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
+    #                                                cfg.cross_cancer_types)]
+    identifiers = ['TTN_COAD']
 
     progress = tqdm(it.product(identifiers, identifiers),
                     total=len(identifiers)**2,
@@ -96,9 +97,9 @@ if __name__ == '__main__':
         for shuffle_labels in (False, True):
             # print('shuffle_labels: {}'.format(shuffle_labels))
             try:
-                train_classification = du.get_vogelstein_classification(
+                train_classification = du.get_classification(
                     train_identifier.split('_')[0])
-                test_classification = du.get_vogelstein_classification(
+                test_classification = du.get_classification(
                     test_identifier.split('_')[0])
                 output_dir = Path(args.results_dir, 'cross_cancer').resolve()
                 output_dir.mkdir(parents=True, exist_ok=True)

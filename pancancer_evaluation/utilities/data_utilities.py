@@ -135,10 +135,17 @@ def load_vogelstein():
     return genes_df
 
 
-def get_vogelstein_classification(gene):
-    """Get oncogene/TSG classification from Vogelstein data for given gene."""
+def get_classification(gene):
+    """Get oncogene/TSG classification from existing datasets for given gene."""
+    classification = 'neither'
     genes_df = load_vogelstein()
-    return genes_df[genes_df.gene == gene].classification.iloc[0]
+    if gene in genes_df.gene:
+        classification = genes_df[genes_df.gene == gene].classification.iloc[0]
+    else:
+        genes_df = load_top_50()
+        if gene in genes_df.gene:
+            classification = genes_df[genes_df.gene == gene].classification.iloc[0]
+    return classification
 
 
 def load_pancancer_data_from_repo(subset_columns=None):
