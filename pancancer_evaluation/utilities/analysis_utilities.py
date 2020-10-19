@@ -1,5 +1,6 @@
 import os
 import sys
+import itertools as it
 
 import numpy as np
 import pandas as pd
@@ -70,6 +71,42 @@ def generate_nonzero_coefficients(results_dir):
             identifier = '{}_{}'.format(gene_name, cancer_type)
             coefs = process_coefs(coefs_df)
             yield identifier, coefs
+
+
+def generate_nonzero_coefficients_for_gene(results_dir, gene_name):
+    """Generate coefficients from mutation prediction model fits for a gene.
+
+    Loading all coefficients into memory at once is prohibitive, so we generate
+    them individually and analyze/summarize in analysis scripts.
+
+    Arguments
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+    gene (str): gene to look for
+
+    Yields
+    ------
+    identifier (str): identifier for given coefficients
+    coefs (dict): list of nonzero coefficients for each fold of CV, for the
+                  given identifier
+    """
+    coefs = {}
+    all_features = None
+    gene_dir = os.path.join(results_dir, gene_name)
+    if not os.path.isdir(gene_dir): raise StopIteration
+    for coefs_file in os.listdir(gene_dir):
+        if coefs_file[0] == '.': continue
+        if 'signal' not in coefs_file: continue
+        if 'coefficients' not in coefs_file: continue
+        cancer_type = coefs_file.split('_')[1]
+        full_coefs_file = os.path.join(gene_dir, coefs_file)
+        coefs_df = pd.read_csv(full_coefs_file, sep='\t')
+        if all_features is None:
+            all_features = np.unique(coefs_df.feature.values)
+        identifier = '{}_{}'.format(gene_name, cancer_type)
+        coefs = process_coefs(coefs_df)
+        yield identifier, coefs
 
 
 def process_coefs(coefs_df):
@@ -168,8 +205,12 @@ def compare_control(results_df,
                       file=sys.stderr)
             continue
 
-        delta_mean = np.mean(signal_results) - np.mean(shuffled_results)
-        p_value = ttest_ind(signal_results, shuffled_results)[1]
+        if np.array_equal(signal_results, shuffled_results):
+            delta_mean = 0
+            p_value = 1.0
+        else:
+            delta_mean = np.mean(signal_results) - np.mean(shuffled_results)
+            p_value = ttest_ind(signal_results, shuffled_results)[1]
         results.append([id_str, delta_mean, p_value])
 
     return pd.DataFrame(results, columns=['identifier', 'delta_mean', 'p_value'])
@@ -211,7 +252,12 @@ def compare_experiment(single_cancer_df,
             continue
 
         delta_mean = np.mean(pancancer_results) - np.mean(single_cancer_results)
-        p_value = ttest_ind(single_cancer_results, pancancer_results)[1]
+        if np.array_equal(pancancer_results, single_cancer_results):
+            delta_mean = 0
+            p_value = 1.0
+        else:
+            delta_mean = np.mean(pancancer_results) - np.mean(single_cancer_results)
+            p_value = ttest_ind(pancancer_results, single_cancer_results)[1]
         results.append([id_str, delta_mean, p_value])
 
     return pd.DataFrame(results, columns=['identifier', 'delta_mean', 'p_value'])
@@ -248,12 +294,14 @@ def get_cancer_type_covariates(coefs, tcga_cancer_types):
     except IndexError:
         return []
 
+
 def get_mutation_covariate(coefs):
     """Check if the mutation covariate is nonzero"""
     try:
         return ('log10_mut' in list(zip(*coefs))[0])
     except IndexError:
         return False
+
 
 def get_mad_proportion(coefs, mad_genes):
     """Count the proportion of coefficients in the top n MAD genes"""
@@ -262,4 +310,59 @@ def get_mad_proportion(coefs, mad_genes):
         return len(mad_coefs) / len(coefs)
     except IndexError:
         return 0.0
+
+
+def compute_jaccard(v1, v2):
+    """Compute Jaccard similarity between two lists of terms."""
+    v1, v2 = set(v1), set(v2)
+    intersection = v1.intersection(v2)
+    union = v1.union(v2)
+    return ((len(intersection) / len(union) if len(union) != 0 else 0),
+            len(intersection),
+            len(union))
+
+
+def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison_df,
+                               train_set):
+    """Compute average Jaccard similarity between cancer types, for the same gene."""
+    unique_identifiers = list(set(i for i in per_gene_jaccard.keys()))
+    inter_cancer_jaccard = []
+    for id1, id2 in it.combinations(unique_identifiers, 2):
+        coefs_list_1 = per_gene_jaccard[id1]
+        coefs_list_2 = per_gene_jaccard[id2]
+        num_folds = len(coefs_list_1)
+        fold_jaccards = []
+        for f1, f2 in it.product(range(num_folds), repeat=2):
+            try:
+                nz_coefs_1 = list(zip(*coefs_list_1[f1]))[0]
+                nz_coefs_2 = list(zip(*coefs_list_2[f2]))[0]
+                fold_jaccards.append(compute_jaccard(nz_coefs_1, nz_coefs_2)[0])
+            except IndexError:
+                # this can occur if all coefficients for a given fold were zero
+                # (i.e. model predicts the mean/fits only an intercept)
+                # if so, we call it a jaccard index of 0
+                fold_jaccards.append(0.0)
+        try:
+            id1_sig = pancancer_comparison_df[
+                pancancer_comparison_df.identifier == id1
+            ].reject_null.values[0]
+        except IndexError:
+            # if identifier isn't in statistical testing results for some reason,
+            # assume it isn't significant
+            id1_sig = False
+        try:
+            id2_sig = pancancer_comparison_df[
+                pancancer_comparison_df.identifier == id2
+            ].reject_null.values[0]
+        except IndexError:
+            id2_sig = False
+        if id1_sig and id2_sig:
+            reject_null = 'both'
+        elif id1_sig or id2_sig:
+            reject_null = 'one'
+        else:
+            reject_null = 'none'
+        inter_cancer_jaccard.append((id1, id2, train_set, np.mean(fold_jaccards), reject_null))
+    return pd.DataFrame(inter_cancer_jaccard,
+                        columns=['id1', 'id2', 'train_set', 'mean_jaccard', 'reject_null'])
 

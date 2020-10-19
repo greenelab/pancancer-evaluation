@@ -1,6 +1,8 @@
 """
 Script to run pan-cancer classification experiments for all chosen combinations
 of gene and cancer type.
+
+Output files are identified by {gene}_{cancer_type} (in this order).
 """
 import sys
 import argparse
