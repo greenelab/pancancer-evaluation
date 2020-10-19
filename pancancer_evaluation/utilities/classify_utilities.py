@@ -28,7 +28,7 @@ from pancancer_evaluation.exceptions import (
 )
 
 def classify_cross_cancer(data_model, train_identifier, test_identifier,
-                          shuffle_labels=False):
+                          shuffle_labels=False, train_pancancer=False):
     """TODO: document
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -96,7 +96,7 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
             metric_df, gene_auc_df, gene_aupr_df = get_metrics_cc(
                 y_train_df, y_test_df, y_cv_df, y_pred_train_df,
                 y_pred_test_df, train_identifier, test_identifier,
-                signal, data_model.seed
+                signal, data_model.seed, train_pancancer=train_pancancer
             )
     except ValueError:
         raise OneClassError(
@@ -522,7 +522,7 @@ def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
 
 def get_metrics_cc(y_train_df, y_test_df, y_cv_df, y_pred_train,
                    y_pred_test, train_identifier, test_identifier,
-                   signal, seed):
+                   signal, seed, train_pancancer=False):
 
     # get classification metric values
     y_train_results = get_threshold_metrics(
@@ -536,15 +536,26 @@ def get_metrics_cc(y_train_df, y_test_df, y_cv_df, y_pred_train,
     )
 
     # summarize all results in dataframes
-    metric_cols = [
-        "auroc",
-        "aupr",
-        "train_identifier",
-        "test_identifier",
-        "signal",
-        "seed",
-        "data_type"
-    ]
+    if train_pancancer:
+        metric_cols = [
+            "auroc",
+            "aupr",
+            "train_gene",
+            "test_identifier",
+            "signal",
+            "seed",
+            "data_type"
+        ]
+    else:
+        metric_cols = [
+            "auroc",
+            "aupr",
+            "train_identifier",
+            "test_identifier",
+            "signal",
+            "seed",
+            "data_type"
+        ]
     train_metrics_, train_roc_df, train_pr_df = summarize_results_cc(
         y_train_results, train_identifier, test_identifier,
         signal, seed, "train"
