@@ -114,7 +114,8 @@ if __name__ == '__main__':
 
             try:
                 gene_dir = fu.make_gene_dir(args.results_dir, gene,
-                                            use_pancancer_cv=True)
+                                            use_pancancer_cv=True,
+                                            use_pancancer_only=False)
                 check_file = fu.check_gene_file(gene_dir, gene,
                                                 shuffle_labels=shuffle_labels)
                 tcga_data.process_data_for_gene(gene, classification,
