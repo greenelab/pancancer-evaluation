@@ -12,6 +12,9 @@ def load_prediction_results(results_dir, train_set_descriptor):
     ---------
     results_dir (str): directory to look in for results, subdirectories should
                        be experiments for individual genes
+    train_set_descriptor (str): string describing this training set/experiment,
+                                can be useful to segment analyses involving
+                                multiple experiments or results sets
 
     Returns
     -------
@@ -32,6 +35,33 @@ def load_prediction_results(results_dir, train_set_descriptor):
                 gene_results_df['holdout_cancer_type']
             )
             results_df = pd.concat((results_df, gene_results_df))
+    return results_df
+
+
+def load_prediction_results_cc(results_dir, experiment_descriptor):
+    """Load results of cross-cancer mutation prediction experiments.
+
+    Argument
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+    train_set_descriptor (str): string describing this experiment, can be useful
+                                to segment analyses involving multiple
+                                experiments or results sets
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of classification experiments
+    """
+    results_df = pd.DataFrame()
+    for results_file in os.listdir(results_dir):
+        if os.path.isdir(results_file): continue
+        if 'classify' not in results_file: continue
+        if results_file[0] == '.': continue
+        full_results_file = os.path.join(results_dir, results_file)
+        exp_results_df = pd.read_csv(full_results_file, sep='\t')
+        exp_results_df['experiment'] = experiment_descriptor
+        results_df = pd.concat((results_df, exp_results_df))
     return results_df
 
 
