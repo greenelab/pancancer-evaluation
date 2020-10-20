@@ -53,6 +53,10 @@ def save_results_cancer_type(gene_dir, check_file, results, gene, cancer_type,
         float_format="%.5g"
     )
 
+    # NOTE: these filenames follow the following convention:
+    #       any experiment identified by a gene and a cancer type has
+    #       the identifier {gene}_{cancer_type}, in this order
+
     output_file = Path(
         gene_dir, "{}_{}_{}_auc_threshold_metrics.tsv.gz".format(
             gene, cancer_type, signal)).resolve()
@@ -144,6 +148,9 @@ def check_gene_file(gene_dir, gene, shuffle_labels):
 
 
 def check_cancer_type_file(gene_dir, gene, cancer_type, shuffle_labels):
+    # NOTE: these filenames follow the following convention:
+    #       any experiment identified by a gene and a cancer type has
+    #       the identifier {gene}_{cancer_type}, in this order
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(gene_dir,
                       "{}_{}_{}_coefficients.tsv.gz".format(
