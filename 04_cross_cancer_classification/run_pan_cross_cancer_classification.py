@@ -74,8 +74,11 @@ if __name__ == '__main__':
 
     # TODO: these are the identifiers for proof of concept experiments,
     # modify in future if necessary
+    sample_info_df = du.load_sample_info(args.verbose)
+    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
     identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
-                                                   cfg.cross_cancer_types)]
+                                                   tcga_cancer_types)]
+                                                   # cfg.cross_cancer_types)]
 
     progress = tqdm(it.product(cfg.cross_cancer_genes, identifiers),
                     total=len(cfg.cross_cancer_genes)*len(identifiers),
