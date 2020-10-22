@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import ttest_ind
 
+import pancancer_evaluation.config as cfg
+
 def load_prediction_results(results_dir, train_set_descriptor):
     """Load results of mutation prediction experiments.
 
@@ -395,4 +397,53 @@ def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison
         inter_cancer_jaccard.append((id1, id2, train_set, np.mean(fold_jaccards), reject_null))
     return pd.DataFrame(inter_cancer_jaccard,
                         columns=['id1', 'id2', 'train_set', 'mean_jaccard', 'reject_null'])
+
+
+def heatmap_from_results(results_df,
+                         train_pancancer=False,
+                         sorted_ids=None):
+    # filter cross-cancer data
+    if train_pancancer:
+        conditions = ((results_df.signal == 'signal') &
+                      (results_df.data_type == 'test') &
+                      (results_df.test_identifier.str.split('_', expand=True)[1].isin(
+                          cfg.cross_cancer_types)
+                      ))
+    else:
+        conditions = ((results_df.signal == 'signal') &
+                      (results_df.data_type == 'test'))
+
+    # make a deep copy (this avoids SettingWithCopyError)
+    heatmap_df = results_df[conditions].copy(deep=True)
+
+    # order using config order
+    if train_pancancer:
+        heatmap_df['train_gene'] = pd.Categorical(
+            heatmap_df.train_gene,
+            categories=cfg.cross_cancer_genes)
+    else:
+        heatmap_df['train_gene'] = pd.Categorical(
+            heatmap_df.train_identifier.str.split('_', expand=True)[0],
+            categories=cfg.cross_cancer_genes)
+
+    heatmap_df.sort_values('train_gene', inplace=True)
+
+    if train_pancancer:
+        sorted_genes = pd.unique(heatmap_df.train_gene)
+        pivot_index = 'train_gene'
+    else:
+        if sorted_ids is None:
+            sorted_ids = pd.unique(heatmap_df.train_identifier)
+        pivot_index = 'train_identifier'
+
+    # then pivot to wideform heatmap and re-sort
+    # (pivot sorts indexes alphabetically by default, so we have to override that)
+    heatmap_df = heatmap_df.pivot(index=pivot_index, columns='test_identifier', values='aupr')
+    if train_pancancer:
+        heatmap_df = heatmap_df.reindex(sorted_genes)
+    else:
+        heatmap_df = heatmap_df.reindex(sorted_ids)
+    heatmap_df = heatmap_df.reindex(sorted_ids, axis=1)
+
+    return heatmap_df, sorted_ids
 
