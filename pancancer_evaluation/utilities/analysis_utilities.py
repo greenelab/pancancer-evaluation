@@ -401,20 +401,44 @@ def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison
 
 def heatmap_from_results(results_df,
                          train_pancancer=False,
+                         normalize_control=False,
                          sorted_ids=None):
+
     # filter cross-cancer data
     if train_pancancer:
-        conditions = ((results_df.signal == 'signal') &
-                      (results_df.data_type == 'test') &
-                      (results_df.test_identifier.str.split('_', expand=True)[1].isin(
-                          cfg.cross_cancer_types)
-                      ))
+        train_id = 'train_gene'
+        test_id = 'test_identifier'
     else:
-        conditions = ((results_df.signal == 'signal') &
-                      (results_df.data_type == 'test'))
+        train_id = 'train_identifier'
+        test_id = 'test_identifier'
 
-    # make a deep copy (this avoids SettingWithCopyError)
-    heatmap_df = results_df[conditions].copy(deep=True)
+    if normalize_control:
+        # normalize performance metric values to negative control
+        # this only happens for test examples, so no filtering necessary
+        # (except for cancer type in pancancer case)
+        heatmap_df = normalize_to_control(results_df,
+                                          train_id=train_id,
+                                          test_id=test_id)
+        if train_pancancer:
+            conditions = (
+                heatmap_df[test_id].str.split('_', expand=True)[1]
+                                   .isin(cfg.cross_cancer_types)
+            )
+            # make a deep copy (this avoids SettingWithCopyError later on)
+            heatmap_df = heatmap_df[conditions].copy(deep=True)
+    else:
+        # otherwise, filter to test/signal examples
+        if train_pancancer:
+            conditions = ((results_df.signal == 'signal') &
+                          (results_df.data_type == 'test') &
+                          (results_df.test_identifier.str.split('_', expand=True)[1].isin(
+                              cfg.cross_cancer_types)
+                          ))
+        else:
+            conditions = ((results_df.signal == 'signal') &
+                          (results_df.data_type == 'test'))
+        # make a deep copy (this avoids SettingWithCopyError later on)
+        heatmap_df = results_df[conditions].copy(deep=True)
 
     # order using config order
     if train_pancancer:
@@ -430,15 +454,13 @@ def heatmap_from_results(results_df,
 
     if train_pancancer:
         sorted_genes = pd.unique(heatmap_df.train_gene)
-        pivot_index = 'train_gene'
     else:
         if sorted_ids is None:
             sorted_ids = pd.unique(heatmap_df.train_identifier)
-        pivot_index = 'train_identifier'
 
     # then pivot to wideform heatmap and re-sort
     # (pivot sorts indexes alphabetically by default, so we have to override that)
-    heatmap_df = heatmap_df.pivot(index=pivot_index, columns='test_identifier', values='aupr')
+    heatmap_df = heatmap_df.pivot(index=train_id, columns=test_id, values='aupr')
     if train_pancancer:
         heatmap_df = heatmap_df.reindex(sorted_genes)
     else:
@@ -447,3 +469,25 @@ def heatmap_from_results(results_df,
 
     return heatmap_df, sorted_ids
 
+
+def normalize_to_control(heatmap_df,
+                         train_id='train_gene',
+                         test_id='test_identifier',
+                         metric='aupr'):
+    signal_metric = (
+        heatmap_df[(heatmap_df.signal == 'signal') &
+                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+            .sort_values(by=[train_id, test_id])
+    )
+    shuffled_metric = (
+        heatmap_df[(heatmap_df.signal == 'shuffled') &
+                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+            .sort_values(by=[train_id, test_id])
+    )
+    print(signal_metric.shape)
+    print(shuffled_metric.shape)
+    assert signal_metric[train_id].equals(shuffled_metric[train_id])
+    assert signal_metric[test_id].equals(shuffled_metric[test_id])
+    signal_metric['diff'] = signal_metric['aupr'] - shuffled_metric['aupr']
+    return signal_metric.drop(columns=['aupr']).rename(
+            columns={'diff': 'aupr'})
