@@ -9,6 +9,7 @@ import itertools as it
 from pathlib import Path
 
 import numpy as np
+
 import pandas as pd
 from tqdm import tqdm
 
@@ -36,12 +37,6 @@ def process_args():
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
-    # p.add_argument('--train_identifier', required=True,
-    #                help='gene and cancer type to train model on, separated by '
-    #                     'an underscore')
-    # p.add_argument('--test_identifier', required=True,
-    #                help='gene and cancer type to evaluate model on, separated '
-    #                     'by an underscore')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -78,8 +73,8 @@ if __name__ == '__main__':
                               verbose=args.verbose,
                               debug=args.debug)
 
-    # TODO: these are the identifiers for proof of concept experiments,
-    # modify in future if necessary
+    # these are the identifiers for proof of concept experiments,
+    # can modify in future if necessary
     identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
                                                    cfg.cross_cancer_types)]
 
@@ -94,7 +89,6 @@ if __name__ == '__main__':
             train_identifier, test_identifier))
 
         for shuffle_labels in (False, True):
-            # print('shuffle_labels: {}'.format(shuffle_labels))
             try:
                 train_classification = du.get_classification(
                     train_identifier.split('_')[0])

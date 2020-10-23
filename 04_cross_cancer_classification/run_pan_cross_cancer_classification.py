@@ -1,7 +1,7 @@
 """
-Script to run cross-cancer classification experiments (i.e. train on one
-gene/cancer type, test on another) for all chosen combinations of gene and
-cancer type.
+Script to run pan-cancer/cross-cancer classification experiments (i.e. train
+on one gene across all but one cancer types, test on another gene in another
+cancer type).
 """
 import sys
 import argparse
@@ -42,7 +42,7 @@ def process_args():
     args.results_dir = Path(args.results_dir).resolve()
 
     if args.log_file is None:
-        args.log_file = Path(args.results_dir, 'log_skipped_cc.tsv').resolve()
+        args.log_file = Path(args.results_dir, 'log_skipped_pan_cc.tsv').resolve()
 
     return args
 
@@ -72,13 +72,10 @@ if __name__ == '__main__':
                               verbose=args.verbose,
                               debug=args.debug)
 
-    # TODO: these are the identifiers for proof of concept experiments,
-    # modify in future if necessary
-    sample_info_df = du.load_sample_info(args.verbose)
-    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
+    # these are the identifiers for proof of concept experiments,
+    # can modify in future if necessary
     identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
-                                                   tcga_cancer_types)]
-                                                   # cfg.cross_cancer_types)]
+                                                   cfg.cross_cancer_types)]
 
     progress = tqdm(it.product(cfg.cross_cancer_genes, identifiers),
                     total=len(cfg.cross_cancer_genes)*len(identifiers),
@@ -91,7 +88,6 @@ if __name__ == '__main__':
             train_gene, test_identifier))
 
         for shuffle_labels in (False, True):
-            # print('shuffle_labels: {}'.format(shuffle_labels))
             try:
                 train_classification = du.get_classification(train_gene)
                 test_classification = du.get_classification(
