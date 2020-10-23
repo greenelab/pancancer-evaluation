@@ -134,6 +134,17 @@ if __name__ == '__main__':
                 )
                 fu.write_log_file(log_df, args.log_file)
                 continue
+            except OneClassError:
+                if args.verbose:
+                    print('Skipping due to one holdout class: train identifier {}'.format(
+                          train_identifier), file=sys.stderr)
+                log_df = fu.generate_log_df(
+                    log_columns,
+                    [train_identifier, train_identifier,
+                     shuffle_labels, 'one_class']
+                )
+                fu.write_log_file(log_df, args.log_file)
+                continue
 
             inner_progress = tqdm(identifiers,
                                   total=len(identifiers),
