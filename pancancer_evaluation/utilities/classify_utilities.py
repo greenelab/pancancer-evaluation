@@ -29,7 +29,18 @@ from pancancer_evaluation.exceptions import (
 
 def classify_cross_cancer(data_model, train_identifier, test_identifier,
                           shuffle_labels=False, train_pancancer=False):
-    """TODO: document
+    """
+    Run classification for a given train and test identifier (gene/cancer type
+    combination), then write them to files in the results directory. If the
+    relevant files already exist, skip this experiment.
+
+    Arguments
+    ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
+    train_identifier (str): gene/cancer type combo to train on
+    test_identifier (str): gene/cancer type combo to test on
+    shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    train_pancancer (bool): whether or not to use pancancer data for training
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
 
@@ -122,6 +133,7 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
 
     Arguments
     ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
     gene (str): gene to run experiments for
     cancer_type (str): cancer type in TCGA to hold out
     sample_info (pd.DataFrame): dataframe with TCGA sample information
@@ -243,6 +255,7 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
 
     Arguments
     ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
     gene (str): gene to run experiments for
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
@@ -631,8 +644,17 @@ def summarize_results(results, gene, holdout_cancer_type, signal, seed,
 def summarize_results_cc(results, train_identifier, test_identifier, signal,
                          seed, data_type):
     """
-    Given an input results file, summarize and output all pertinent files
+    Given an input results file for cross-cancer experiments, summarize and
+    output all pertinent files
 
+    Arguments
+    ---------
+    results: a results object output from `get_threshold_metrics`
+    train_identifier: the gene/cancer type used for training
+    train_identifier: the gene/cancer type being predicted
+    signal: the signal of interest
+    seed: the seed used to compress the data
+    data_type: the type of data (either training, testing, or cv)
     """
     results_append_list = [
         train_identifier,

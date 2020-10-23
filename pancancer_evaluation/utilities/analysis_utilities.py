@@ -404,7 +404,24 @@ def heatmap_from_results(results_df,
                          train_pancancer=False,
                          normalize_control=False,
                          sorted_ids=None):
+    """
+    Convert long-form results dataframe to wide-form heatmap, showing results of
+    each train identifier/test identifier pairwise combination.
 
+    Arguments
+    ---------
+    results_df (pd.DataFrame): long-form results dataframe
+    plot_gene_list (list): list of genes to plot, or None for all genes
+    train_pancancer (bool): True if pan-cancer data was used for training
+    normalize_control (bool): if true, plot difference from negative control
+                              (if false plot absolute metric values)
+    sorted_ids (list): if included, use this order for IDs in final heatmap
+                       (if not included heatmap will be sorted alphabetically)
+    Returns
+    -------
+    heatmap_df (pd.DataFrame): wide-form results heatmap
+    sorted_ids (list): list of the ID order, to match order in future experiments
+    """
     # filter cross-cancer data
     if train_pancancer:
         train_id = 'train_gene'
@@ -476,7 +493,8 @@ def heatmap_from_results(results_df,
             sorted_ids = pd.unique(heatmap_df.train_identifier)
 
     # then pivot to wideform heatmap and re-sort
-    # (pivot sorts indexes alphabetically by default, so we have to override that)
+    # (pivot sorts indexes alphabetically by default, so we have to override
+    # that by reindexing afterward)
     heatmap_df = heatmap_df.pivot(index=train_id, columns=test_id, values='aupr')
     if train_pancancer:
         heatmap_df = heatmap_df.reindex(sorted_genes)
