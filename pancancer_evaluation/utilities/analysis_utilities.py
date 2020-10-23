@@ -400,6 +400,7 @@ def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison
 
 
 def heatmap_from_results(results_df,
+                         plot_gene_list=None,
                          train_pancancer=False,
                          normalize_control=False,
                          sorted_ids=None):
@@ -420,23 +421,39 @@ def heatmap_from_results(results_df,
                                           train_id=train_id,
                                           test_id=test_id)
         if train_pancancer:
-            conditions = (
-                heatmap_df[test_id].str.split('_', expand=True)[1]
-                                   .isin(cfg.cross_cancer_types)
-            )
+            if plot_gene_list is not None:
+                conditions = ((heatmap_df[train_id].isin(plot_gene_list)) &
+                              (heatmap_df[test_id].str.split('_', expand=True)[0].isin(plot_gene_list)))
+            else:
+                conditions = (
+                    heatmap_df[test_id].str.split('_', expand=True)[1]
+                                       .isin(cfg.cross_cancer_types)
+                )
             # make a deep copy (this avoids SettingWithCopyError later on)
             heatmap_df = heatmap_df[conditions].copy(deep=True)
     else:
         # otherwise, filter to test/signal examples
         if train_pancancer:
-            conditions = ((results_df.signal == 'signal') &
-                          (results_df.data_type == 'test') &
-                          (results_df.test_identifier.str.split('_', expand=True)[1].isin(
-                              cfg.cross_cancer_types)
-                          ))
+            if plot_gene_list is not None:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test') &
+                              (results_df[train_id].isin(plot_gene_list)) &
+                              (results_df[test_id].str.split('_', expand=True)[0].isin(plot_gene_list)))
+            else:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test') &
+                              (results_df.test_identifier.str.split('_', expand=True)[1].isin(
+                                  cfg.cross_cancer_types)
+                              ))
         else:
-            conditions = ((results_df.signal == 'signal') &
-                          (results_df.data_type == 'test'))
+            if plot_gene_list is not None:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test') &
+                              (results_df[train_id].str.split('_', expand=True)[0].isin(plot_gene_list)) &
+                              (results_df[test_id].str.split('_', expand=True)[0].isin(plot_gene_list)))
+            else:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test'))
         # make a deep copy (this avoids SettingWithCopyError later on)
         heatmap_df = results_df[conditions].copy(deep=True)
 
@@ -465,7 +482,9 @@ def heatmap_from_results(results_df,
         heatmap_df = heatmap_df.reindex(sorted_genes)
     else:
         heatmap_df = heatmap_df.reindex(sorted_ids)
-    heatmap_df = heatmap_df.reindex(sorted_ids, axis=1)
+
+    if plot_gene_list is None:
+        heatmap_df = heatmap_df.reindex(sorted_ids, axis=1)
 
     return heatmap_df, sorted_ids
 
@@ -484,8 +503,6 @@ def normalize_to_control(heatmap_df,
                    (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
             .sort_values(by=[train_id, test_id])
     )
-    print(signal_metric.shape)
-    print(shuffled_metric.shape)
     assert signal_metric[train_id].equals(shuffled_metric[train_id])
     assert signal_metric[test_id].equals(shuffled_metric[test_id])
     signal_metric['diff'] = signal_metric['aupr'] - shuffled_metric['aupr']
