@@ -76,10 +76,18 @@ if __name__ == '__main__':
                               verbose=args.verbose,
                               debug=args.debug)
 
-    # these are the identifiers for proof of concept experiments,
-    # can modify in future if necessary
-    identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
-                                                   cfg.cross_cancer_types)]
+    # sample 10 random genes from vogelstein gene set
+    genes_df = du.load_vogelstein()
+    sampled_genes = np.random.choice(genes_df.gene.values, size=10)
+
+    # and use all cancer types in TCGA
+    sample_info_df = du.load_sample_info(args.verbose)
+    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
+
+    identifiers = ['_'.join(t) for t in it.product(sampled_genes,
+                                                   tcga_cancer_types)]
+
+    # create output directory
     output_dir = Path(args.results_dir, 'cross_cancer').resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -99,7 +107,8 @@ if __name__ == '__main__':
             # train model here and skip if no train samples
             try:
                 train_classification = du.get_classification(
-                    train_identifier.split('_')[0])
+                    train_identifier.split('_')[0],
+                    genes_df)
                 tcga_data.process_data_for_identifiers(train_identifier,
                                                        train_identifier,
                                                        train_classification,
@@ -159,7 +168,8 @@ if __name__ == '__main__':
                     # TODO: cache these classifications so we don't have to make
                     #       a GitHub request every time
                     test_classification = du.get_classification(
-                        test_identifier.split('_')[0])
+                        test_identifier.split('_')[0],
+                        genes_df)
                     tcga_data.process_data_for_identifiers(train_identifier,
                                                            test_identifier,
                                                            train_classification,
