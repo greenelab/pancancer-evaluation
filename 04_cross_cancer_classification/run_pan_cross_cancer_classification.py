@@ -74,6 +74,8 @@ if __name__ == '__main__':
 
     # these are the identifiers for proof of concept experiments,
     # can modify in future if necessary
+    #
+    # identifiers have the format {gene}_{cancer_type}
     identifiers = ['_'.join(t) for t in it.product(cfg.cross_cancer_genes,
                                                    cfg.cross_cancer_types)]
 
