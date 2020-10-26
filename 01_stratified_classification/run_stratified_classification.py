@@ -114,13 +114,13 @@ if __name__ == '__main__':
 
             try:
                 gene_dir = fu.make_gene_dir(args.results_dir, gene,
-                                            use_pancancer_cv=True)
+                                            use_pancancer_cv=True,
+                                            use_pancancer_only=False)
                 check_file = fu.check_gene_file(gene_dir, gene,
                                                 shuffle_labels=shuffle_labels)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=True,
-                                                check_gene_file=True,
                                                 shuffle_labels=shuffle_labels)
             except ResultsFileExistsError:
                 # this happens if cross-validation for this gene has already been

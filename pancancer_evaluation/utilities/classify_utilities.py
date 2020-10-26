@@ -27,6 +27,103 @@ from pancancer_evaluation.exceptions import (
     NoTestSamplesError
 )
 
+def classify_cross_cancer(data_model, train_identifier, test_identifier,
+                          shuffle_labels=False, train_pancancer=False):
+    """
+    Run classification for a given train and test identifier (gene/cancer type
+    combination), then write them to files in the results directory. If the
+    relevant files already exist, skip this experiment.
+
+    Arguments
+    ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
+    train_identifier (str): gene/cancer type combo to train on
+    test_identifier (str): gene/cancer type combo to test on
+    shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    train_pancancer (bool): whether or not to use pancancer data for training
+    """
+    signal = 'shuffled' if shuffle_labels else 'signal'
+
+    try:
+        X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
+                                                   data_model.X_test_raw_df,
+                                                   data_model.gene_features,
+                                                   data_model.subset_mad_genes)
+        y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
+    except ValueError:
+        if data_model.X_train_raw_df.shape[0] == 0:
+            raise NoTrainSamplesError(
+                'No train samples found for train identifier: {}'.format(
+                    train_identifier)
+            )
+        elif data_model.X_test_raw_df.shape[0] == 0:
+            raise NoTestSamplesError(
+                'No test samples found for test identifier: {}'.format(
+                    test_identifier)
+            )
+
+    try:
+        # if labels are extremely imbalanced, scikit-learn GridSearchCV
+        # will throw warnings, then we'll hit a ValueError later on when
+        # training the model.
+        #
+        # so, we ignore the warnings here, then catch the error later on
+        # to allow the calling function to skip these cases without a
+        # bunch of warning spam.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            model_results = train_model(
+                X_train=X_train_df,
+                X_test=X_test_df,
+                y_train=y_train_df,
+                alphas=cfg.alphas,
+                l1_ratios=cfg.l1_ratios,
+                seed=data_model.seed,
+                n_folds=cfg.folds,
+                max_iter=cfg.max_iter
+            )
+            (cv_pipeline,
+             y_pred_train_df,
+             y_pred_test_df,
+             y_cv_df) = model_results
+    except ValueError:
+        raise OneClassError(
+            'Only one class present in train set for identifier: {}\n'.format(
+                train_identifier)
+        )
+
+    # get coefficients
+    coef_df = extract_coefficients(
+        cv_pipeline=cv_pipeline,
+        feature_names=X_train_df.columns,
+        signal=signal,
+        seed=data_model.seed
+    )
+
+    try:
+        # also ignore warnings here, same deal as above
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            metric_df, gene_auc_df, gene_aupr_df = get_metrics_cc(
+                y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                y_pred_test_df, train_identifier, test_identifier,
+                signal, data_model.seed, train_pancancer=train_pancancer
+            )
+    except ValueError:
+        raise OneClassError(
+            'Only one class present in test set for train identifier: {}, '
+            'test identifier: {}\n'.format(train_identifier, test_identifier)
+        )
+
+    results = {
+        'gene_metrics': metric_df,
+        'gene_auc': gene_auc_df,
+        'gene_aupr': gene_aupr_df,
+        'gene_coef': coef_df
+    }
+    return results
+
+
 def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
                        use_pancancer, use_pancancer_only, shuffle_labels):
     """
@@ -36,6 +133,7 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
 
     Arguments
     ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
     gene (str): gene to run experiments for
     cancer_type (str): cancer type in TCGA to hold out
     sample_info (pd.DataFrame): dataframe with TCGA sample information
@@ -46,7 +144,6 @@ def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
 
     TODO: what class variables does data_model need to have? should document
     """
-    # TODO: check file?
     results = {
         'gene_metrics': [],
         'gene_auc': [],
@@ -158,6 +255,7 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
 
     Arguments
     ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
     gene (str): gene to run experiments for
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
@@ -435,6 +533,64 @@ def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
     return metric_df, gene_auc_df, gene_aupr_df
 
 
+def get_metrics_cc(y_train_df, y_test_df, y_cv_df, y_pred_train,
+                   y_pred_test, train_identifier, test_identifier,
+                   signal, seed, train_pancancer=False):
+
+    # get classification metric values
+    y_train_results = get_threshold_metrics(
+        y_train_df.status, y_pred_train, drop=False
+    )
+    y_test_results = get_threshold_metrics(
+        y_test_df.status, y_pred_test, drop=False
+    )
+    y_cv_results = get_threshold_metrics(
+        y_train_df.status, y_cv_df, drop=False
+    )
+
+    # summarize all results in dataframes
+    if train_pancancer:
+        metric_cols = [
+            "auroc",
+            "aupr",
+            "train_gene",
+            "test_identifier",
+            "signal",
+            "seed",
+            "data_type"
+        ]
+    else:
+        metric_cols = [
+            "auroc",
+            "aupr",
+            "train_identifier",
+            "test_identifier",
+            "signal",
+            "seed",
+            "data_type"
+        ]
+    train_metrics_, train_roc_df, train_pr_df = summarize_results_cc(
+        y_train_results, train_identifier, test_identifier,
+        signal, seed, "train"
+    )
+    test_metrics_, test_roc_df, test_pr_df = summarize_results_cc(
+        y_test_results, train_identifier, test_identifier,
+        signal, seed, "test"
+    )
+    cv_metrics_, cv_roc_df, cv_pr_df = summarize_results_cc(
+        y_cv_results, train_identifier, test_identifier,
+        signal, seed, "cv"
+    )
+
+    # compile summary metrics
+    metrics_ = [train_metrics_, test_metrics_, cv_metrics_]
+    metric_df = pd.DataFrame(metrics_, columns=metric_cols)
+    gene_auc_df = pd.concat([train_roc_df, test_roc_df, cv_roc_df])
+    gene_aupr_df = pd.concat([train_pr_df, test_pr_df, cv_pr_df])
+
+    return metric_df, gene_auc_df, gene_aupr_df
+
+
 def summarize_results(results, gene, holdout_cancer_type, signal, seed,
                       data_type, fold_no):
     """
@@ -480,6 +636,53 @@ def summarize_results(results, gene, holdout_cancer_type, signal, seed,
         seed=seed,
         data_type=data_type,
         fold_no=fold_no,
+    )
+
+    return metrics_out_, roc_df_, pr_df_
+
+
+def summarize_results_cc(results, train_identifier, test_identifier, signal,
+                         seed, data_type):
+    """
+    Given an input results file for cross-cancer experiments, summarize and
+    output all pertinent files
+
+    Arguments
+    ---------
+    results: a results object output from `get_threshold_metrics`
+    train_identifier: the gene/cancer type used for training
+    train_identifier: the gene/cancer type being predicted
+    signal: the signal of interest
+    seed: the seed used to compress the data
+    data_type: the type of data (either training, testing, or cv)
+    """
+    results_append_list = [
+        train_identifier,
+        test_identifier,
+        signal,
+        seed,
+        data_type,
+    ]
+
+    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
+
+    roc_df_ = results["roc_df"]
+    pr_df_ = results["pr_df"]
+
+    roc_df_ = roc_df_.assign(
+        train_identifier=train_identifier,
+        test_identifier=test_identifier,
+        signal=signal,
+        seed=seed,
+        data_type=data_type,
+    )
+
+    pr_df_ = pr_df_.assign(
+        train_identifier=train_identifier,
+        test_identifier=test_identifier,
+        signal=signal,
+        seed=seed,
+        data_type=data_type,
     )
 
     return metrics_out_, roc_df_, pr_df_

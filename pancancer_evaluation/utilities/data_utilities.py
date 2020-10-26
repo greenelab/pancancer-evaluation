@@ -135,6 +135,19 @@ def load_vogelstein():
     return genes_df
 
 
+def get_classification(gene):
+    """Get oncogene/TSG classification from existing datasets for given gene."""
+    classification = 'neither'
+    genes_df = load_vogelstein()
+    if gene in genes_df.gene:
+        classification = genes_df[genes_df.gene == gene].classification.iloc[0]
+    else:
+        genes_df = load_top_50()
+        if gene in genes_df.gene:
+            classification = genes_df[genes_df.gene == gene].classification.iloc[0]
+    return classification
+
+
 def load_pancancer_data_from_repo(subset_columns=None):
     """Load data to build feature matrices from pancancer repo. """
 
@@ -256,6 +269,7 @@ def split_by_cancer_type(rnaseq_df,
                                (i.e. without data from the held-out cancer type)
     num_folds (int): number of cross-validation folds
     fold_no (int): cross-validation fold to hold out
+    seed (int): seed for deterministic splits
 
     Returns
     -------

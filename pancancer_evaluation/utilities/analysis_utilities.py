@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import ttest_ind
 
+import pancancer_evaluation.config as cfg
+
 def load_prediction_results(results_dir, train_set_descriptor):
     """Load results of mutation prediction experiments.
 
@@ -13,6 +15,9 @@ def load_prediction_results(results_dir, train_set_descriptor):
     ---------
     results_dir (str): directory to look in for results, subdirectories should
                        be experiments for individual genes
+    train_set_descriptor (str): string describing this training set/experiment,
+                                can be useful to segment analyses involving
+                                multiple experiments or results sets
 
     Returns
     -------
@@ -33,6 +38,33 @@ def load_prediction_results(results_dir, train_set_descriptor):
                 gene_results_df['holdout_cancer_type']
             )
             results_df = pd.concat((results_df, gene_results_df))
+    return results_df
+
+
+def load_prediction_results_cc(results_dir, experiment_descriptor):
+    """Load results of cross-cancer mutation prediction experiments.
+
+    Argument
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+    train_set_descriptor (str): string describing this experiment, can be useful
+                                to segment analyses involving multiple
+                                experiments or results sets
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of classification experiments
+    """
+    results_df = pd.DataFrame()
+    for results_file in os.listdir(results_dir):
+        if os.path.isdir(results_file): continue
+        if 'classify' not in results_file: continue
+        if results_file[0] == '.': continue
+        full_results_file = os.path.join(results_dir, results_file)
+        exp_results_df = pd.read_csv(full_results_file, sep='\t')
+        exp_results_df['experiment'] = experiment_descriptor
+        results_df = pd.concat((results_df, exp_results_df))
     return results_df
 
 
@@ -366,3 +398,131 @@ def compare_inter_cancer_coefs(gene_name, per_gene_jaccard, pancancer_comparison
     return pd.DataFrame(inter_cancer_jaccard,
                         columns=['id1', 'id2', 'train_set', 'mean_jaccard', 'reject_null'])
 
+
+def heatmap_from_results(results_df,
+                         plot_gene_list=None,
+                         train_pancancer=False,
+                         normalize_control=False,
+                         sorted_ids=None):
+    """
+    Convert long-form results dataframe to wide-form heatmap, showing results of
+    each train identifier/test identifier pairwise combination.
+
+    Arguments
+    ---------
+    results_df (pd.DataFrame): long-form results dataframe
+    plot_gene_list (list): list of genes to plot, or None for all genes
+    train_pancancer (bool): True if pan-cancer data was used for training
+    normalize_control (bool): if true, plot difference from negative control
+                              (if false plot absolute metric values)
+    sorted_ids (list): if included, use this order for IDs in final heatmap
+                       (if not included heatmap will be sorted alphabetically)
+    Returns
+    -------
+    heatmap_df (pd.DataFrame): wide-form results heatmap
+    sorted_ids (list): list of the ID order, to match order in future experiments
+    """
+    # filter cross-cancer data
+    if train_pancancer:
+        train_id = 'train_gene'
+        test_id = 'test_identifier'
+    else:
+        train_id = 'train_identifier'
+        test_id = 'test_identifier'
+
+    if normalize_control:
+        # normalize performance metric values to negative control
+        # this only happens for test examples, so no filtering necessary
+        # (except for cancer type in pancancer case)
+        heatmap_df = normalize_to_control(results_df,
+                                          train_id=train_id,
+                                          test_id=test_id)
+        if train_pancancer:
+            if plot_gene_list is not None:
+                conditions = ((heatmap_df[train_id].isin(plot_gene_list)) &
+                              (heatmap_df[test_id].str.split('_', expand=True)[0].isin(plot_gene_list)))
+            else:
+                conditions = (
+                    heatmap_df[test_id].str.split('_', expand=True)[1]
+                                       .isin(cfg.cross_cancer_types)
+                )
+            # make a deep copy (this avoids SettingWithCopyError later on)
+            heatmap_df = heatmap_df[conditions].copy(deep=True)
+    else:
+        # otherwise, filter to test/signal examples
+        if train_pancancer:
+            if plot_gene_list is not None:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test') &
+                              (results_df[train_id].isin(plot_gene_list)) &
+                              (results_df[test_id].str.split('_', expand=True)[0].isin(plot_gene_list)))
+            else:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test') &
+                              (results_df.test_identifier.str.split('_', expand=True)[1].isin(
+                                  cfg.cross_cancer_types)
+                              ))
+        else:
+            if plot_gene_list is not None:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test') &
+                              (results_df[train_id].str.split('_', expand=True)[0].isin(plot_gene_list)) &
+                              (results_df[test_id].str.split('_', expand=True)[0].isin(plot_gene_list)))
+            else:
+                conditions = ((results_df.signal == 'signal') &
+                              (results_df.data_type == 'test'))
+        # make a deep copy (this avoids SettingWithCopyError later on)
+        heatmap_df = results_df[conditions].copy(deep=True)
+
+    # order using config order
+    if train_pancancer:
+        heatmap_df['train_gene'] = pd.Categorical(
+            heatmap_df.train_gene,
+            categories=cfg.cross_cancer_genes)
+    else:
+        heatmap_df['train_gene'] = pd.Categorical(
+            heatmap_df.train_identifier.str.split('_', expand=True)[0],
+            categories=cfg.cross_cancer_genes)
+
+    heatmap_df.sort_values('train_gene', inplace=True)
+
+    if train_pancancer:
+        sorted_genes = pd.unique(heatmap_df.train_gene)
+    else:
+        if sorted_ids is None:
+            sorted_ids = pd.unique(heatmap_df.train_identifier)
+
+    # then pivot to wideform heatmap and re-sort
+    # (pivot sorts indexes alphabetically by default, so we have to override
+    # that by reindexing afterward)
+    heatmap_df = heatmap_df.pivot(index=train_id, columns=test_id, values='aupr')
+    if train_pancancer:
+        heatmap_df = heatmap_df.reindex(sorted_genes)
+    else:
+        heatmap_df = heatmap_df.reindex(sorted_ids)
+
+    if plot_gene_list is None:
+        heatmap_df = heatmap_df.reindex(sorted_ids, axis=1)
+
+    return heatmap_df, sorted_ids
+
+
+def normalize_to_control(heatmap_df,
+                         train_id='train_gene',
+                         test_id='test_identifier',
+                         metric='aupr'):
+    signal_metric = (
+        heatmap_df[(heatmap_df.signal == 'signal') &
+                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+            .sort_values(by=[train_id, test_id])
+    )
+    shuffled_metric = (
+        heatmap_df[(heatmap_df.signal == 'shuffled') &
+                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+            .sort_values(by=[train_id, test_id])
+    )
+    assert signal_metric[train_id].equals(shuffled_metric[train_id])
+    assert signal_metric[test_id].equals(shuffled_metric[test_id])
+    signal_metric['diff'] = signal_metric['aupr'] - shuffled_metric['aupr']
+    return signal_metric.drop(columns=['aupr']).rename(
+            columns={'diff': 'aupr'})
