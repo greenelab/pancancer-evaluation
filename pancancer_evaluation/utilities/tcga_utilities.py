@@ -5,6 +5,7 @@ Most functions are adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_util.py
 """
 import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -251,4 +252,12 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
     train_df = X_train_df.reindex(valid_features, axis='columns')
     test_df = X_test_df.reindex(valid_features, axis='columns')
     return train_df, test_df, gene_features
+
+
+def get_valid_cancer_types(gene, output_dir):
+    """Get valid cancer types for a gene, by loading from output file."""
+    filter_file = Path(output_dir,
+                       "{}_filtered_cancertypes.tsv".format(gene)).resolve()
+    filter_df = pd.read_csv(filter_file, sep='\t')
+    return list(filter_df[filter_df.disease_included].DISEASE)
 

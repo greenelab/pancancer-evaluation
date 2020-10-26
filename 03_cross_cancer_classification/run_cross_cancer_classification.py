@@ -78,12 +78,13 @@ if __name__ == '__main__':
 
     # sample 10 random genes from vogelstein gene set
     genes_df = du.load_vogelstein()
-    sampled_genes = np.random.choice(genes_df.gene.values, size=10)
+    sampled_genes = np.random.choice(genes_df.gene.values, size=10, replace=False)
 
     # and use all cancer types in TCGA
     sample_info_df = du.load_sample_info(args.verbose)
     tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
 
+    # identifiers have the format {gene}_{cancer_type}
     identifiers = ['_'.join(t) for t in it.product(sampled_genes,
                                                    tcga_cancer_types)]
 
