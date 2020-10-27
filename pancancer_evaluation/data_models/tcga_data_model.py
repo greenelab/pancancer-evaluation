@@ -178,6 +178,60 @@ class TCGADataModel():
             self.y_test_df.status = np.random.permutation(
                 self.y_test_df.status.values)
 
+    def process_data_for_gene_id(self,
+                                 train_gene,
+                                 test_identifier,
+                                 train_classification,
+                                 test_classification,
+                                 output_dir,
+                                 shuffle_labels=False):
+        """
+        Prepare to train model on a given gene and test on a given gene/cancer
+        type combination (either the same gene or a different gene). The cancer
+        type in the test set will be left out of the train set.
+
+        Arguments
+        ---------
+        train_identifier (str): gene combination to train on
+        test_identifier (str): gene/cancer type combination to test on
+        train_classification (str): 'oncogene' or 'TSG' for the training gene
+        test_classification (str): 'oncogene' or 'TSG' for the test gene
+        output_dir (str): directory to write output to, if None don't write output
+        shuffle_labels (bool): whether or not to shuffle labels (negative control)
+        """
+        test_gene, test_cancer_type = test_identifier.split('_')
+
+        y_train_df_raw = self._generate_labels(train_gene, train_classification,
+                                               output_dir)
+        y_test_df_raw = self._generate_labels(test_gene, test_classification,
+                                              output_dir)
+
+        # for these experiments we don't use cancer type covariate
+        filtered_train_data = self._filter_data_for_gene_and_cancer(
+            self.rnaseq_df,
+            y_train_df_raw,
+            test_cancer_type,
+            not_cancer=True
+        )
+        self.X_train_raw_df, self.y_train_df, self.gene_features = filtered_train_data
+
+        filtered_test_data = self._filter_data_for_gene_and_cancer(
+            self.rnaseq_df,
+            y_test_df_raw,
+            test_cancer_type
+        )
+        self.X_test_raw_df, self.y_test_df, test_gene_features = filtered_test_data
+
+        # for the cross-cancer experiments these should always be equal
+        # (no added cancer type covariates, etc)
+        assert np.array_equal(self.gene_features, test_gene_features)
+
+        if shuffle_labels:
+            self.y_train_df.status = np.random.permutation(
+                self.y_train_df.status.values)
+            self.y_test_df.status = np.random.permutation(
+                self.y_test_df.status.values)
+
     def process_train_data_for_gene(self,
                                     train_gene,
                                     train_classification,
@@ -186,7 +240,7 @@ class TCGADataModel():
                                     shuffle_labels=False):
         """
         Prepare to train model on a given gene. Preparation of test data must
-        be done later (e.g. by calling process_test_data_for_id).
+        be done later (e.g. by calling another process_* function).
 
         Arguments
         ---------
@@ -218,43 +272,6 @@ class TCGADataModel():
         if shuffle_labels:
             self.y_train_df.status = np.random.permutation(
                 self.y_train_df.status.values)
-
-    def process_test_data_for_id(self,
-                                 test_identifier,
-                                 test_classification,
-                                 output_dir,
-                                 shuffle_labels=False):
-        """
-        Prepare to test model on a given identifier (gene/cancer type).
-        Preparation of training data must be done separately (e.g. by calling
-        process_train_data_for_gene).
-
-        Arguments
-        ---------
-        test_identifier (str): gene/cancer type combination to test on
-        test_classification (str): 'oncogene' or 'TSG' for the test gene
-        output_dir (str): directory to write output to, if None don't write output
-        shuffle_labels (bool): whether or not to shuffle labels (negative control)
-        """
-        test_gene, test_cancer_type = test_identifier.split('_')
-
-        y_test_df_raw = self._generate_labels(test_gene, test_classification,
-                                              output_dir)
-
-        filtered_test_data = self._filter_data_for_gene_and_cancer(
-            self.rnaseq_df,
-            y_test_df_raw,
-            test_cancer_type
-        )
-        self.X_test_raw_df, self.y_test_df, test_gene_features = filtered_test_data
-
-        # for the cross-cancer experiments these should always be equal
-        # (no added cancer type covariates, etc)
-        assert np.array_equal(self.gene_features, test_gene_features)
-
-        if shuffle_labels:
-            self.y_test_df.status = np.random.permutation(
-                self.y_test_df.status.values)
 
     def _load_data(self, debug=False, test=False):
         """Load and store relevant data.
