@@ -116,6 +116,8 @@ if __name__ == '__main__':
                                                           train_classification,
                                                           output_dir,
                                                           shuffle_labels)
+                train_cancer_types = tu.get_valid_cancer_types(train_gene,
+                                                               output_dir)
             except (KeyError, IndexError) as e:
                 # this might happen if the given gene isn't in the mutation data
                 # (or has a different alias, TODO check for this later)
@@ -141,12 +143,17 @@ if __name__ == '__main__':
 
             for test_identifier in test_identifiers:
 
-                print(pancancer_models.keys())
                 inner_progress.set_description('test: {}'.format(test_identifier))
                 test_classification = du.get_classification(
                     test_identifier.split('_')[0],
                     genes_df)
+
+                # TODO: explain how this caching works (once it works)
                 test_cancer_type = test_identifier.split('_')[1]
+                if test_cancer_type not in train_cancer_types:
+                    model_identifier = 'none'
+                else:
+                    model_identifier = test_cancer_type
 
                 # first check if results file exists, if so skip
                 try:
@@ -167,9 +174,10 @@ if __name__ == '__main__':
                     fu.write_log_file(log_df, args.log_file)
                     continue
 
-                if (test_cancer_type in pancancer_models and
-                    pancancer_models[test_cancer_type] is None):
-                    # skip since no training data
+                if (len(train_cancer_types) == 0) or (
+                    (test_cancer_type in train_cancer_types and
+                        len(train_cancer_types) == 1)):
+                    # skip when there's no training data
                     if args.verbose:
                         print('Skipping due to no train samples: train gene {}, '
                               'test identifier {}'.format(train_gene, test_identifier),
@@ -181,7 +189,11 @@ if __name__ == '__main__':
                          shuffle_labels, 'no_train_samples']
                     )
 
-                elif test_cancer_type in pancancer_models:
+                elif model_identifier in pancancer_models:
+                    if args.verbose:
+                        print('cache hit: train {}, test {} ({})'.format(train_gene,
+                                                                         test_identifier,
+                                                                         model_identifier))
                     # just evaluate the model here, since it's already been trained
                     tcga_data.process_data_for_gene_id(train_gene,
                                                        test_identifier,
@@ -190,7 +202,7 @@ if __name__ == '__main__':
                                                        output_dir,
                                                        shuffle_labels)
                     try:
-                        (model_results, coef_df) = pancancer_models[test_cancer_type]
+                        (model_results, coef_df) = pancancer_models[model_identifier]
                         results = evaluate_cross_cancer(tcga_data,
                                                         train_gene,
                                                         test_identifier,
@@ -238,8 +250,12 @@ if __name__ == '__main__':
                                                      shuffle_labels)
 
                 else:
+                    if args.verbose:
+                        print('cache miss: train {}, test {} ({})'.format(train_gene,
+                                                                          test_identifier,
+                                                                          model_identifier))
                     # if model doesn't exist we have to train it, and cache the
-                    # results in the pancancer_models dict
+                    # resulting model in the pancancer_models dict
                     tcga_data.process_data_for_gene_id(train_gene,
                                                        test_identifier,
                                                        train_classification,
@@ -252,7 +268,7 @@ if __name__ == '__main__':
                                                      train_gene,
                                                      test_identifier,
                                                      shuffle_labels=shuffle_labels)
-                        pancancer_models[test_cancer_type] = (model_results, coef_df)
+                        pancancer_models[model_identifier] = (model_results, coef_df)
                         results = evaluate_cross_cancer(tcga_data,
                                                         train_gene,
                                                         test_identifier,
