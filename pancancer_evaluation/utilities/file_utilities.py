@@ -78,8 +78,13 @@ def save_results_cancer_type(gene_dir, check_file, results, gene, cancer_type,
     )
 
 
-def save_results_cross_cancer(output_dir, check_file, results, train_identifier,
-                              test_identifier, shuffle_labels):
+def save_results_cross_cancer(output_dir,
+                              check_file,
+                              results,
+                              train_gene_or_identifier,
+                              test_identifier,
+                              shuffle_labels):
+
     signal = 'shuffled' if shuffle_labels else 'signal'
     gene_auc_df = results['gene_auc']
     gene_aupr_df = results['gene_aupr']
@@ -94,20 +99,20 @@ def save_results_cross_cancer(output_dir, check_file, results, train_identifier,
     # using dots to separate identifiers because identifiers contain underscores
     output_file = Path(
         output_dir, "{}.{}.{}_auc_threshold_metrics.tsv.gz".format(
-            train_identifier, test_identifier, signal)).resolve()
+            train_gene_or_identifier, test_identifier, signal)).resolve()
     gene_auc_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
     output_file = Path(
         output_dir, "{}.{}.{}_aupr_threshold_metrics.tsv.gz".format(
-            train_identifier, test_identifier, signal)).resolve()
+            train_gene_or_identifier, test_identifier, signal)).resolve()
     gene_aupr_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
     output_file = Path(output_dir, "{}.{}.{}_classify_metrics.tsv.gz".format(
-        train_identifier, test_identifier, signal)).resolve()
+        train_gene_or_identifier, test_identifier, signal)).resolve()
     gene_metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -162,16 +167,16 @@ def check_cancer_type_file(gene_dir, gene, cancer_type, shuffle_labels):
     return check_file
 
 
-def check_cross_cancer_file(output_dir, train_identifier, test_identifier,
-                            shuffle_labels):
+def check_cross_cancer_file(output_dir, train_gene_or_identifier,
+                            test_identifier, shuffle_labels):
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(output_dir,
                       "{}.{}.{}_coefficients.tsv.gz".format(
-                          train_identifier, test_identifier, signal)).resolve()
+                          train_gene_or_identifier, test_identifier, signal)).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for train identifier: {}, '
-            'test identifier: {}\n'.format(train_identifier, test_identifier)
+            'test identifier: {}\n'.format(train_gene_or_identifier, test_identifier)
         )
     return check_file
 

@@ -20,7 +20,10 @@ from pancancer_evaluation.exceptions import (
     OneClassError,
     ResultsFileExistsError
 )
-# from pancancer_evaluation.utilities.classify_utilities import classify_cross_cancer
+from pancancer_evaluation.utilities.classify_utilities import (
+    train_cross_cancer,
+    evaluate_cross_cancer
+)
 import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.file_utilities as fu
 import pancancer_evaluation.utilities.tcga_utilities as tu
@@ -138,13 +141,17 @@ if __name__ == '__main__':
 
             for test_identifier in test_identifiers:
 
+                print(pancancer_models.keys())
                 inner_progress.set_description('test: {}'.format(test_identifier))
+                test_classification = du.get_classification(
+                    test_identifier.split('_')[0],
+                    genes_df)
                 test_cancer_type = test_identifier.split('_')[1]
 
                 # first check if results file exists, if so skip
                 try:
                     check_file = fu.check_cross_cancer_file(output_dir,
-                                                            train_identifier,
+                                                            train_gene,
                                                             test_identifier,
                                                             shuffle_labels)
                 except ResultsFileExistsError:
@@ -183,13 +190,14 @@ if __name__ == '__main__':
                                                        output_dir,
                                                        shuffle_labels)
                     try:
-                        model_results = pancancer_models[test_cancer_type]
-                        results = evaluate_pan_cross_cancer(tcga_data,
-                                                            train_gene,
-                                                            test_identifier,
-                                                            model_results,
-                                                            coef_df,
-                                                            shuffle_labels)
+                        (model_results, coef_df) = pancancer_models[test_cancer_type]
+                        results = evaluate_cross_cancer(tcga_data,
+                                                        train_gene,
+                                                        test_identifier,
+                                                        model_results,
+                                                        coef_df,
+                                                        shuffle_labels,
+                                                        train_pancancer=True)
                     except ResultsFileExistsError:
                         if args.verbose:
                             print('Skipping because results file exists already: '
@@ -222,12 +230,12 @@ if __name__ == '__main__':
                         )
                     else:
                         # only save results if no exceptions
-                        fu.save_results_pan_cross_cancer(output_dir,
-                                                         check_file,
-                                                         results,
-                                                         train_gene,
-                                                         test_identifier,
-                                                         shuffle_labels)
+                        fu.save_results_cross_cancer(output_dir,
+                                                     check_file,
+                                                     results,
+                                                     train_gene,
+                                                     test_identifier,
+                                                     shuffle_labels)
 
                 else:
                     # if model doesn't exist we have to train it, and cache the
@@ -239,17 +247,19 @@ if __name__ == '__main__':
                                                        output_dir,
                                                        shuffle_labels)
                     try:
-                        model_results, coef_df = train_pan_cross_cancer(
+                        model_results, coef_df = train_cross_cancer(
                                                      tcga_data,
                                                      train_gene,
+                                                     test_identifier,
                                                      shuffle_labels=shuffle_labels)
                         pancancer_models[test_cancer_type] = (model_results, coef_df)
-                        results = evaluate_pan_cross_cancer(tcga_data,
-                                                            train_gene,
-                                                            test_identifier,
-                                                            model_results,
-                                                            coef_df,
-                                                            shuffle_labels)
+                        results = evaluate_cross_cancer(tcga_data,
+                                                        train_gene,
+                                                        test_identifier,
+                                                        model_results,
+                                                        coef_df,
+                                                        shuffle_labels,
+                                                        train_pancancer=True)
                     except NoTrainSamplesError:
                         if args.verbose:
                             print('Skipping due to no train samples: train gene {}'.format(
@@ -280,12 +290,12 @@ if __name__ == '__main__':
                         )
                     else:
                         # only save results if no exceptions
-                        fu.save_results_pan_cross_cancer(output_dir,
-                                                         check_file,
-                                                         results,
-                                                         train_gene,
-                                                         test_identifier,
-                                                         shuffle_labels)
+                        fu.save_results_cross_cancer(output_dir,
+                                                     check_file,
+                                                     results,
+                                                     train_gene,
+                                                     test_identifier,
+                                                     shuffle_labels)
 
                 if log_df is not None:
                     fu.write_log_file(log_df, args.log_file)

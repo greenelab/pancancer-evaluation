@@ -132,6 +132,7 @@ if __name__ == '__main__':
             try:
                 model_results, coef_df = train_cross_cancer(tcga_data,
                                                             train_identifier,
+                                                            train_identifier,
                                                             shuffle_labels=shuffle_labels)
             except NoTrainSamplesError:
                 if args.verbose:
@@ -139,7 +140,7 @@ if __name__ == '__main__':
                           train_identifier), file=sys.stderr)
                 log_df = fu.generate_log_df(
                     log_columns,
-                    [train_identifier, train_identifier,
+                    [train_identifier, 'N/A',
                      shuffle_labels, 'no_train_samples']
                 )
                 fu.write_log_file(log_df, args.log_file)

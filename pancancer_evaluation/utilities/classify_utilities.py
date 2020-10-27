@@ -29,8 +29,8 @@ from pancancer_evaluation.exceptions import (
 
 def train_cross_cancer(data_model,
                        train_identifier_or_gene,
-                       shuffle_labels=False,
-                       train_pancancer=False):
+                       test_identifier,
+                       shuffle_labels=False):
     """
     Train a model for a given identifier (gene/cancer type combination).
 
@@ -39,7 +39,6 @@ def train_cross_cancer(data_model,
     data_model (TCGADataModel): class containing preprocessed train/test data
     train_identifier_or_gene (str): gene or gene/cancer type combo to train on
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
-    train_pancancer (bool): whether or not to use pancancer data for training
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
 
