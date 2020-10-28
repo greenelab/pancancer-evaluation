@@ -186,7 +186,7 @@ if __name__ == '__main__':
 
                     log_df = fu.generate_log_df(
                         log_columns,
-                        [train_gene, train_identifier,
+                        [train_gene, test_identifier,
                          shuffle_labels, 'no_train_samples']
                     )
 
