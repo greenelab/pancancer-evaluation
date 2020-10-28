@@ -79,7 +79,8 @@ if __name__ == '__main__':
     # same sampled genes from cross-cancer individual identifier experiments
     # TODO: should probably resample these since SETD2 was repeated
     genes_df = du.load_vogelstein()
-    sampled_genes = ['SETD2', 'GNAQ', 'PIK3R1', 'BAP1', 'SMAD4', 'MET', 'JAK2', 'CARD11', 'TSHR']
+    # sampled_genes = ['SETD2', 'GNAQ', 'PIK3R1', 'BAP1', 'SMAD4', 'MET', 'JAK2', 'CARD11', 'TSHR']
+    sampled_genes = ['APC', 'BRCA1', 'EGFR', 'FGFR2', 'H3F3A', 'HRAS', 'MSH2', 'PIK3CA', 'PPP2R1A', 'VHL']
 
     # and use all cancer types in TCGA
     sample_info_df = du.load_sample_info(args.verbose)
