@@ -28,7 +28,7 @@ from pancancer_evaluation.exceptions import (
 )
 
 def train_cross_cancer(data_model,
-                       train_identifier_or_gene,
+                       train_gene_or_identifier,
                        test_identifier,
                        shuffle_labels=False):
     """
@@ -37,7 +37,7 @@ def train_cross_cancer(data_model,
     Arguments
     ---------
     data_model (TCGADataModel): class containing preprocessed train/test data
-    train_identifier_or_gene (str): gene or gene/cancer type combo to train on
+    train_gene_or_identifier (str): gene or gene/cancer type combo to train on
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -52,7 +52,7 @@ def train_cross_cancer(data_model,
         if data_model.X_train_raw_df.shape[0] == 0:
             raise NoTrainSamplesError(
                 'No train samples found for train identifier: {}'.format(
-                    train_identifier_or_gene)
+                    train_gene_or_identifier)
             )
         elif data_model.X_test_raw_df.shape[0] == 0:
             raise NoTestSamplesError(
@@ -83,7 +83,7 @@ def train_cross_cancer(data_model,
     except ValueError:
         raise OneClassError(
             'Only one class present in train set for identifier: {}\n'.format(
-                train_identifier_or_gene)
+                train_gene_or_identifier)
         )
 
     # get coefficients
@@ -99,7 +99,7 @@ def train_cross_cancer(data_model,
 
 
 def evaluate_cross_cancer(data_model,
-                          train_identifier_or_gene,
+                          train_gene_or_identifier,
                           test_identifier,
                           model_results,
                           coef_df,
@@ -111,7 +111,7 @@ def evaluate_cross_cancer(data_model,
     Arguments
     ---------
     data_model (TCGADataModel): class containing preprocessed train/test data
-    train_identifier_or_gene (str): gene or gene/cancer type combo to train on
+    train_gene_or_identifier (str): gene or gene/cancer type combo to train on
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
     train_pancancer (bool): whether or not to use pancancer data for training
     """
@@ -131,7 +131,7 @@ def evaluate_cross_cancer(data_model,
         if data_model.X_train_raw_df.shape[0] == 0:
             raise NoTrainSamplesError(
                 'No train samples found for train identifier: {}'.format(
-                    train_identifier_or_gene)
+                    train_gene_or_identifier)
             )
         elif data_model.X_test_raw_df.shape[0] == 0:
             raise NoTestSamplesError(
@@ -147,13 +147,13 @@ def evaluate_cross_cancer(data_model,
             warnings.simplefilter("ignore")
             metric_df, gene_auc_df, gene_aupr_df = get_metrics_cc(
                 y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                y_pred_test_df, train_identifier_or_gene, test_identifier,
+                y_pred_test_df, train_gene_or_identifier, test_identifier,
                 signal, data_model.seed, train_pancancer=train_pancancer
             )
     except ValueError:
         raise OneClassError(
             'Only one class present in test set for train identifier: {}, '
-            'test identifier: {}\n'.format(train_identifier_or_gene, test_identifier)
+            'test identifier: {}\n'.format(train_gene_or_identifier, test_identifier)
         )
 
     results = {
