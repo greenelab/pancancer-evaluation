@@ -77,10 +77,9 @@ if __name__ == '__main__':
                               debug=args.debug)
 
     # same sampled genes from cross-cancer individual identifier experiments
-    # TODO: should probably resample these since SETD2 was repeated
     genes_df = du.load_vogelstein()
-    # sampled_genes = ['SETD2', 'GNAQ', 'PIK3R1', 'BAP1', 'SMAD4', 'MET', 'JAK2', 'CARD11', 'TSHR']
-    sampled_genes = ['APC', 'BRCA1', 'EGFR', 'FGFR2', 'H3F3A', 'HRAS', 'MSH2', 'PIK3CA', 'PPP2R1A', 'VHL']
+    sampled_genes = ['APC', 'BRCA1', 'EGFR', 'FGFR2', 'H3F3A',
+                     'HRAS', 'MSH2', 'PIK3CA', 'PPP2R1A', 'VHL']
 
     # and use all cancer types in TCGA
     sample_info_df = du.load_sample_info(args.verbose)
@@ -131,10 +130,14 @@ if __name__ == '__main__':
                 fu.write_log_file(log_df, args.log_file)
                 continue
 
-            # here, we can cache each of the pan-cancer models, since we only
-            # have to train one for each holdout cancer type
-            # this will be more efficient than re-training the model for each
-            # holdout identifier (some of which will result in the same model)
+            # Here, we can cache each of the pan-cancer models for this train
+            # gene, since we only really need to train one for each holdout
+            # cancer type. This is as opposed to the naive approach of training
+            # a new model for each test identifier, some of which will have the
+            # same holdout cancer type (i.e. result in the same model).
+            #
+            # Unfortunately this makes the code a bit deeply nested/hard to
+            # follow, but in practice it's much more efficient.
             pancancer_models = {}
 
             inner_progress = tqdm(test_identifiers,
@@ -149,7 +152,6 @@ if __name__ == '__main__':
                     test_identifier.split('_')[0],
                     genes_df)
 
-                # TODO: explain how this caching works (once it works)
                 test_cancer_type = test_identifier.split('_')[1]
                 if test_cancer_type not in train_cancer_types:
                     model_identifier = 'none'
@@ -175,10 +177,20 @@ if __name__ == '__main__':
                     fu.write_log_file(log_df, args.log_file)
                     continue
 
+                # Now that we have the data properly formatted, there are 3
+                # cases to consider:
+                # (1) there is no valid training data for this cancer type:
+                #     skip this test identifier and write to log file
+                # (2) there is training data but we've already trained a model
+                #     for this cancer type: get the model from the cache and
+                #     evaluate on the test gene/cancer type
+                # (3) there is training data and we haven't trained a model for
+                #     this cancer type: train model, cache it, and evaluate on
+                #     the test gene/cancer type
                 if (len(train_cancer_types) == 0) or (
                     (test_cancer_type in train_cancer_types and
                         len(train_cancer_types) == 1)):
-                    # skip when there's no training data
+                    # case (1) from above
                     if args.verbose:
                         print('Skipping due to no train samples: train gene {}, '
                               'test identifier {}'.format(train_gene, test_identifier),
@@ -195,6 +207,7 @@ if __name__ == '__main__':
                         print('cache hit: train {}, test {} ({})'.format(train_gene,
                                                                          test_identifier,
                                                                          model_identifier))
+                    # case (2) from above
                     # just evaluate the model here, since it's already been trained
                     tcga_data.process_data_for_gene_id(train_gene,
                                                        test_identifier,
@@ -255,6 +268,7 @@ if __name__ == '__main__':
                         print('cache miss: train {}, test {} ({})'.format(train_gene,
                                                                           test_identifier,
                                                                           model_identifier))
+                    # case (3) from above
                     # if model doesn't exist we have to train it, and cache the
                     # resulting model in the pancancer_models dict
                     tcga_data.process_data_for_gene_id(train_gene,
@@ -316,5 +330,4 @@ if __name__ == '__main__':
 
                 if log_df is not None:
                     fu.write_log_file(log_df, args.log_file)
-
 

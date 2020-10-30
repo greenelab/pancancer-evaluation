@@ -105,7 +105,6 @@ if __name__ == '__main__':
 
             outer_progress.set_description('train: {}'.format(train_identifier))
 
-            # train model here and skip if no train samples
             try:
                 train_classification = du.get_classification(
                     train_identifier.split('_')[0],
@@ -130,6 +129,10 @@ if __name__ == '__main__':
                 continue
 
             try:
+                # train model here and skip if no train samples
+                # this only needs to be done once for every train identifier
+                # then we can just evaluate on all test identifiers using
+                # the pre-trained model
                 model_results, coef_df = train_cross_cancer(tcga_data,
                                                             train_identifier,
                                                             train_identifier,
@@ -167,8 +170,6 @@ if __name__ == '__main__':
                 inner_progress.set_description('test: {}'.format(test_identifier))
 
                 try:
-                    # TODO: cache these classifications so we don't have to make
-                    #       a GitHub request every time
                     test_classification = du.get_classification(
                         test_identifier.split('_')[0],
                         genes_df)
@@ -193,6 +194,8 @@ if __name__ == '__main__':
 
                 log_df = None
                 try:
+                    # now evaluate for all valid test identifiers using the
+                    # model trained on the train identifier
                     check_file = fu.check_cross_cancer_file(output_dir,
                                                             train_identifier,
                                                             test_identifier,
