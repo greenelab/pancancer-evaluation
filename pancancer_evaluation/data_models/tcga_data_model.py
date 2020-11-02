@@ -194,8 +194,10 @@ class TCGADataModel():
         ---------
         train_identifier (str): gene combination to train on
         test_identifier (str): gene/cancer type combination to test on
-        train_classification (str): 'oncogene' or 'TSG' for the training gene
-        test_classification (str): 'oncogene' or 'TSG' for the test gene
+        train_classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                                    'neither' for the training gene
+        test_classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                                   'neither' for the test gene
         output_dir (str): directory to write output to, if None don't write output
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
@@ -244,9 +246,12 @@ class TCGADataModel():
 
         Arguments
         ---------
-        train_identifier (str): gene combination to train on
-        train_classification (str): 'oncogene' or 'TSG' for the training gene
+        train_gene (str): gene to train on
+        train_classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                                    'neither' for the training gene
         output_dir (str): directory to write output to, if None don't write output
+        test_cancer_type (str): cancer type to test on, if None don't hold out any
+                                cancer types from the training set
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
         y_train_df_raw = self._generate_labels(train_gene, train_classification,
