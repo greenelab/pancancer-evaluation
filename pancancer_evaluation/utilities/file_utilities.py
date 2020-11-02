@@ -83,7 +83,15 @@ def save_results_cross_cancer(output_dir,
                               results,
                               train_gene_or_identifier,
                               test_identifier,
-                              shuffle_labels):
+                              shuffle_labels,
+                              percent_holdout=None):
+
+    if percent_holdout is not None:
+        fname_prefix = '{}.{}.{}_p{}'.format(
+            train_gene_or_identifier, test_identifier, signal, percent_holdout)
+    else:
+        fname_prefix = '{}.{}.{}'.format(
+            train_gene_or_identifier, test_identifier, signal)
 
     signal = 'shuffled' if shuffle_labels else 'signal'
     gene_auc_df = results['gene_auc']
@@ -98,21 +106,22 @@ def save_results_cross_cancer(output_dir,
 
     # using dots to separate identifiers because identifiers contain underscores
     output_file = Path(
-        output_dir, "{}.{}.{}_auc_threshold_metrics.tsv.gz".format(
-            train_gene_or_identifier, test_identifier, signal)).resolve()
+        output_dir, "{}_auc_threshold_metrics.tsv.gz".format(
+            fname_prefix)).resolve()
     gene_auc_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
     output_file = Path(
-        output_dir, "{}.{}.{}_aupr_threshold_metrics.tsv.gz".format(
-            train_gene_or_identifier, test_identifier, signal)).resolve()
+        output_dir, "{}_aupr_threshold_metrics.tsv.gz".format(
+            fname_prefix)).resolve()
     gene_aupr_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
-    output_file = Path(output_dir, "{}.{}.{}_classify_metrics.tsv.gz".format(
-        train_gene_or_identifier, test_identifier, signal)).resolve()
+    output_file = Path(
+        output_dir, "{}_classify_metrics.tsv.gz".format(
+            fname_prefix)).resolve()
     gene_metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -167,12 +176,24 @@ def check_cancer_type_file(gene_dir, gene, cancer_type, shuffle_labels):
     return check_file
 
 
-def check_cross_cancer_file(output_dir, train_gene_or_identifier,
-                            test_identifier, shuffle_labels):
+def check_cross_cancer_file(output_dir,
+                            train_gene_or_identifier,
+                            test_identifier,
+                            shuffle_labels,
+                            percent_holdout=None):
+
     signal = 'shuffled' if shuffle_labels else 'signal'
+
+    if percent_holdout is not None:
+        fname_prefix = '{}.{}.{}_p{}'.format(
+            train_gene_or_identifier, test_identifier, signal, percent_holdout)
+    else:
+        fname_prefix = '{}.{}.{}'.format(
+            train_gene_or_identifier, test_identifier, signal)
+
     check_file = Path(output_dir,
-                      "{}.{}.{}_coefficients.tsv.gz".format(
-                          train_gene_or_identifier, test_identifier, signal)).resolve()
+                      "{}_coefficients.tsv.gz".format(fname_prefix)).resolve()
+
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for train identifier: {}, '
