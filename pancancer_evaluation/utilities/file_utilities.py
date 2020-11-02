@@ -86,6 +86,8 @@ def save_results_cross_cancer(output_dir,
                               shuffle_labels,
                               percent_holdout=None):
 
+    signal = 'shuffled' if shuffle_labels else 'signal'
+
     if percent_holdout is not None:
         fname_prefix = '{}.{}.{}_p{}'.format(
             train_gene_or_identifier, test_identifier, signal, percent_holdout)
@@ -93,7 +95,6 @@ def save_results_cross_cancer(output_dir,
         fname_prefix = '{}.{}.{}'.format(
             train_gene_or_identifier, test_identifier, signal)
 
-    signal = 'shuffled' if shuffle_labels else 'signal'
     gene_auc_df = results['gene_auc']
     gene_aupr_df = results['gene_aupr']
     gene_coef_df = results['gene_coef']
