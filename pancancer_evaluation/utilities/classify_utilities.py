@@ -27,20 +27,18 @@ from pancancer_evaluation.exceptions import (
     NoTestSamplesError
 )
 
-def classify_cross_cancer(data_model, train_identifier, test_identifier,
-                          shuffle_labels=False, train_pancancer=False):
+def train_cross_cancer(data_model,
+                       train_gene_or_identifier,
+                       test_identifier,
+                       shuffle_labels=False):
     """
-    Run classification for a given train and test identifier (gene/cancer type
-    combination), then write them to files in the results directory. If the
-    relevant files already exist, skip this experiment.
+    Train a model for a given identifier (gene/cancer type combination).
 
     Arguments
     ---------
     data_model (TCGADataModel): class containing preprocessed train/test data
-    train_identifier (str): gene/cancer type combo to train on
-    test_identifier (str): gene/cancer type combo to test on
+    train_gene_or_identifier (str): gene or gene/cancer type combo to train on
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
-    train_pancancer (bool): whether or not to use pancancer data for training
     """
     signal = 'shuffled' if shuffle_labels else 'signal'
 
@@ -54,7 +52,7 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
         if data_model.X_train_raw_df.shape[0] == 0:
             raise NoTrainSamplesError(
                 'No train samples found for train identifier: {}'.format(
-                    train_identifier)
+                    train_gene_or_identifier)
             )
         elif data_model.X_test_raw_df.shape[0] == 0:
             raise NoTestSamplesError(
@@ -82,17 +80,14 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
                 n_folds=cfg.folds,
                 max_iter=cfg.max_iter
             )
-            (cv_pipeline,
-             y_pred_train_df,
-             y_pred_test_df,
-             y_cv_df) = model_results
     except ValueError:
         raise OneClassError(
             'Only one class present in train set for identifier: {}\n'.format(
-                train_identifier)
+                train_gene_or_identifier)
         )
 
     # get coefficients
+    cv_pipeline = model_results[0]
     coef_df = extract_coefficients(
         cv_pipeline=cv_pipeline,
         feature_names=X_train_df.columns,
@@ -100,19 +95,65 @@ def classify_cross_cancer(data_model, train_identifier, test_identifier,
         seed=data_model.seed
     )
 
+    return model_results, coef_df
+
+
+def evaluate_cross_cancer(data_model,
+                          train_gene_or_identifier,
+                          test_identifier,
+                          model_results,
+                          coef_df,
+                          shuffle_labels=False,
+                          train_pancancer=False):
+    """
+    Evaluate a trained model for a given identifier (gene/cancer type combination).
+
+    Arguments
+    ---------
+    data_model (TCGADataModel): class containing preprocessed train/test data
+    train_gene_or_identifier (str): gene or gene/cancer type combo to train on
+    shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    train_pancancer (bool): whether or not to use pancancer data for training
+    """
+    signal = 'shuffled' if shuffle_labels else 'signal'
+    (cv_pipeline,
+     y_pred_train_df,
+     _,
+     y_cv_df) = model_results
+
+    try:
+        X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
+                                                   data_model.X_test_raw_df,
+                                                   data_model.gene_features,
+                                                   data_model.subset_mad_genes)
+        y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
+    except ValueError:
+        if data_model.X_train_raw_df.shape[0] == 0:
+            raise NoTrainSamplesError(
+                'No train samples found for train identifier: {}'.format(
+                    train_gene_or_identifier)
+            )
+        elif data_model.X_test_raw_df.shape[0] == 0:
+            raise NoTestSamplesError(
+                'No test samples found for test identifier: {}'.format(
+                    test_identifier)
+            )
+
+    y_pred_test_df = cv_pipeline.decision_function(X_test_df)
+
     try:
         # also ignore warnings here, same deal as above
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             metric_df, gene_auc_df, gene_aupr_df = get_metrics_cc(
                 y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                y_pred_test_df, train_identifier, test_identifier,
+                y_pred_test_df, train_gene_or_identifier, test_identifier,
                 signal, data_model.seed, train_pancancer=train_pancancer
             )
     except ValueError:
         raise OneClassError(
             'Only one class present in test set for train identifier: {}, '
-            'test identifier: {}\n'.format(train_identifier, test_identifier)
+            'test identifier: {}\n'.format(train_gene_or_identifier, test_identifier)
         )
 
     results = {

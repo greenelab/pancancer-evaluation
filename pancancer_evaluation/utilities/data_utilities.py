@@ -135,16 +135,19 @@ def load_vogelstein():
     return genes_df
 
 
-def get_classification(gene):
+def get_classification(gene, genes_df=None):
     """Get oncogene/TSG classification from existing datasets for given gene."""
     classification = 'neither'
-    genes_df = load_vogelstein()
-    if gene in genes_df.gene:
+    if (genes_df is not None) and (gene in genes_df.gene):
         classification = genes_df[genes_df.gene == gene].classification.iloc[0]
     else:
-        genes_df = load_top_50()
+        genes_df = load_vogelstein()
         if gene in genes_df.gene:
             classification = genes_df[genes_df.gene == gene].classification.iloc[0]
+        else:
+            genes_df = load_top_50()
+            if gene in genes_df.gene:
+                classification = genes_df[genes_df.gene == gene].classification.iloc[0]
     return classification
 
 

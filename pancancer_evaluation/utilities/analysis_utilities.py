@@ -403,6 +403,7 @@ def heatmap_from_results(results_df,
                          plot_gene_list=None,
                          train_pancancer=False,
                          normalize_control=False,
+                         sort_results=True,
                          sorted_ids=None):
     """
     Convert long-form results dataframe to wide-form heatmap, showing results of
@@ -415,6 +416,7 @@ def heatmap_from_results(results_df,
     train_pancancer (bool): True if pan-cancer data was used for training
     normalize_control (bool): if true, plot difference from negative control
                               (if false plot absolute metric values)
+    sort_results (bool): if False, use default alphabetical sort for results
     sorted_ids (list): if included, use this order for IDs in final heatmap
                        (if not included heatmap will be sorted alphabetically)
     Returns
@@ -496,13 +498,13 @@ def heatmap_from_results(results_df,
     # (pivot sorts indexes alphabetically by default, so we have to override
     # that by reindexing afterward)
     heatmap_df = heatmap_df.pivot(index=train_id, columns=test_id, values='aupr')
-    if train_pancancer:
-        heatmap_df = heatmap_df.reindex(sorted_genes)
-    else:
-        heatmap_df = heatmap_df.reindex(sorted_ids)
-
-    if plot_gene_list is None:
-        heatmap_df = heatmap_df.reindex(sorted_ids, axis=1)
+    if sort_results:
+        if train_pancancer:
+            heatmap_df = heatmap_df.reindex(sorted_genes)
+        else:
+            heatmap_df = heatmap_df.reindex(sorted_ids)
+        if plot_gene_list is None:
+            heatmap_df = heatmap_df.reindex(sorted_ids, axis=1)
 
     return heatmap_df, sorted_ids
 
