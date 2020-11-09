@@ -542,15 +542,21 @@ def heatmap_from_results(results_df,
 def normalize_to_control(heatmap_df,
                          train_id='train_gene',
                          test_id='test_identifier',
-                         metric='aupr'):
+                         metric='aupr',
+                         additional_cols=[]):
+
+    cols_to_keep = [train_id, test_id, metric]
+    if len(additional_cols) > 0:
+        cols_to_keep += additional_cols
+
     signal_metric = (
         heatmap_df[(heatmap_df.signal == 'signal') &
-                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+                   (heatmap_df.data_type == 'test')][cols_to_keep]
             .sort_values(by=[train_id, test_id])
     )
     shuffled_metric = (
         heatmap_df[(heatmap_df.signal == 'shuffled') &
-                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+                   (heatmap_df.data_type == 'test')][cols_to_keep]
             .sort_values(by=[train_id, test_id])
     )
     assert signal_metric[train_id].equals(shuffled_metric[train_id])
