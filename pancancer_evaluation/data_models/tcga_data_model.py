@@ -133,6 +133,16 @@ class TCGADataModel():
         Prepare to train model on a given gene/cancer type combination, and
         test on another.
 
+        This function does the following preprocessing steps:
+        1. Get mutation labels for the given train/test genes from pan-cancer
+           data
+        2. If necessary, filter the expression data and mutation labels to the
+           given cancer type, for both train and test cancer types
+        3. Make sure the expression data and mutation labels are aligned (i.e.
+           take the intersection of samples in each dataset). This step also
+           splits the data into train/test datasets.
+        4. If necessary, shuffle mutation labels
+
         For now, we'll just re-process the data for every train/test identifier
         pair, although there are probably clever ways to cache some of this
         data if the process is slow.
@@ -201,12 +211,24 @@ class TCGADataModel():
         type combination (either the same gene or a different gene). The cancer
         type in the test set will be left out of the train set.
 
+        This function does the following preprocessing steps:
+        1. Get mutation labels for the given train/test genes from pan-cancer
+           data
+        2. If necessary, filter the expression data and mutation labels to the
+           given cancer type, for both train and test cancer types
+        3. Make sure the expression data and mutation labels are aligned (i.e.
+           take the intersection of samples in each dataset). This step also
+           splits the data into train/test datasets.
+        4. If necessary, shuffle mutation labels
+
         Arguments
         ---------
         train_identifier (str): gene combination to train on
         test_identifier (str): gene/cancer type combination to test on
-        train_classification (str): 'oncogene' or 'TSG' for the training gene
-        test_classification (str): 'oncogene' or 'TSG' for the test gene
+        train_classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                                    'neither' for the training gene
+        test_classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                                   'neither' for the test gene
         output_dir (str): directory to write output to, if None don't write output
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
@@ -250,14 +272,27 @@ class TCGADataModel():
                                     test_cancer_type=None,
                                     shuffle_labels=False):
         """
-        Prepare to train model on a given gene. Preparation of test data must
-        be done later (e.g. by calling another process_* function).
+        Prepare to train model on a given gene.
+
+        This function does the following preprocessing steps:
+        1. Get mutation labels for the given gene from pan-cancer data
+        2. If necessary, filter the expression data and mutation labels to the
+           given cancer type
+        3. Make sure the expression data and mutation labels are aligned (i.e.
+           take the intersection of samples in each dataset)
+        4. If necessary, shuffle mutation labels
+
+        Note that for this function, preparation of test data must be done
+        later (e.g. by calling another process_* function).
 
         Arguments
         ---------
-        train_identifier (str): gene combination to train on
-        train_classification (str): 'oncogene' or 'TSG' for the training gene
+        train_gene (str): gene to train on
+        train_classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                                    'neither' for the training gene
         output_dir (str): directory to write output to, if None don't write output
+        test_cancer_type (str): cancer type to test on, if None don't hold out any
+                                cancer types from the training set
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
         y_train_df_raw = self._generate_labels(train_gene, train_classification,
