@@ -198,6 +198,13 @@ class TCGADataModel():
             self.y_train_df.status = y_train
             if train_identifier == test_identifier:
                 self.y_test_df.status = y_test
+                # filter true positives in training set out of test set
+                # i.e. we're testing on true negatives and false positives, we
+                # expect our model to identifiy the false positives
+                train_pos_ixs = self.y_train_df[self.y_train_df.status == 1].index
+                train_only_ixs = ~self.y_test_df.index.isin(train_pos_ixs)
+                self.y_test_df = self.y_test_df[train_only_ixs]
+                self.X_test_raw_df = self.X_test_raw_df[train_only_ixs]
 
     def process_data_for_gene_id(self,
                                  train_gene,
