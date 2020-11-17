@@ -1,7 +1,10 @@
 """
 Script to run cross-cancer classification experiments (i.e. train on one
-gene/cancer type, test on another) for all chosen combinations of gene and
-cancer type.
+gene/cancer type, test on another) with "flipped labels", or true positive
+mutation labels that are flipped to negative.
+
+This is useful as a control (i.e. the positive -> negative labeled samples
+should be identifiable by the final models).
 """
 import sys
 import argparse

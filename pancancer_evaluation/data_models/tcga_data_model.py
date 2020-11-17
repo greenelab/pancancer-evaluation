@@ -197,10 +197,11 @@ class TCGADataModel():
                                         percent_holdout)
             self.y_train_df.status = y_train
             if train_identifier == test_identifier:
-                self.y_test_df.status = y_test
+                # if we're training on the same gene/cancer type as test set,
                 # filter true positives in training set out of test set
-                # i.e. we're testing on true negatives and false positives, we
-                # expect our model to identifiy the false positives
+                # in other words, we're testing on true negatives and false
+                # positives, we expect our model to identify the false positives
+                self.y_test_df.status = y_test
                 train_pos_ixs = self.y_train_df[self.y_train_df.status == 1].index
                 train_only_ixs = ~self.y_test_df.index.isin(train_pos_ixs)
                 self.y_test_df = self.y_test_df[train_only_ixs]
