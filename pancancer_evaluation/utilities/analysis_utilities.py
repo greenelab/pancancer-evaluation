@@ -559,8 +559,16 @@ def normalize_to_control(heatmap_df,
                    (heatmap_df.data_type == 'test')][cols_to_keep]
             .sort_values(by=[train_id, test_id])
     )
-    assert signal_metric[train_id].equals(shuffled_metric[train_id])
-    assert signal_metric[test_id].equals(shuffled_metric[test_id])
+    try:
+        assert signal_metric[train_id].equals(shuffled_metric[train_id])
+        assert signal_metric[test_id].equals(shuffled_metric[test_id])
+    except AssertionError:
+        # if the lists of train/test ids aren't the same, take the intersection
+        signal_metric.set_index([train_id, test_id]+additional_cols, inplace=True)
+        shuffled_metric.set_index([train_id, test_id]+additional_cols, inplace=True)
+        overlap_ixs = signal_metric.index.intersection(shuffled_metric.index)
+        signal_metric = signal_metric.reindex(overlap_ixs).reset_index()
+        shuffled_metric = shuffled_metric.reindex(overlap_ixs).reset_index()
     signal_metric['diff'] = signal_metric['aupr'] - shuffled_metric['aupr']
     return signal_metric.drop(columns=['aupr']).rename(
             columns={'diff': 'aupr'})
