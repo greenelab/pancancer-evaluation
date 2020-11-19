@@ -127,7 +127,8 @@ class TCGADataModel():
                                      train_classification,
                                      test_classification,
                                      output_dir,
-                                     shuffle_labels=False):
+                                     shuffle_labels=False,
+                                     percent_holdout=None):
         """
         Prepare to train model on a given gene/cancer type combination, and
         test on another.
@@ -154,6 +155,8 @@ class TCGADataModel():
         test_classification (str): 'oncogene' or 'TSG' for the test gene
         output_dir (str): directory to write output to, if None don't write output
         shuffle_labels (bool): whether or not to shuffle labels (negative control)
+        percent_holdout (float): percent of test labels to flip from 1 to 0, if None
+                                 or 0.0 use the existing true labels
         """
         train_gene, train_cancer_type = train_identifier.split('_')
         test_gene, test_cancer_type = test_identifier.split('_')
@@ -187,6 +190,22 @@ class TCGADataModel():
                 self.y_train_df.status.values)
             self.y_test_df.status = np.random.permutation(
                 self.y_test_df.status.values)
+
+        if percent_holdout is not None:
+            y_train, y_test, _, __ = TCGADataModel.holdout_percent_labels(
+                                        self.y_train_df.status.values,
+                                        percent_holdout)
+            self.y_train_df.status = y_train
+            if train_identifier == test_identifier:
+                # if we're training on the same gene/cancer type as test set,
+                # filter true positives in training set out of test set
+                # in other words, we're testing on true negatives and false
+                # positives, we expect our model to identify the false positives
+                self.y_test_df.status = y_test
+                train_pos_ixs = self.y_train_df[self.y_train_df.status == 1].index
+                train_only_ixs = ~self.y_test_df.index.isin(train_pos_ixs)
+                self.y_test_df = self.y_test_df[train_only_ixs]
+                self.X_test_raw_df = self.X_test_raw_df[train_only_ixs]
 
     def process_data_for_gene_id(self,
                                  train_gene,
@@ -406,4 +425,31 @@ class TCGADataModel():
         ]
         y_df = y_df.reindex(rnaseq_df_filtered.index)
         return rnaseq_df_filtered, y_df, gene_features
+
+    @staticmethod
+    def holdout_percent_labels(y, percent_holdout):
+        """Partition vector of true positive labels into train/holdout vectors.
+
+        Labels must be a 1D (flattened) NumPy array. percent_holdout is a float
+        between 0 and 1, indicating how many true positives to remove from the
+        train set and put in the test set.
+        """
+        assert len(y.shape) == 1
+        # get nonzero indices
+        nz_ixs = np.flatnonzero(y)
+        # calculate how many to flip (at most all of them)
+        num_labels_to_flip = min(
+            int(nz_ixs.shape[0] * percent_holdout),
+            nz_ixs.shape[0]
+        )
+        # partition true positives into train/holdout sets
+        labels_to_flip = np.sort(
+            np.random.choice(nz_ixs, size=num_labels_to_flip)
+        )
+        labels_not_flipped = np.setdiff1d(nz_ixs, labels_to_flip)
+        y_train, y_test = y.copy(), y.copy()
+        y_train[labels_to_flip] = 0
+        y_test[labels_not_flipped] = 0
+        return (y_train, y_test, labels_to_flip, labels_not_flipped)
+
 

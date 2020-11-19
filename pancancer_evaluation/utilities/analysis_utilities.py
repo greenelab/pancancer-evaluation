@@ -68,6 +68,36 @@ def load_prediction_results_cc(results_dir, experiment_descriptor):
     return results_df
 
 
+def load_flip_labels_results(results_dir, experiment_descriptor):
+    """Load results of 'flip labels' experiments.
+
+    Argument
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+    train_set_descriptor (str): string describing this experiment, can be useful
+                                to segment analyses involving multiple
+                                experiments or results sets
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of classification experiments
+    """
+    results_df = pd.DataFrame()
+    for results_file in os.listdir(results_dir):
+        if os.path.isdir(results_file): continue
+        if 'classify' not in results_file: continue
+        if results_file[0] == '.': continue
+        full_results_file = os.path.join(results_dir, results_file)
+        exp_results_df = pd.read_csv(full_results_file, sep='\t')
+        exp_results_df['percent_flip'] = float(
+            results_file.split('_')[3].replace('p', '')
+        )
+        exp_results_df['experiment'] = experiment_descriptor
+        results_df = pd.concat((results_df, exp_results_df))
+    return results_df
+
+
 def generate_nonzero_coefficients(results_dir):
     """Generate coefficients from mutation prediction model fits.
 
@@ -512,19 +542,33 @@ def heatmap_from_results(results_df,
 def normalize_to_control(heatmap_df,
                          train_id='train_gene',
                          test_id='test_identifier',
-                         metric='aupr'):
+                         metric='aupr',
+                         additional_cols=[]):
+
+    cols_to_keep = [train_id, test_id, metric]
+    if len(additional_cols) > 0:
+        cols_to_keep += additional_cols
+
     signal_metric = (
         heatmap_df[(heatmap_df.signal == 'signal') &
-                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+                   (heatmap_df.data_type == 'test')][cols_to_keep]
             .sort_values(by=[train_id, test_id])
     )
     shuffled_metric = (
         heatmap_df[(heatmap_df.signal == 'shuffled') &
-                   (heatmap_df.data_type == 'test')][[train_id, test_id, metric]]
+                   (heatmap_df.data_type == 'test')][cols_to_keep]
             .sort_values(by=[train_id, test_id])
     )
-    assert signal_metric[train_id].equals(shuffled_metric[train_id])
-    assert signal_metric[test_id].equals(shuffled_metric[test_id])
+    try:
+        assert signal_metric[train_id].equals(shuffled_metric[train_id])
+        assert signal_metric[test_id].equals(shuffled_metric[test_id])
+    except AssertionError:
+        # if the lists of train/test ids aren't the same, take the intersection
+        signal_metric.set_index([train_id, test_id]+additional_cols, inplace=True)
+        shuffled_metric.set_index([train_id, test_id]+additional_cols, inplace=True)
+        overlap_ixs = signal_metric.index.intersection(shuffled_metric.index)
+        signal_metric = signal_metric.reindex(overlap_ixs).reset_index()
+        shuffled_metric = shuffled_metric.reindex(overlap_ixs).reset_index()
     signal_metric['diff'] = signal_metric['aupr'] - shuffled_metric['aupr']
     return signal_metric.drop(columns=['aupr']).rename(
             columns={'diff': 'aupr'})
