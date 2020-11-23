@@ -427,29 +427,87 @@ class TCGADataModel():
         return rnaseq_df_filtered, y_df, gene_features
 
     @staticmethod
-    def holdout_percent_labels(y, percent_holdout):
+    def holdout_percent_labels(y,
+                               percent_holdout,
+                               holdout_class='both',
+                               seed=1):
         """Partition vector of true positive labels into train/holdout vectors.
 
-        Labels must be a 1D (flattened) NumPy array. percent_holdout is a float
-        between 0 and 1, indicating how many true positives to remove from the
-        train set and put in the test set.
-        """
-        assert len(y.shape) == 1
-        # get nonzero indices
-        nz_ixs = np.flatnonzero(y)
-        # calculate how many to flip (at most all of them)
-        num_labels_to_flip = min(
-            int(nz_ixs.shape[0] * percent_holdout),
-            nz_ixs.shape[0]
-        )
-        # partition true positives into train/holdout sets
-        labels_to_flip = np.sort(
-            np.random.choice(nz_ixs, size=num_labels_to_flip)
-        )
-        labels_not_flipped = np.setdiff1d(nz_ixs, labels_to_flip)
-        y_train, y_test = y.copy(), y.copy()
-        y_train[labels_to_flip] = 0
-        y_test[labels_not_flipped] = 0
-        return (y_train, y_test, labels_to_flip, labels_not_flipped)
+        Arguments
+        ---------
+        y (np.array): 1D (flattened) array of all labels
+        percent_holdout (float): percent of data to holdout, between 0 and 1
+        holdout_class (str): one of 'positive', 'negative', 'both'
+        seed (int): seed for numpy.random
 
+        Returns
+        -------
+        y_train (np.array): training labels
+        y_test (np.array): test labels
+        train_ixs (np.array): indexes of training labels in original dataset
+        test_ixs (np.array): indexes of test labels in original dataset
+        """
+        assert len(y.shape) == 1, 'labels must be flattened'
+        np.random.seed(seed)
+        train_ixs = np.zeros((y.shape[0],)).astype('bool')
+        test_ixs = np.copy(train_ixs)
+        z_ixs = (y == 0)
+        if holdout_class in ['negative', 'both']:
+            # calculate total number of negative labels
+            num_z = np.count_nonzero(z_ixs)
+            # calculate how many negatives to hold out (at most all of them)
+            z_num_labels_to_holdout = min(int(num_z * percent_holdout), num_z)
+            # get bool index for zeros/negative samples to hold out
+            # TODO: these variable names are terrible
+            holdout_ixs = np.concatenate((
+                np.ones((z_num_labels_to_holdout,)),
+                np.zeros((num_z-z_num_labels_to_holdout,))
+            )).astype('bool')
+            np.random.shuffle(holdout_ixs)
+            z_train_ixs = np.copy(z_ixs)
+            z_train_ixs[z_ixs] = ~holdout_ixs
+            z_holdout_ixs = np.copy(z_ixs)
+            z_holdout_ixs[z_ixs] = holdout_ixs
+            # set train/test indices to output using logical or
+            # (we default train_ixs to False above, so this should work)
+            train_ixs ^= z_train_ixs
+            test_ixs ^= z_holdout_ixs
+        else:
+            # all negative samples go in train and test set
+            train_ixs ^= z_ixs
+            test_ixs ^= z_ixs
+        if holdout_class in ['positive', 'both']:
+            # calculate total number of positive labels
+            nz_ixs = ~z_ixs
+            num_nz = np.count_nonzero(nz_ixs)
+            # calculate how many positives to hold out (at most all of them)
+            nz_num_labels_to_holdout = min(int(num_nz * percent_holdout),
+                                           num_nz)
+            # get bool index for ones/positive samples to hold out
+            holdout_ixs = np.concatenate((
+                np.ones((nz_num_labels_to_holdout,)),
+                np.zeros((num_nz-nz_num_labels_to_holdout,))
+            )).astype('bool')
+            np.random.shuffle(holdout_ixs)
+            nz_train_ixs = np.copy(nz_ixs)
+            nz_train_ixs[nz_ixs] = ~holdout_ixs
+            nz_holdout_ixs = np.copy(nz_ixs)
+            nz_holdout_ixs[nz_ixs] = holdout_ixs
+            # set train/test indices to output using logical or
+            # (we default train_ixs to False above, so this should work)
+            train_ixs ^= nz_train_ixs
+            test_ixs ^= nz_holdout_ixs
+        else:
+            # all positive samples go in train and test set
+            train_ixs ^= nz_ixs
+            test_ixs ^= nz_ixs
+        return (y[train_ixs], y[test_ixs], train_ixs, test_ixs)
+
+if __name__ == '__main__':
+    y = np.array([0, 1, 0, 1, 0, 1])
+    percent_holdout = 0.34
+    y_train, y_test, train_ixs, test_ixs = TCGADataModel.holdout_percent_labels(
+        y, percent_holdout, holdout_class='positive', seed=2)
+    print(train_ixs)
+    print(test_ixs)
 
