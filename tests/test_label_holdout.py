@@ -21,8 +21,10 @@ def test_holdout(sim_labels, percent_holdout, holdout_class):
     count_one = np.count_nonzero(y)
     count_zero = y.shape[0] - count_one
 
-    y_train, y_test, train_ixs, test_ixs = TCGADataModel.holdout_percent_labels(
+    train_ixs, test_ixs = TCGADataModel.holdout_percent_labels(
         y, percent_holdout, holdout_class=holdout_class)
+    y_train = y[train_ixs]
+    y_test = y[test_ixs]
 
     # first, test that the overlap of the train_ixs and test_ixs is 1
     assert np.array_equal(train_ixs | test_ixs,

@@ -128,7 +128,8 @@ class TCGADataModel():
                                      test_classification,
                                      output_dir,
                                      shuffle_labels=False,
-                                     percent_holdout=None):
+                                     percent_holdout=None,
+                                     holdout_class='both'):
         """
         Prepare to train model on a given gene/cancer type combination, and
         test on another.
@@ -192,20 +193,18 @@ class TCGADataModel():
                 self.y_test_df.status.values)
 
         if percent_holdout is not None:
-            y_train, y_test, _, __ = TCGADataModel.holdout_percent_labels(
-                                        self.y_train_df.status.values,
-                                        percent_holdout)
-            self.y_train_df.status = y_train
+            train_ixs, test_ixs = TCGADataModel.holdout_percent_labels(
+                                             self.y_train_df.status.values,
+                                             percent_holdout,
+                                             holdout_class=holdout_class,
+                                             seed=self.seed)
+            self.y_train_df = self.y_train_df.loc[train_ixs, :]
+            self.X_train_raw_df = self.X_train_raw_df.loc[train_ixs, :]
             if train_identifier == test_identifier:
                 # if we're training on the same gene/cancer type as test set,
-                # filter true positives in training set out of test set
-                # in other words, we're testing on true negatives and false
-                # positives, we expect our model to identify the false positives
-                self.y_test_df.status = y_test
-                train_pos_ixs = self.y_train_df[self.y_train_df.status == 1].index
-                train_only_ixs = ~self.y_test_df.index.isin(train_pos_ixs)
-                self.y_test_df = self.y_test_df[train_only_ixs]
-                self.X_test_raw_df = self.X_test_raw_df[train_only_ixs]
+                # filter the test set too
+                self.y_test_df = self.y_test_df.loc[test_ixs, :]
+                self.X_test_raw_df = self.X_test_raw_df.loc[test_ixs, :]
 
     def process_data_for_gene_id(self,
                                  train_gene,
@@ -442,8 +441,6 @@ class TCGADataModel():
 
         Returns
         -------
-        y_train (np.array): training labels
-        y_test (np.array): test labels
         train_ixs (np.array): indexes of training labels in original dataset
         test_ixs (np.array): indexes of test labels in original dataset
         """
@@ -453,6 +450,7 @@ class TCGADataModel():
         test_ixs = np.copy(train_ixs)
         z_ixs = (y == 0)
         nz_ixs = ~z_ixs
+        # TODO: everything in here can probably be split into a function
         if holdout_class in ['negative', 'both']:
             # calculate total number of negative labels
             num_z = np.count_nonzero(z_ixs)
@@ -501,13 +499,5 @@ class TCGADataModel():
             # all positive samples go in train and test set
             train_ixs |= nz_ixs
             test_ixs |= nz_ixs
-        return (y[train_ixs], y[test_ixs], train_ixs, test_ixs)
-
-if __name__ == '__main__':
-    y = np.array([0, 1, 0, 1, 0, 1])
-    percent_holdout = 0.34
-    y_train, y_test, train_ixs, test_ixs = TCGADataModel.holdout_percent_labels(
-        y, percent_holdout, holdout_class='positive', seed=2)
-    print(train_ixs)
-    print(test_ixs)
+        return (train_ixs, test_ixs)
 
