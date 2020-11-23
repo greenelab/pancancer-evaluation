@@ -452,6 +452,7 @@ class TCGADataModel():
         train_ixs = np.zeros((y.shape[0],)).astype('bool')
         test_ixs = np.copy(train_ixs)
         z_ixs = (y == 0)
+        nz_ixs = ~z_ixs
         if holdout_class in ['negative', 'both']:
             # calculate total number of negative labels
             num_z = np.count_nonzero(z_ixs)
@@ -470,15 +471,14 @@ class TCGADataModel():
             z_holdout_ixs[z_ixs] = holdout_ixs
             # set train/test indices to output using logical or
             # (we default train_ixs to False above, so this should work)
-            train_ixs ^= z_train_ixs
-            test_ixs ^= z_holdout_ixs
+            train_ixs |= z_train_ixs
+            test_ixs |= z_holdout_ixs
         else:
             # all negative samples go in train and test set
-            train_ixs ^= z_ixs
-            test_ixs ^= z_ixs
+            train_ixs |= z_ixs
+            test_ixs |= z_ixs
         if holdout_class in ['positive', 'both']:
             # calculate total number of positive labels
-            nz_ixs = ~z_ixs
             num_nz = np.count_nonzero(nz_ixs)
             # calculate how many positives to hold out (at most all of them)
             nz_num_labels_to_holdout = min(int(num_nz * percent_holdout),
@@ -495,12 +495,12 @@ class TCGADataModel():
             nz_holdout_ixs[nz_ixs] = holdout_ixs
             # set train/test indices to output using logical or
             # (we default train_ixs to False above, so this should work)
-            train_ixs ^= nz_train_ixs
-            test_ixs ^= nz_holdout_ixs
+            train_ixs |= nz_train_ixs
+            test_ixs |= nz_holdout_ixs
         else:
             # all positive samples go in train and test set
-            train_ixs ^= nz_ixs
-            test_ixs ^= nz_ixs
+            train_ixs |= nz_ixs
+            test_ixs |= nz_ixs
         return (y[train_ixs], y[test_ixs], train_ixs, test_ixs)
 
 if __name__ == '__main__':
