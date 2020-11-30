@@ -454,25 +454,27 @@ class TCGADataModel():
         test_ixs = np.copy(train_ixs)
         z_ixs = (y == 0)
         nz_ixs = ~z_ixs
-        # TODO: everything in here can probably be split into a function
+        # TODO: the train/test split code is pretty similar between positive
+        # and negative samples, maybe we can make this into a shared function
         if holdout_class in ['negative', 'both']:
             # calculate total number of negative labels
             num_z = np.count_nonzero(z_ixs)
             # calculate how many negatives to hold out (at most all of them)
             z_num_labels_to_holdout = min(int(num_z * percent_holdout), num_z)
             # get bool index for zeros/negative samples to hold out
-            # TODO: these variable names are terrible
             holdout_ixs = np.concatenate((
                 np.ones((z_num_labels_to_holdout,)),
                 np.zeros((num_z-z_num_labels_to_holdout,))
             )).astype('bool')
             np.random.shuffle(holdout_ixs)
+            # either include or don't include zeros in train/holdout sets,
+            # based on what we selected in holdout_ixs above
             z_train_ixs = np.copy(z_ixs)
             z_train_ixs[z_ixs] = ~holdout_ixs
             z_holdout_ixs = np.copy(z_ixs)
             z_holdout_ixs[z_ixs] = holdout_ixs
-            # set train/test indices to output using logical or
-            # (we default train_ixs to False above, so this should work)
+            # then set train/test indices using logical or
+            # (we default train_ixs to False above, so logical or should work)
             train_ixs |= z_train_ixs
             test_ixs |= z_holdout_ixs
         else:
@@ -491,12 +493,14 @@ class TCGADataModel():
                 np.zeros((num_nz-nz_num_labels_to_holdout,))
             )).astype('bool')
             np.random.shuffle(holdout_ixs)
+            # either include or don't include nonzeros in train/holdout sets,
+            # based on what we selected in holdout_ixs above
             nz_train_ixs = np.copy(nz_ixs)
             nz_train_ixs[nz_ixs] = ~holdout_ixs
             nz_holdout_ixs = np.copy(nz_ixs)
             nz_holdout_ixs[nz_ixs] = holdout_ixs
-            # set train/test indices to output using logical or
-            # (we default train_ixs to False above, so this should work)
+            # then set train/test indices using logical or
+            # (we default train_ixs to False above, so logical or should work)
             train_ixs |= nz_train_ixs
             test_ixs |= nz_holdout_ixs
         else:
