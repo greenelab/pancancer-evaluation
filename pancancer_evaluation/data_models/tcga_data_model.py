@@ -129,7 +129,8 @@ class TCGADataModel():
                                      output_dir,
                                      shuffle_labels=False,
                                      percent_holdout=None,
-                                     holdout_class='both'):
+                                     holdout_class='both',
+                                     shuffle_train=False):
         """
         Prepare to train model on a given gene/cancer type combination, and
         test on another.
@@ -205,6 +206,9 @@ class TCGADataModel():
                 # filter the test set too
                 self.y_test_df = self.y_test_df.loc[test_ixs, :]
                 self.X_test_raw_df = self.X_test_raw_df.loc[test_ixs, :]
+            if shuffle_train:
+                self.y_train_df.status = np.random.permutation(
+                    self.y_train_df.status.values)
 
     def process_data_for_gene_id(self,
                                  train_gene,

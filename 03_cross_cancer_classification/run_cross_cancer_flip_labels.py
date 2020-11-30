@@ -46,6 +46,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--shuffle_train', action='store_true')
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
@@ -133,7 +134,8 @@ if __name__ == '__main__':
                                                            output_dir,
                                                            shuffle_labels,
                                                            percent_holdout=percent_holdout,
-                                                           holdout_class=args.holdout_class)
+                                                           holdout_class=args.holdout_class,
+                                                           shuffle_train=args.shuffle_train)
                 except (KeyError, IndexError) as e:
                     # this might happen if the given gene isn't in the mutation data
                     # (or has a different alias, TODO check for this later)
