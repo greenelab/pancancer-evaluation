@@ -35,6 +35,9 @@ def process_args():
     p = argparse.ArgumentParser()
     p.add_argument('--debug', action='store_true',
                    help='use subset of data for fast debugging')
+    p.add_argument('--holdout_class', default='both',
+                   choices=['both', 'positive', 'negative'],
+                   help='class to hold out if holdout_percent_vals is included')
     p.add_argument('--holdout_percent_vals', nargs='+', default=[0.2], type=float,
                    help='percent of labels to hold out of test set, '
                         'float between 0 and 1')
@@ -43,6 +46,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--shuffle_train', action='store_true')
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
@@ -129,7 +133,9 @@ if __name__ == '__main__':
                                                            classification,
                                                            output_dir,
                                                            shuffle_labels,
-                                                           percent_holdout=percent_holdout)
+                                                           percent_holdout=percent_holdout,
+                                                           holdout_class=args.holdout_class,
+                                                           shuffle_train=args.shuffle_train)
                 except (KeyError, IndexError) as e:
                     # this might happen if the given gene isn't in the mutation data
                     # (or has a different alias, TODO check for this later)

@@ -572,3 +572,19 @@ def normalize_to_control(heatmap_df,
     signal_metric['diff'] = signal_metric['aupr'] - shuffled_metric['aupr']
     return signal_metric.drop(columns=['aupr']).rename(
             columns={'diff': 'aupr'})
+
+
+def get_proportion_info(input_df, results_dir):
+    unique_genes = input_df.gene.unique()
+    proportion_df = pd.DataFrame()
+    for gene in unique_genes:
+        count_file = os.path.join(results_dir,
+                                  '{}_filtered_cancertypes.tsv'.format(gene))
+        count_df = pd.read_csv(count_file, sep='\t')
+        count_df['identifier'] =  gene + '_' + count_df.DISEASE
+        proportion_df = pd.concat((proportion_df, count_df))
+    output_df = (
+        input_df.merge(proportion_df, how='inner', on='identifier')
+                .drop(columns=['DISEASE', 'disease_included'])
+    )
+    return output_df
