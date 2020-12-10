@@ -45,6 +45,7 @@ def process_args():
                    help='name of file to log skipped cancer types to')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
+    p.add_argument('--save_counts', action='store_true')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--shuffle_train', action='store_true')
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
@@ -169,6 +170,17 @@ if __name__ == '__main__':
                     )
                     fu.write_log_file(log_df, args.log_file)
                     continue
+                except NoTestSamplesError:
+                    if args.verbose:
+                        print('Skipping due to no test samples: test identifier {}'.format(
+                              identifier), file=sys.stderr)
+                    log_df = fu.generate_log_df(
+                        log_columns,
+                        [identifier, percent_holdout,
+                         shuffle_labels, 'no_test_samples']
+                    )
+                    fu.write_log_file(log_df, args.log_file)
+                    continue
                 except OneClassError:
                     if args.verbose:
                         print('Skipping due to one holdout class: train identifier {}'.format(
@@ -239,6 +251,23 @@ if __name__ == '__main__':
                                                  identifier,
                                                  shuffle_labels,
                                                  percent_holdout=percent_holdout)
+                    if args.save_counts:
+                        nz_train_count = np.count_nonzero(tcga_data.y_train_df.status)
+                        nz_test_count = np.count_nonzero(tcga_data.y_test_df.status)
+                        zero_train_count = tcga_data.y_train_df.shape[0] - nz_train_count
+                        zero_test_count = tcga_data.y_test_df.shape[0] - nz_test_count
+                        counts_df = fu.generate_counts_df(identifier,
+                                                          shuffle_labels,
+                                                          percent_holdout,
+                                                          zero_train_count,
+                                                          nz_train_count,
+                                                          zero_test_count,
+                                                          nz_test_count)
+                        fu.write_counts_file(
+                            counts_df,
+                            Path(output_dir,
+                                '{}_counts.tsv'.format(identifier))
+                        )
 
                 if log_df is not None:
                     fu.write_log_file(log_df, args.log_file)
