@@ -588,3 +588,26 @@ def get_proportion_info(input_df, results_dir):
                 .drop(columns=['DISEASE', 'disease_included'])
     )
     return output_df
+
+
+def get_count_info(input_df, results_dir):
+    unique_identifiers = input_df.identifier.unique()
+    all_counts_df = pd.DataFrame()
+    for identifier in unique_identifiers:
+        counts_file = os.path.join(results_dir,
+                                   '{}_counts.tsv'.format(identifier))
+        counts_df = (
+            pd.read_csv(counts_file, sep='\t')
+              .query('shuffle_labels == True')
+              .assign(holdout_count=lambda x: x.zero_test_count+x.nz_test_count)
+              .drop(columns=['zero_train_count', 'nz_train_count',
+                             'zero_test_count', 'nz_test_count',
+                             'shuffle_labels', 'Unnamed: 0'])
+              .rename(columns={'percent_holdout': 'percent_flip'})
+        )
+        all_counts_df = pd.concat((all_counts_df, counts_df))
+    output_df = (
+        input_df.merge(all_counts_df, how='inner',
+                       on=['identifier', 'percent_flip'])
+    )
+    return output_df
