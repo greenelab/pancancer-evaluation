@@ -133,9 +133,38 @@ def generate_log_df(log_columns, log_values):
     return pd.DataFrame(dict(zip(log_columns, log_values)), index=[0])
 
 
+def generate_counts_df(identifier,
+                       shuffle_labels,
+                       percent_holdout,
+                       zero_train_count,
+                       nz_train_count,
+                       zero_test_count,
+                       nz_test_count):
+    """Generate and format label counts information."""
+    df_cols = {
+        'identifier': identifier,
+        'shuffle_labels': shuffle_labels,
+        'percent_holdout': percent_holdout,
+        'zero_train_count': zero_train_count,
+        'nz_train_count': nz_train_count,
+        'zero_test_count': zero_test_count,
+        'nz_test_count': nz_test_count
+    }
+    return pd.DataFrame(df_cols, index=[1])
+
+
 def write_log_file(log_df, log_file):
     """Append log output to log file."""
     log_df.to_csv(log_file, mode='a', sep='\t', index=False, header=False)
+
+
+def write_counts_file(counts_df, counts_file):
+    """Append counts output to file."""
+    if counts_file.is_file():
+        counts_df.to_csv(counts_file, mode='a', sep='\t', header=False)
+    else:
+        # if the file doesn't exist, write the header
+        counts_df.to_csv(counts_file, mode='a', sep='\t')
 
 
 def make_gene_dir(results_dir, gene, use_pancancer_cv, use_pancancer_only):
