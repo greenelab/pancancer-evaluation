@@ -90,7 +90,7 @@ def load_flip_labels_results(results_dir, experiment_descriptor):
         if results_file[0] == '.': continue
         full_results_file = os.path.join(results_dir, results_file)
         exp_results_df = pd.read_csv(full_results_file, sep='\t')
-        exp_results_df['percent_flip'] = float(
+        exp_results_df['percent_holdout'] = float(
             results_file.split('_')[3].replace('p', '')
         )
         exp_results_df['experiment'] = experiment_descriptor
@@ -603,11 +603,10 @@ def get_count_info(input_df, results_dir):
               .drop(columns=['zero_train_count', 'nz_train_count',
                              'zero_test_count', 'nz_test_count',
                              'shuffle_labels', 'Unnamed: 0'])
-              .rename(columns={'percent_holdout': 'percent_flip'})
         )
         all_counts_df = pd.concat((all_counts_df, counts_df))
     output_df = (
         input_df.merge(all_counts_df, how='inner',
-                       on=['identifier', 'percent_flip'])
+                       on=['identifier', 'percent_holdout'])
     )
     return output_df
