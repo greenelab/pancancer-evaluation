@@ -58,3 +58,7 @@ cross_cancer_genes = [
 cross_cancer_types = [
     'THCA', 'COAD', 'GBM', 'LGG', 'SKCM'
 ]
+
+# parameters for "add cancer" experiments
+num_train_cancer_types = [0, 1, 2, 4, -1]
+similarity_matrix_file = data_dir / 'expression_confusion_matrix.tsv'

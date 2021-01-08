@@ -330,6 +330,76 @@ class TCGADataModel():
             self.y_train_df.status = np.random.permutation(
                 self.y_train_df.status.values)
 
+
+    def process_data_for_gene_and_cancer(self,
+                                         train_gene,
+                                         train_classification,
+                                         test_cancer_type,
+                                         output_dir,
+                                         num_train_cancer_types=0,
+                                         how_to_add='random',
+                                         shuffle_labels=False):
+        """
+        Prepare to train model on a given gene, to predict on a given cancer
+        type.
+
+        This function does the following preprocessing steps:
+        1. Get mutation labels for the given gene from pan-cancer data
+        2. If necessary, filter the expression data and mutation labels to the
+           given cancer type
+        3. Make sure the expression data and mutation labels are aligned (i.e.
+           take the intersection of samples in each dataset)
+        4. If necessary, shuffle mutation labels
+
+        Note that for this function, preparation of test data must be done
+        later (e.g. by calling another process_* function).
+
+        Arguments
+        ---------
+        gene (str): gene to train/evaluate model on
+        classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                              'neither' for the provided gene
+        test_cancer_type (str): cancer type to hold out
+        output_dir (str): directory to write output to, if None don't write output
+        num_train_cancer_types (int): number of cancer types besides the test
+                                      cancer to add to the training set. If 0,
+                                      only use the test cancer. If -1, use all
+                                      valid cancer types (resulting in a
+                                      "pan-cancer" model).
+        how_to_add (str): how to choose cancer types to add to the training
+                          set. 'random' adds them in a random order, 'similarity'
+                          ranks valid cancers by some precomputed similarity
+                          metric (specified in cfg.similarity_matrix) to the
+                          target cancer type.
+        shuffle_labels (bool): whether or not to shuffle labels (negative control)
+        """
+        y_df_raw = self._generate_labels(gene, classification, output_dir)
+
+        # for these experiments we don't use cancer type covariate
+        cancer_types_to_add = self._get_cancers_to_add(
+            y_train_df_raw,
+            num_train_cancer_types,
+            how_to_add
+        )
+        filtered_data = self._filter_data_for_gene_and_train_cancers(
+            self.rnaseq_df,
+            y_train_df_raw,
+            cancer_types_to_add
+        )
+
+        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        if shuffle_labels:
+            y_filtered_df.status = np.random.permutation(
+                y_filtered_df.status.values)
+
+        self.X_df = rnaseq_filtered_df
+        self.y_df = y_filtered_df
+        self.gene_features = gene_features
+
+        # TODO: split into train and test here
+
+
     def _load_data(self, debug=False, test=False):
         """Load and store relevant data.
 
@@ -508,4 +578,76 @@ class TCGADataModel():
             train_ixs |= nz_ixs
             test_ixs |= nz_ixs
         return (train_ixs, test_ixs)
+
+    @staticmethod
+    def _get_cancers_to_add(y_df,
+                            test_cancer_type,
+                            num_cancer_types,
+                            how_to_add,
+                            similarity_matrix=None):
+
+        # start with test cancer type and add if necessary
+        train_cancer_types = [test_cancer_type]
+        # y_df should already be filtered to valid cancer types
+        valid_cancer_types = [ct for ct in y_df.DISEASE.unique()
+                                 if ct != test_cancer_type]
+
+        if num_cancer_types == -1:
+            # pan-cancer model, train on all valid cancer types
+            train_cancer_types += valid_cancer_types
+        else:
+            # add desired number of cancer types to train set
+            if how_to_add == 'random':
+                # choose cancer types to add at random
+                train_cancer_types += list(
+                    np.random.choice(valid_cancer_types,
+                                     size=(num_cancer_types,),
+                                     replace=False)
+                )
+            elif how_to_add == 'similarity':
+                # use rows of similarity matrix to rank cancer types
+                # sim_df = pd.read_csv(config.similarity_matrix_file,
+                #                      sep='\t')
+                sim_df = similarity_matrix
+                # sort descending since we want high similarity
+                cancer_type_rank = (
+                    sim_df.loc[test_cancer_type, :]
+                          .drop(labels=test_cancer_type)
+                          .sort_values(ascending=False)
+                          .index
+                )
+                print(cancer_type_rank)
+                print(sim_df.loc[test_cancer_type, :].sort_values(ascending=False))
+                train_cancer_types += list(cancer_type_rank[:num_cancer_types])
+        # else use single-cancer model
+        # (don't need to add to train_cancer_types)
+
+        return train_cancer_types
+
+if __name__ == '__main__':
+    y_df = pd.DataFrame({
+        'status': [1, 0, 1, 0, 1, 0, 1, 0],
+        'DISEASE': ['LUSC', 'LUSC', 'LUAD', 'BRCA', 'BRCA', 'BRCA', 'THCA', 'THCA']
+    })
+    print(y_df)
+    test_cancer_type = 'BRCA'
+    valid_cancer_types = y_df.DISEASE.unique()
+    similarity_matrix = pd.DataFrame(
+        np.random.uniform(size=len(valid_cancer_types)**2).reshape((-1, len(valid_cancer_types))),
+        index=valid_cancer_types,
+        columns=valid_cancer_types
+    )
+    print(similarity_matrix)
+    # ct = TCGADataModel._get_cancers_to_add(y_df,
+    #                                        test_cancer_type,
+    #                                        num_cancer_types=1,
+    #                                        how_to_add='random')
+    ct = TCGADataModel._get_cancers_to_add(y_df,
+                                           test_cancer_type,
+                                           num_cancer_types=1,
+                                           how_to_add='similarity',
+                                           similarity_matrix=similarity_matrix)
+    print(test_cancer_type)
+    print(ct)
+
 
