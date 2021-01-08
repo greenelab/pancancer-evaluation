@@ -10,8 +10,7 @@ class NoTrainSamplesError(Exception):
     This allows calling scripts to choose how to handle this case (e.g. to
     print an error message and continue, or to abort execution).
     """
-    def __init__(self, *args):
-        super().__init__(*args)
+    pass
 
 
 class NoTestSamplesError(Exception):
@@ -22,8 +21,7 @@ class NoTestSamplesError(Exception):
     This allows calling scripts to choose how to handle this case (e.g. to
     print an error message and continue, or to abort execution).
     """
-    def __init__(self, *args):
-        super().__init__(*args)
+    pass
 
 
 class OneClassError(Exception):
@@ -34,8 +32,7 @@ class OneClassError(Exception):
     This allows calling scripts to choose how to handle this case (e.g. to
     print an error message and continue, or to abort execution).
     """
-    def __init__(self, *args):
-        super().__init__(*args)
+    pass
 
 
 class ResultsFileExistsError(Exception):
@@ -46,6 +43,16 @@ class ResultsFileExistsError(Exception):
     This allows calling scripts to choose how to handle this case (e.g. to
     print an error message and continue, or to abort execution).
     """
-    def __init__(self, *args):
-        super().__init__(*args)
+    pass
+
+
+class GenesNotFoundError(Exception):
+    """
+    Custom exception to raise when genes provided for classification are not
+    part of existing datasets with oncogene/TSG info.
+
+    This allows calling scripts to choose how to handle this case (e.g. to
+    print an error message and continue, or to abort execution).
+    """
+    pass
 

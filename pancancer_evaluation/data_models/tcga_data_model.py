@@ -73,13 +73,22 @@ class TCGADataModel():
         elif gene_set == 'vogelstein':
             genes_df = du.load_vogelstein()
         else:
+            from pancancer_evaluation.exceptions import GenesNotFoundError
             assert isinstance(gene_set, typing.List)
             genes_df = du.load_vogelstein()
-            if gene in genes_df.gene:
+            # if all genes in gene_set are in vogelstein dataset, use it
+            if set(gene_set).issubset(set(genes_df.gene.values)):
                 genes_df = genes_df[genes_df.gene.isin(gene_set)]
+            # else if all genes in gene_set are in top50 dataset, use it
             else:
-                genes_df = load_top_50()
-                genes_df = genes_df[genes_df.gene.isin(gene_set)]
+                genes_df = du.load_top_50()
+                if set(gene_set).issubset(set(genes_df.gene.values)):
+                    genes_df = genes_df[genes_df.gene.isin(gene_set)]
+                else:
+                # else throw an error
+                    raise GenesNotFoundError(
+                        'Gene list was not a subset of Vogelstein or top50'
+                    )
 
         return genes_df
 
@@ -332,8 +341,8 @@ class TCGADataModel():
 
 
     def process_data_for_gene_and_cancer(self,
-                                         train_gene,
-                                         train_classification,
+                                         gene,
+                                         classification,
                                          test_cancer_type,
                                          output_dir,
                                          num_train_cancer_types=0,
@@ -375,19 +384,37 @@ class TCGADataModel():
         """
         y_df_raw = self._generate_labels(gene, classification, output_dir)
 
-        # for these experiments we don't use cancer type covariate
+        if how_to_add == 'similarity':
+            similarity_matrix = pd.read_csv(config.similarity_matrix_file,
+                                            sep='\t')
+        else:
+            similarity_matrix = None
+
         cancer_types_to_add = self._get_cancers_to_add(
-            y_train_df_raw,
+            y_df_raw,
+            test_cancer_type,
             num_train_cancer_types,
-            how_to_add
+            how_to_add,
+            similarity_matrix=similarity_matrix
         )
+
+        # TODO: move to unit test?
+        assert test_cancer_type in cancer_types_to_add
+        if num_train_cancer_types >= 0:
+            assert len(cancer_types_to_add) == num_train_cancer_types + 1
+
         filtered_data = self._filter_data_for_gene_and_train_cancers(
             self.rnaseq_df,
-            y_train_df_raw,
-            cancer_types_to_add
+            y_df_raw,
+            cancer_types_to_add,
+            # add cancer type covariate if more than one cancer type to add
+            (len(cancer_types_to_add) > 1)
         )
 
         rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        # TODO: move to unit test?
+        assert set(y_filtered_df.DISEASE.unique()) == set(cancer_types_to_add)
 
         if shuffle_labels:
             y_filtered_df.status = np.random.permutation(
@@ -396,8 +423,6 @@ class TCGADataModel():
         self.X_df = rnaseq_filtered_df
         self.y_df = y_filtered_df
         self.gene_features = gene_features
-
-        # TODO: split into train and test here
 
 
     def _load_data(self, debug=False, test=False):
@@ -498,6 +523,30 @@ class TCGADataModel():
         ]
         y_df = y_df.reindex(rnaseq_df_filtered.index)
         return rnaseq_df_filtered, y_df, gene_features
+
+    def _filter_data_for_gene_and_train_cancers(self,
+                                                rnaseq_df,
+                                                y_df,
+                                                cancer_types_to_add,
+                                                add_cancertype_covariate):
+        use_samples, rnaseq_df, y_df, gene_features = align_matrices(
+            x_file_or_df=rnaseq_df,
+            y=y_df,
+            # assume we're training on a single cancer, so no cancer type covariate
+            add_cancertype_covariate=add_cancertype_covariate,
+            add_mutation_covariate=True
+        )
+        cancer_type_sample_ids = (
+            self.sample_info_df.loc[
+                self.sample_info_df.cancer_type.isin(cancer_types_to_add)
+            ].index
+        )
+        rnaseq_df_filtered = rnaseq_df.loc[
+            rnaseq_df.index.intersection(cancer_type_sample_ids), :
+        ]
+        y_df = y_df.reindex(rnaseq_df_filtered.index)
+        return rnaseq_df_filtered, y_df, gene_features
+
 
     @staticmethod
     def holdout_percent_labels(y,
