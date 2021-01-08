@@ -595,7 +595,7 @@ class TCGADataModel():
         if num_cancer_types == -1:
             # pan-cancer model, train on all valid cancer types
             train_cancer_types += valid_cancer_types
-        else:
+        elif num_cancer_types >= 1:
             # add desired number of cancer types to train set
             if how_to_add == 'random':
                 # choose cancer types to add at random
@@ -609,22 +609,28 @@ class TCGADataModel():
                 # sim_df = pd.read_csv(config.similarity_matrix_file,
                 #                      sep='\t')
                 sim_df = similarity_matrix
+                # drop labels that aren't in valid cancer types
+                # this includes test cancer type, we've already added it
+                labels_to_drop = list(
+                    set(sim_df.columns) - set(valid_cancer_types)
+                )
                 # sort descending since we want high similarity
                 cancer_type_rank = (
                     sim_df.loc[test_cancer_type, :]
-                          .drop(labels=test_cancer_type)
+                          .drop(labels=labels_to_drop)
                           .sort_values(ascending=False)
                           .index
                 )
                 print(cancer_type_rank)
                 print(sim_df.loc[test_cancer_type, :].sort_values(ascending=False))
                 train_cancer_types += list(cancer_type_rank[:num_cancer_types])
-        # else use single-cancer model
+        # if num_cancer_types==0, use single-cancer model
         # (don't need to add to train_cancer_types)
 
         return train_cancer_types
 
 if __name__ == '__main__':
+    np.random.seed(cfg.default_seed)
     y_df = pd.DataFrame({
         'status': [1, 0, 1, 0, 1, 0, 1, 0],
         'DISEASE': ['LUSC', 'LUSC', 'LUAD', 'BRCA', 'BRCA', 'BRCA', 'THCA', 'THCA']
@@ -644,7 +650,7 @@ if __name__ == '__main__':
     #                                        how_to_add='random')
     ct = TCGADataModel._get_cancers_to_add(y_df,
                                            test_cancer_type,
-                                           num_cancer_types=1,
+                                           num_cancer_types=2,
                                            how_to_add='similarity',
                                            similarity_matrix=similarity_matrix)
     print(test_cancer_type)
