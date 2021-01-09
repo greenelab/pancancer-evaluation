@@ -232,6 +232,32 @@ def check_cross_cancer_file(output_dir,
     return check_file
 
 
+def check_add_cancer_file(gene_dir,
+                          gene,
+                          test_cancer_type,
+                          num_train_cancer_types,
+                          how_to_add,
+                          seed,
+                          shuffle_labels):
+    # TODO the specific train cancer types used for this experiment have to
+    # be stored in the results dataframe (rather than in filename)
+    signal = 'shuffled' if shuffle_labels else 'signal'
+    prefix = '_'.join([gene,
+                       's{}'.format(str(seed)),
+                       test_cancer_type,
+                       str(num_train_cancer_types),
+                       how_to_add,
+                       signal])
+    check_file = Path(
+        gene_dir, "{}_coefficients.tsv.gz".format(prefix)
+    ).resolve()
+    if check_status(check_file):
+        raise ResultsFileExistsError(
+            'Results file already exists for gene: {}\n'.format(gene)
+        )
+    return check_file
+
+
 def check_status(file):
     """
     Check the status of a gene or cancer-type application

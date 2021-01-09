@@ -103,7 +103,8 @@ if __name__ == '__main__':
         log_df = pd.DataFrame(columns=log_columns)
         log_df.to_csv(args.log_file, sep='\t')
 
-    tcga_data = TCGADataModel(seed=args.seed,
+    tcga_data = TCGADataModel(sample_info=sample_info_df,
+                              seed=args.seed,
                               subset_mad_genes=args.subset_mad_genes,
                               verbose=args.verbose,
                               debug=args.debug)
@@ -131,17 +132,15 @@ if __name__ == '__main__':
             classification = gene_series.classification
             progress_1.set_description('gene: {}'.format(gene))
 
-            # try:
             gene_dir = fu.make_gene_dir(args.results_dir, gene, False, False)
-            # except FileExistsError:
 
             progress_2 = tqdm(args.holdout_cancer_types,
                               ncols=100,
                               file=sys.stdout)
 
-            for cancer_type in progress_2:
+            for test_cancer_type in progress_2:
 
-                progress_2.set_description('cancer type: {}'.format(cancer_type))
+                progress_2.set_description('cancer type: {}'.format(test_cancer_type))
                 cancer_type_log_df = None
 
                 progress_3 = tqdm(cfg.num_train_cancer_types,
@@ -155,33 +154,39 @@ if __name__ == '__main__':
 
                     tcga_data.process_data_for_gene_and_cancer(gene,
                                                                classification,
-                                                               cancer_type,
+                                                               test_cancer_type,
                                                                gene_dir,
                                                                num_train_cancer_types,
                                                                how_to_add=args.how_to_add,
                                                                shuffle_labels=shuffle_labels)
-                    print(gene)
-                    print(cancer_type)
-                    print(num_train_cancer_types)
-                    print(tcga_data.y_df.DISEASE.unique())
-                    continue
+
+                    try:
+                        # check if results file already exists, if not skip it
+                        check_file = fu.check_add_cancer_file(gene_dir,
+                                                              gene,
+                                                              test_cancer_type,
+                                                              num_train_cancer_types,
+                                                              args.how_to_add,
+                                                              args.seed,
+                                                              shuffle_labels)
+                        open(check_file, 'a').close()
+                    except ResultsFileExistsError:
+                        if args.verbose:
+                            print('Skipping because results file exists already: '
+                                  'gene {}, cancer type {}'.format(gene, cancer_type),
+                                  file=sys.stderr)
+                        cancer_type_log_df = fu.generate_log_df(
+                            log_columns,
+                            [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                        )
+                        continue
 
 #                try:
-#                    check_file = fu.check_cancer_type_file(gene_dir, gene,
-#                                                           cancer_type, shuffle_labels)
+#                    # run cross-validation for the given cancer type
 #                    results = run_cv_cancer_type(tcga_data, gene, cancer_type,
 #                                                 sample_info_df, args.num_folds,
 #                                                 use_pancancer_cv, use_pancancer_only,
 #                                                 shuffle_labels)
-#                except ResultsFileExistsError:
-#                    if args.verbose:
-#                        print('Skipping because results file exists already: '
-#                              'gene {}, cancer type {}'.format(gene, cancer_type),
-#                              file=sys.stderr)
-#                    cancer_type_log_df = fu.generate_log_df(
-#                        log_columns,
-#                        [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
-#                    )
 #                except NoTrainSamplesError:
 #                    if args.verbose:
 #                        print('Skipping due to no train samples: gene {}, '

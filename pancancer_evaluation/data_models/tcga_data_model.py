@@ -22,6 +22,7 @@ class TCGADataModel():
     """
 
     def __init__(self,
+                 sample_info=None,
                  seed=cfg.default_seed,
                  subset_mad_genes=-1,
                  verbose=False,
@@ -47,7 +48,7 @@ class TCGADataModel():
         self.test = test
 
         # load and store data in memory
-        self._load_data(debug=debug, test=self.test)
+        self._load_data(sample_info=sample_info, debug=debug, test=self.test)
 
     def load_gene_set(self, gene_set='top_50'):
         """
@@ -352,17 +353,6 @@ class TCGADataModel():
         Prepare to train model on a given gene, to predict on a given cancer
         type.
 
-        This function does the following preprocessing steps:
-        1. Get mutation labels for the given gene from pan-cancer data
-        2. If necessary, filter the expression data and mutation labels to the
-           given cancer type
-        3. Make sure the expression data and mutation labels are aligned (i.e.
-           take the intersection of samples in each dataset)
-        4. If necessary, shuffle mutation labels
-
-        Note that for this function, preparation of test data must be done
-        later (e.g. by calling another process_* function).
-
         Arguments
         ---------
         gene (str): gene to train/evaluate model on
@@ -426,7 +416,7 @@ class TCGADataModel():
         self.gene_features = gene_features
 
 
-    def _load_data(self, debug=False, test=False):
+    def _load_data(self, sample_info=None, debug=False, test=False):
         """Load and store relevant data.
 
         This data does not vary based on the gene/cancer type being considered
@@ -440,7 +430,10 @@ class TCGADataModel():
         # load expression data
         self.rnaseq_df = du.load_expression_data(verbose=self.verbose,
                                                  debug=debug)
-        self.sample_info_df = du.load_sample_info(verbose=self.verbose)
+        if sample_info is None:
+            self.sample_info_df = du.load_sample_info(verbose=self.verbose)
+        else:
+            self.sample_info_df = sample_info
 
         # load and unpack pancancer data
         # this data is described in more detail in the load_pancancer_data docstring
@@ -702,8 +695,6 @@ class TCGADataModel():
                           .sort_values(ascending=False)
                           .index
                 )
-                print(cancer_type_rank)
-                print(sim_df.loc[test_cancer_type, :].sort_values(ascending=False))
                 train_cancer_types += list(cancer_type_rank[:num_cancer_types])
         # if num_cancer_types==0, use single-cancer model
         # (don't need to add to train_cancer_types)
