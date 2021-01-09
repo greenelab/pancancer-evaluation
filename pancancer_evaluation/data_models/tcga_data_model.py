@@ -710,31 +710,3 @@ class TCGADataModel():
 
         return train_cancer_types
 
-if __name__ == '__main__':
-    np.random.seed(cfg.default_seed)
-    y_df = pd.DataFrame({
-        'status': [1, 0, 1, 0, 1, 0, 1, 0],
-        'DISEASE': ['LUSC', 'LUSC', 'LUAD', 'BRCA', 'BRCA', 'BRCA', 'THCA', 'THCA']
-    })
-    print(y_df)
-    test_cancer_type = 'BRCA'
-    valid_cancer_types = y_df.DISEASE.unique()
-    similarity_matrix = pd.DataFrame(
-        np.random.uniform(size=len(valid_cancer_types)**2).reshape((-1, len(valid_cancer_types))),
-        index=valid_cancer_types,
-        columns=valid_cancer_types
-    )
-    print(similarity_matrix)
-    # ct = TCGADataModel._get_cancers_to_add(y_df,
-    #                                        test_cancer_type,
-    #                                        num_cancer_types=1,
-    #                                        how_to_add='random')
-    ct = TCGADataModel._get_cancers_to_add(y_df,
-                                           test_cancer_type,
-                                           num_cancer_types=2,
-                                           how_to_add='similarity',
-                                           similarity_matrix=similarity_matrix)
-    print(test_cancer_type)
-    print(ct)
-
-
