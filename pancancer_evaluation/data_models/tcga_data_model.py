@@ -395,7 +395,8 @@ class TCGADataModel():
             test_cancer_type,
             num_train_cancer_types,
             how_to_add,
-            similarity_matrix=similarity_matrix
+            similarity_matrix=similarity_matrix,
+            seed=self.seed
         )
 
         # TODO: move to unit test?
@@ -568,6 +569,8 @@ class TCGADataModel():
         test_ixs (np.array): indexes of test labels in original dataset
         """
         assert len(y.shape) == 1, 'labels must be flattened'
+        # TODO: really don't want to reseed here, probably setting a temp
+        # seed is better
         np.random.seed(seed)
         train_ixs = np.zeros((y.shape[0],)).astype('bool')
         test_ixs = np.copy(train_ixs)
@@ -633,7 +636,8 @@ class TCGADataModel():
                             test_cancer_type,
                             num_cancer_types,
                             how_to_add,
-                            similarity_matrix=None):
+                            similarity_matrix=None,
+                            seed=cfg.default_seed):
 
         # start with test cancer type and add if necessary
         train_cancer_types = [test_cancer_type]
@@ -647,12 +651,40 @@ class TCGADataModel():
         elif num_cancer_types >= 1:
             # add desired number of cancer types to train set
             if how_to_add == 'random':
-                # choose cancer types to add at random
-                train_cancer_types += list(
-                    np.random.choice(valid_cancer_types,
-                                     size=(num_cancer_types,),
-                                     replace=False)
-                )
+                import contextlib
+                # We want this random addition of cancer types to be the same
+                # each time we add them. We can accomplish this by reseeding
+                # np.random each time we call this function.
+                #
+                # However, we don't want to mess with the global np.random seed
+                # when we do this, so we create a context in which the seed is
+                # temporarily reset, then put it back when we're done. In
+                # effect, this creates a "local", repeatable random seed in the
+                # relevant Python context.
+                #
+                # See https://stackoverflow.com/a/49557127 for more detail.
+                #
+                # TODO: write a test for this
+                @contextlib.contextmanager
+                def temp_seed(cntxt_seed):
+                    state = np.random.get_state()
+                    np.random.seed(cntxt_seed)
+                    try:
+                        yield
+                    finally:
+                        np.random.set_state(state)
+
+                # choose cancer types to add at random, with the same random
+                # order across experiments (i.e. across varying values of
+                # num_cancer_types)
+                with temp_seed(seed):
+                    shuffled_cancers = np.random.choice(
+                        valid_cancer_types,
+                        size=(len(valid_cancer_types),),
+                        replace=False
+                    )
+                    train_cancer_types += list(shuffled_cancers[:num_cancer_types])
+
             elif how_to_add == 'similarity':
                 # use rows of similarity matrix to rank cancer types
                 # sim_df = pd.read_csv(config.similarity_matrix_file,
