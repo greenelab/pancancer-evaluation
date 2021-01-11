@@ -169,15 +169,16 @@ if __name__ == '__main__':
                                                               args.how_to_add,
                                                               args.seed,
                                                               shuffle_labels)
-                        open(check_file, 'a').close()
+                        with open(check_file, 'a') as f:
+                            f.write('\n'.join(tcga_data.y_df.DISEASE.unique()))
                     except ResultsFileExistsError:
                         if args.verbose:
                             print('Skipping because results file exists already: '
-                                  'gene {}, cancer type {}'.format(gene, cancer_type),
+                                  'gene {}, cancer type {}'.format(gene, test_cancer_type),
                                   file=sys.stderr)
                         cancer_type_log_df = fu.generate_log_df(
                             log_columns,
-                            [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'file_exists']
                         )
                         continue
 
