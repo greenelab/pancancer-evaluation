@@ -132,7 +132,7 @@ if __name__ == '__main__':
             classification = gene_series.classification
             progress_1.set_description('gene: {}'.format(gene))
 
-            gene_dir = fu.make_gene_dir(args.results_dir, gene, False, False)
+            gene_dir = fu.make_gene_dir(args.results_dir, gene, add_cancer=True)
 
             progress_2 = tqdm(args.holdout_cancer_types,
                               ncols=100,
