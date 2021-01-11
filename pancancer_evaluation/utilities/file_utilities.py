@@ -4,6 +4,7 @@ Functions for writing and processing output files
 """
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from pancancer_evaluation.exceptions import ResultsFileExistsError
@@ -126,6 +127,65 @@ def save_results_cross_cancer(output_dir,
     gene_metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
+
+
+def save_results_add_cancer(gene_dir,
+                            check_file,
+                            results,
+                            gene,
+                            test_cancer_type,
+                            train_cancer_types,
+                            num_train_cancer_types,
+                            how_to_add,
+                            seed,
+                            shuffle_labels):
+
+    signal = 'shuffled' if shuffle_labels else 'signal'
+    gene_auc_df = pd.concat(results['gene_auc'])
+    gene_aupr_df = pd.concat(results['gene_aupr'])
+    gene_coef_df = pd.concat(results['gene_coef'])
+    gene_metrics_df = pd.concat(results['gene_metrics'])
+
+    gene_coef_df.to_csv(
+        check_file, sep="\t", index=False, compression="gzip",
+        float_format="%.5g"
+    )
+
+    prefix = '_'.join([gene,
+                       's{}'.format(str(seed)),
+                       test_cancer_type,
+                       str(num_train_cancer_types),
+                       how_to_add,
+                       signal])
+
+    output_file = Path(
+        gene_dir, "{}_auc_threshold_metrics.tsv.gz".format(prefix)
+    ).resolve()
+    gene_auc_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+    output_file = Path(
+        gene_dir, "{}_aupr_threshold_metrics.tsv.gz".format(prefix)
+    ).resolve()
+    gene_aupr_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+    output_file = Path(
+        gene_dir, "{}_classify_metrics.tsv.gz".format(prefix)
+    ).resolve()
+    gene_metrics_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+    # save cancer types we trained the model on
+    # these may be useful for downstream analyses
+    output_file = Path(
+        gene_dir, "{}_train_cancer_types.txt".format(prefix)
+    ).resolve()
+    # train_cancer_types should be a 1-D numpy array
+    np.savetxt(output_file, train_cancer_types, fmt='%s')
 
 
 def generate_log_df(log_columns, log_values):

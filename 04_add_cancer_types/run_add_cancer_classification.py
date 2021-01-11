@@ -176,16 +176,18 @@ if __name__ == '__main__':
                                   file=sys.stderr)
                         cancer_type_log_df = fu.generate_log_df(
                             log_columns,
-                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                            [gene, test_cancer_type, shuffle_labels, 'file_exists']
                         )
                         continue
 
                     try:
                         # run cross-validation for the given cancer type
+                        #
                         # since we already filtered the dataset to the cancer
                         # types of interest, we can just use this function with
-                        # the "pancancer" option (it's a pancancer model where
-                        # the "universe" of all cancers is limited, kinda).
+                        # the "pancancer" option (you can think of it as a a
+                        # pancancer model where the "universe" of all cancers
+                        # is limited by our previous filtering, kinda).
                         results = run_cv_cancer_type(tcga_data,
                                                      gene,
                                                      test_cancer_type,
@@ -201,7 +203,7 @@ if __name__ == '__main__':
                                   file=sys.stderr)
                         cancer_type_log_df = fu.generate_log_df(
                             log_columns,
-                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
+                            [gene, test_cancer_type, shuffle_labels, 'no_train_samples']
                         )
                     except NoTestSamplesError:
                         if args.verbose:
@@ -210,7 +212,7 @@ if __name__ == '__main__':
                                   file=sys.stderr)
                         cancer_type_log_df = fu.generate_log_df(
                             log_columns,
-                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
+                            [gene, test_cancer_type, shuffle_labels, 'no_test_samples']
                         )
                     except OneClassError:
                         if args.verbose:
@@ -219,20 +221,21 @@ if __name__ == '__main__':
                                   file=sys.stderr)
                         cancer_type_log_df = fu.generate_log_df(
                             log_columns,
-                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'one_class']
+                            [gene, test_cancer_type, shuffle_labels, 'one_class']
                         )
-#               else:
-#                   # only save results if no exceptions
-#                   # TODO: this needs to be a different function since file name
-#                   #       conventions are a bit different for add cancer exps
-#                   # TODO: should also save the cancer types that were used here
-#                   fu.save_results_cancer_type(gene_dir,
-#                                               check_file,
-#                                               results,
-#                                               gene,
-#                                               cancer_type,
-#                                               shuffle_labels)
-#
-#               if cancer_type_log_df is not None:
-#                   fu.write_log_file(cancer_type_log_df, args.log_file)
+                    else:
+                        # only save results if no exceptions
+                        fu.save_results_add_cancer(gene_dir,
+                                                   check_file,
+                                                   results,
+                                                   gene,
+                                                   test_cancer_type,
+                                                   tcga_data.y_df.DISEASE.unique(),
+                                                   num_train_cancer_types,
+                                                   args.how_to_add,
+                                                   args.seed,
+                                                   shuffle_labels)
+
+                    if cancer_type_log_df is not None:
+                        fu.write_log_file(cancer_type_log_df, args.log_file)
 
