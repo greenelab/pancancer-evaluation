@@ -165,8 +165,14 @@ def evaluate_cross_cancer(data_model,
     return results
 
 
-def run_cv_cancer_type(data_model, gene, cancer_type, sample_info, num_folds,
-                       use_pancancer, use_pancancer_only, shuffle_labels):
+def run_cv_cancer_type(data_model,
+                       gene,
+                       cancer_type,
+                       sample_info,
+                       num_folds,
+                       use_pancancer,
+                       use_pancancer_only,
+                       shuffle_labels):
     """
     Run cross-validation experiments for a given gene/cancer type combination,
     then write them to files in the results directory. If the relevant files

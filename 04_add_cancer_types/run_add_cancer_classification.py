@@ -169,8 +169,6 @@ if __name__ == '__main__':
                                                               args.how_to_add,
                                                               args.seed,
                                                               shuffle_labels)
-                        with open(check_file, 'a') as f:
-                            f.write('\n'.join(tcga_data.y_df.DISEASE.unique()))
                     except ResultsFileExistsError:
                         if args.verbose:
                             print('Skipping because results file exists already: '
@@ -182,48 +180,59 @@ if __name__ == '__main__':
                         )
                         continue
 
-#                try:
-#                    # run cross-validation for the given cancer type
-#                    results = run_cv_cancer_type(tcga_data, gene, cancer_type,
-#                                                 sample_info_df, args.num_folds,
-#                                                 use_pancancer_cv, use_pancancer_only,
-#                                                 shuffle_labels)
-#                except NoTrainSamplesError:
-#                    if args.verbose:
-#                        print('Skipping due to no train samples: gene {}, '
-#                              'cancer type {}'.format(gene, cancer_type),
-#                              file=sys.stderr)
-#                    cancer_type_log_df = fu.generate_log_df(
-#                        log_columns,
-#                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
-#                    )
-#                except NoTestSamplesError:
-#                    if args.verbose:
-#                        print('Skipping due to no test samples: gene {}, '
-#                              'cancer type {}'.format(gene, cancer_type),
-#                              file=sys.stderr)
-#                    cancer_type_log_df = fu.generate_log_df(
-#                        log_columns,
-#                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
-#                    )
-#                except OneClassError:
-#                    if args.verbose:
-#                        print('Skipping due to one holdout class: gene {}, '
-#                              'cancer type {}'.format(gene, cancer_type),
-#                              file=sys.stderr)
-#                    cancer_type_log_df = fu.generate_log_df(
-#                        log_columns,
-#                        [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
-#                    )
-#                else:
-#                    # only save results if no exceptions
-#                    fu.save_results_cancer_type(gene_dir,
-#                                                check_file,
-#                                                results,
-#                                                gene,
-#                                                cancer_type,
-#                                                shuffle_labels)
-# 
-#                if cancer_type_log_df is not None:
-#                    fu.write_log_file(cancer_type_log_df, args.log_file)
+                    try:
+                        # run cross-validation for the given cancer type
+                        # since we already filtered the dataset to the cancer
+                        # types of interest, we can just use this function with
+                        # the "pancancer" option (it's a pancancer model where
+                        # the "universe" of all cancers is limited, kinda).
+                        results = run_cv_cancer_type(tcga_data,
+                                                     gene,
+                                                     test_cancer_type,
+                                                     sample_info_df,
+                                                     args.num_folds,
+                                                     use_pancancer=True,
+                                                     use_pancancer_only=False,
+                                                     shuffle_labels=shuffle_labels)
+                    except NoTrainSamplesError:
+                        if args.verbose:
+                            print('Skipping due to no train samples: gene {}, '
+                                  'cancer type {}'.format(gene, test_cancer_type),
+                                  file=sys.stderr)
+                        cancer_type_log_df = fu.generate_log_df(
+                            log_columns,
+                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
+                        )
+                    except NoTestSamplesError:
+                        if args.verbose:
+                            print('Skipping due to no test samples: gene {}, '
+                                  'cancer type {}'.format(gene, test_cancer_type),
+                                  file=sys.stderr)
+                        cancer_type_log_df = fu.generate_log_df(
+                            log_columns,
+                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
+                        )
+                    except OneClassError:
+                        if args.verbose:
+                            print('Skipping due to one holdout class: gene {}, '
+                                  'cancer type {}'.format(gene, test_cancer_type),
+                                  file=sys.stderr)
+                        cancer_type_log_df = fu.generate_log_df(
+                            log_columns,
+                            [gene, test_cancer_type, use_pancancer, shuffle_labels, 'one_class']
+                        )
+#               else:
+#                   # only save results if no exceptions
+#                   # TODO: this needs to be a different function since file name
+#                   #       conventions are a bit different for add cancer exps
+#                   # TODO: should also save the cancer types that were used here
+#                   fu.save_results_cancer_type(gene_dir,
+#                                               check_file,
+#                                               results,
+#                                               gene,
+#                                               cancer_type,
+#                                               shuffle_labels)
+#
+#               if cancer_type_log_df is not None:
+#                   fu.write_log_file(cancer_type_log_df, args.log_file)
 
