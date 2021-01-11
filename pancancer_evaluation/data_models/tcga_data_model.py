@@ -375,8 +375,8 @@ class TCGADataModel():
         y_df_raw = self._generate_labels(gene, classification, output_dir)
 
         if how_to_add == 'similarity':
-            similarity_matrix = pd.read_csv(config.similarity_matrix_file,
-                                            sep='\t')
+            similarity_matrix = pd.read_csv(cfg.similarity_matrix_file,
+                                            sep='\t', index_col=0, header=0)
         else:
             similarity_matrix = None
 
@@ -679,9 +679,6 @@ class TCGADataModel():
                     train_cancer_types += list(shuffled_cancers[:num_cancer_types])
 
             elif how_to_add == 'similarity':
-                # use rows of similarity matrix to rank cancer types
-                # sim_df = pd.read_csv(config.similarity_matrix_file,
-                #                      sep='\t')
                 sim_df = similarity_matrix
                 # drop labels that aren't in valid cancer types
                 # this includes test cancer type, we've already added it

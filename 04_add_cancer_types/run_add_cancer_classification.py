@@ -40,7 +40,7 @@ def process_args():
                    help='provide a list of cancer types to hold out, uses all '
                         'cancer types in TCGA if none are provided')
     p.add_argument('--how_to_add', type=str,
-                   choices=['random', 'confusion_matrix'],
+                   choices=['random', 'similarity'],
                    default='random',
                    help='TODO document this option')
     p.add_argument('--log_file', default=None,
