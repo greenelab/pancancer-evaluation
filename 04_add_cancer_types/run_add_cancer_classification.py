@@ -152,13 +152,24 @@ if __name__ == '__main__':
                     progress_3.set_description('num train cancers: {}'.format(
                         num_train_cancer_types))
 
-                    tcga_data.process_data_for_gene_and_cancer(gene,
-                                                               classification,
-                                                               test_cancer_type,
-                                                               gene_dir,
-                                                               num_train_cancer_types,
-                                                               how_to_add=args.how_to_add,
-                                                               shuffle_labels=shuffle_labels)
+                    try:
+                        tcga_data.process_data_for_gene_and_cancer(gene,
+                                                                   classification,
+                                                                   test_cancer_type,
+                                                                   gene_dir,
+                                                                   num_train_cancer_types,
+                                                                   how_to_add=args.how_to_add,
+                                                                   shuffle_labels=shuffle_labels)
+                    except NoTrainSamplesError:
+                        if args.verbose:
+                            print('Skipping due to no train samples: gene {}, '
+                                  'cancer type {}'.format(gene, test_cancer_type),
+                                  file=sys.stderr)
+                        cancer_type_log_df = fu.generate_log_df(
+                            log_columns,
+                            [gene, test_cancer_type, shuffle_labels, 'no_train_samples']
+                        )
+                        continue
 
                     try:
                         # check if results file already exists, if not skip it

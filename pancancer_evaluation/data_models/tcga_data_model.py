@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 import pancancer_evaluation.config as cfg
+from pancancer_evaluation.exceptions import NoTrainSamplesError
 import pancancer_evaluation.utilities.data_utilities as du
 from pancancer_evaluation.utilities.tcga_utilities import (
     process_y_matrix,
@@ -404,7 +405,21 @@ class TCGADataModel():
 
         rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
 
-        # TODO: move to unit test?
+        # catch the case where there are no samples for the test cancer
+        # after filtering, and raise an error
+        try:
+            num_test_cancer_samples = (
+                y_filtered_df.groupby('DISEASE')
+                             .count()
+                             .loc[test_cancer_type, 'status']
+            )
+        except KeyError:
+            # no samples for the test cancer, test_cancer_type not in df
+            raise NoTrainSamplesError(
+                'No train samples found for train identifier: {}_{}'.format(
+                    gene, test_cancer_type)
+            )
+
         assert set(y_filtered_df.DISEASE.unique()) == set(cancer_types_to_add)
 
         if shuffle_labels:
