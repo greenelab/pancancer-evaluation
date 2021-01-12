@@ -98,7 +98,7 @@ def load_flip_labels_results(results_dir, experiment_descriptor):
     return results_df
 
 
-def load_add_cancer_results(results_dir):
+def load_add_cancer_results(results_dir, load_cancer_types=False):
     """Load results of 'add cancer' experiments.
 
     Argument
@@ -119,7 +119,7 @@ def load_add_cancer_results(results_dir):
             if results_file[0] == '.': continue
             full_results_file = os.path.join(gene_dir, results_file)
             gene_results_df = pd.read_csv(full_results_file, sep='\t')
-            gene_results_df['train_cancer_types'] = (
+            gene_results_df['num_train_cancer_types'] = (
                 int(results_file.split('_')[3])
             )
             gene_results_df['how_to_add'] = (
@@ -129,8 +129,18 @@ def load_add_cancer_results(results_dir):
                 gene_results_df['gene'] + '_' +
                 gene_results_df['holdout_cancer_type']
             )
+            if load_cancer_types:
+                train_cancer_types = get_cancer_types(gene_dir, results_file)
+                gene_results_df['train_cancer_types'] = ' '.join(train_cancer_types)
             results_df = pd.concat((results_df, gene_results_df))
     return results_df
+
+
+def get_cancer_types(gene_dir, results_file):
+    prefix = '_'.join(results_file.split('_')[:6])
+    cancer_types_file = '{}_train_cancer_types.txt'.format(prefix)
+    return np.loadtxt(os.path.join(gene_dir, cancer_types_file),
+                      dtype=str, ndmin=1)
 
 
 def generate_nonzero_coefficients(results_dir):
