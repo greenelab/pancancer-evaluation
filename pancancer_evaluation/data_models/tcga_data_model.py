@@ -390,7 +390,6 @@ class TCGADataModel():
             seed=self.seed
         )
 
-        # TODO: move to unit test?
         assert test_cancer_type in cancer_types_to_add
         if num_train_cancer_types >= 0:
             assert len(cancer_types_to_add) == num_train_cancer_types + 1
@@ -577,8 +576,7 @@ class TCGADataModel():
         test_ixs (np.array): indexes of test labels in original dataset
         """
         assert len(y.shape) == 1, 'labels must be flattened'
-        # TODO: really don't want to reseed here, probably setting a temp
-        # seed is better
+        # TODO: could set a temp seed instead of reseeding?
         np.random.seed(seed)
         train_ixs = np.zeros((y.shape[0],)).astype('bool')
         test_ixs = np.copy(train_ixs)

@@ -1,7 +1,11 @@
 """
-Script to run "add cancer" experiments.
+Script to run "add cancer" experiments. The general idea is to add cancers
+in a particular order (either random or determined by cancer type similarity).
 
-TODO describe what this means
+The prediction goal is the same as in 02_cancer_type_classification
+experiments; that is, predicting presence/absence of a given mutation in
+a particular cancer type.
+
 """
 import sys
 import argparse
@@ -42,7 +46,8 @@ def process_args():
     p.add_argument('--how_to_add', type=str,
                    choices=['random', 'similarity'],
                    default='random',
-                   help='TODO document this option')
+                   help='Method for choosing cancer types to add to the '
+                        'training dataset; see data model for details')
     p.add_argument('--log_file', default=None,
                    help='name of file to log skipped cancer types to')
     p.add_argument('--num_folds', type=int, default=4,

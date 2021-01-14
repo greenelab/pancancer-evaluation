@@ -184,7 +184,7 @@ def save_results_add_cancer(gene_dir,
     output_file = Path(
         gene_dir, "{}_train_cancer_types.txt".format(prefix)
     ).resolve()
-    # train_cancer_types should be a 1-D numpy array
+    # train_cancer_types should be a 1D numpy array
     np.savetxt(output_file, train_cancer_types, fmt='%s')
 
 
@@ -305,8 +305,9 @@ def check_add_cancer_file(gene_dir,
                           how_to_add,
                           seed,
                           shuffle_labels):
-    # TODO the specific train cancer types used for this experiment have to
-    # be stored in the results dataframe (rather than in filename)
+    # note that the specific train cancer types used for this experiment have
+    # to be stored in the results dataframe (rather than in the filename)
+    # the filename just stores the number of them
     signal = 'shuffled' if shuffle_labels else 'signal'
     prefix = '_'.join([gene,
                        's{}'.format(str(seed)),
