@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 import pancancer_evaluation.config as cfg
+from pancancer_evaluation.exceptions import NoTrainSamplesError
 import pancancer_evaluation.utilities.data_utilities as du
 from pancancer_evaluation.utilities.tcga_utilities import (
     process_y_matrix,
@@ -22,6 +23,7 @@ class TCGADataModel():
     """
 
     def __init__(self,
+                 sample_info=None,
                  seed=cfg.default_seed,
                  subset_mad_genes=-1,
                  verbose=False,
@@ -47,7 +49,7 @@ class TCGADataModel():
         self.test = test
 
         # load and store data in memory
-        self._load_data(debug=debug, test=self.test)
+        self._load_data(sample_info=sample_info, debug=debug, test=self.test)
 
     def load_gene_set(self, gene_set='top_50'):
         """
@@ -73,13 +75,22 @@ class TCGADataModel():
         elif gene_set == 'vogelstein':
             genes_df = du.load_vogelstein()
         else:
+            from pancancer_evaluation.exceptions import GenesNotFoundError
             assert isinstance(gene_set, typing.List)
             genes_df = du.load_vogelstein()
-            if gene in genes_df.gene:
+            # if all genes in gene_set are in vogelstein dataset, use it
+            if set(gene_set).issubset(set(genes_df.gene.values)):
                 genes_df = genes_df[genes_df.gene.isin(gene_set)]
+            # else if all genes in gene_set are in top50 dataset, use it
             else:
-                genes_df = load_top_50()
-                genes_df = genes_df[genes_df.gene.isin(gene_set)]
+                genes_df = du.load_top_50()
+                if set(gene_set).issubset(set(genes_df.gene.values)):
+                    genes_df = genes_df[genes_df.gene.isin(gene_set)]
+                else:
+                # else throw an error
+                    raise GenesNotFoundError(
+                        'Gene list was not a subset of Vogelstein or top50'
+                    )
 
         return genes_df
 
@@ -330,7 +341,96 @@ class TCGADataModel():
             self.y_train_df.status = np.random.permutation(
                 self.y_train_df.status.values)
 
-    def _load_data(self, debug=False, test=False):
+
+    def process_data_for_gene_and_cancer(self,
+                                         gene,
+                                         classification,
+                                         test_cancer_type,
+                                         output_dir,
+                                         num_train_cancer_types=0,
+                                         how_to_add='random',
+                                         shuffle_labels=False):
+        """
+        Prepare to train model on a given gene, to predict on a given cancer
+        type.
+
+        Arguments
+        ---------
+        gene (str): gene to train/evaluate model on
+        classification (str): 'oncogene', 'TSG' (tumor suppressor gene), or
+                              'neither' for the provided gene
+        test_cancer_type (str): cancer type to hold out
+        output_dir (str): directory to write output to, if None don't write output
+        num_train_cancer_types (int): number of cancer types besides the test
+                                      cancer to add to the training set. If 0,
+                                      only use the test cancer. If -1, use all
+                                      valid cancer types (resulting in a
+                                      "pan-cancer" model).
+        how_to_add (str): how to choose cancer types to add to the training
+                          set. 'random' adds them in a random order, 'similarity'
+                          ranks valid cancers by some precomputed similarity
+                          metric (specified in cfg.similarity_matrix) to the
+                          target cancer type.
+        shuffle_labels (bool): whether or not to shuffle labels (negative control)
+        """
+        y_df_raw = self._generate_labels(gene, classification, output_dir)
+
+        if how_to_add == 'similarity':
+            similarity_matrix = pd.read_csv(cfg.similarity_matrix_file,
+                                            sep='\t', index_col=0, header=0)
+        else:
+            similarity_matrix = None
+
+        cancer_types_to_add = self._get_cancers_to_add(
+            y_df_raw,
+            test_cancer_type,
+            num_train_cancer_types,
+            how_to_add,
+            similarity_matrix=similarity_matrix,
+            seed=self.seed
+        )
+
+        assert test_cancer_type in cancer_types_to_add
+        if num_train_cancer_types >= 0:
+            assert len(cancer_types_to_add) == num_train_cancer_types + 1
+
+        filtered_data = self._filter_data_for_gene_and_train_cancers(
+            self.rnaseq_df,
+            y_df_raw,
+            cancer_types_to_add,
+            # add cancer type covariate if more than one cancer type to add
+            (len(cancer_types_to_add) > 1)
+        )
+
+        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        # catch the case where there are no samples for the test cancer
+        # after filtering, and raise an error
+        try:
+            num_test_cancer_samples = (
+                y_filtered_df.groupby('DISEASE')
+                             .count()
+                             .loc[test_cancer_type, 'status']
+            )
+        except KeyError:
+            # no samples for the test cancer, test_cancer_type not in df
+            raise NoTrainSamplesError(
+                'No train samples found for train identifier: {}_{}'.format(
+                    gene, test_cancer_type)
+            )
+
+        assert set(y_filtered_df.DISEASE.unique()) == set(cancer_types_to_add)
+
+        if shuffle_labels:
+            y_filtered_df.status = np.random.permutation(
+                y_filtered_df.status.values)
+
+        self.X_df = rnaseq_filtered_df
+        self.y_df = y_filtered_df
+        self.gene_features = gene_features
+
+
+    def _load_data(self, sample_info=None, debug=False, test=False):
         """Load and store relevant data.
 
         This data does not vary based on the gene/cancer type being considered
@@ -344,7 +444,10 @@ class TCGADataModel():
         # load expression data
         self.rnaseq_df = du.load_expression_data(verbose=self.verbose,
                                                  debug=debug)
-        self.sample_info_df = du.load_sample_info(verbose=self.verbose)
+        if sample_info is None:
+            self.sample_info_df = du.load_sample_info(verbose=self.verbose)
+        else:
+            self.sample_info_df = sample_info
 
         # load and unpack pancancer data
         # this data is described in more detail in the load_pancancer_data docstring
@@ -429,6 +532,30 @@ class TCGADataModel():
         y_df = y_df.reindex(rnaseq_df_filtered.index)
         return rnaseq_df_filtered, y_df, gene_features
 
+    def _filter_data_for_gene_and_train_cancers(self,
+                                                rnaseq_df,
+                                                y_df,
+                                                cancer_types_to_add,
+                                                add_cancertype_covariate):
+        use_samples, rnaseq_df, y_df, gene_features = align_matrices(
+            x_file_or_df=rnaseq_df,
+            y=y_df,
+            # assume we're training on a single cancer, so no cancer type covariate
+            add_cancertype_covariate=add_cancertype_covariate,
+            add_mutation_covariate=True
+        )
+        cancer_type_sample_ids = (
+            self.sample_info_df.loc[
+                self.sample_info_df.cancer_type.isin(cancer_types_to_add)
+            ].index
+        )
+        rnaseq_df_filtered = rnaseq_df.loc[
+            rnaseq_df.index.intersection(cancer_type_sample_ids), :
+        ]
+        y_df = y_df.reindex(rnaseq_df_filtered.index)
+        return rnaseq_df_filtered, y_df, gene_features
+
+
     @staticmethod
     def holdout_percent_labels(y,
                                percent_holdout,
@@ -449,6 +576,7 @@ class TCGADataModel():
         test_ixs (np.array): indexes of test labels in original dataset
         """
         assert len(y.shape) == 1, 'labels must be flattened'
+        # TODO: could set a temp seed instead of reseeding?
         np.random.seed(seed)
         train_ixs = np.zeros((y.shape[0],)).astype('bool')
         test_ixs = np.copy(train_ixs)
@@ -508,4 +636,78 @@ class TCGADataModel():
             train_ixs |= nz_ixs
             test_ixs |= nz_ixs
         return (train_ixs, test_ixs)
+
+    @staticmethod
+    def _get_cancers_to_add(y_df,
+                            test_cancer_type,
+                            num_cancer_types,
+                            how_to_add,
+                            similarity_matrix=None,
+                            seed=cfg.default_seed):
+
+        # start with test cancer type and add if necessary
+        train_cancer_types = [test_cancer_type]
+        # y_df should already be filtered to valid cancer types
+        valid_cancer_types = [ct for ct in y_df.DISEASE.unique()
+                                 if ct != test_cancer_type]
+
+        if num_cancer_types == -1:
+            # pan-cancer model, train on all valid cancer types
+            train_cancer_types += valid_cancer_types
+        elif num_cancer_types >= 1:
+            # add desired number of cancer types to train set
+            if how_to_add == 'random':
+                import contextlib
+                # We want this random addition of cancer types to be the same
+                # each time we add them. We can accomplish this by reseeding
+                # np.random each time we call this function.
+                #
+                # However, we don't want to mess with the global np.random seed
+                # when we do this, so we create a context in which the seed is
+                # temporarily reset, then put it back when we're done. In
+                # effect, this creates a "local", repeatable random seed in the
+                # relevant Python context.
+                #
+                # See https://stackoverflow.com/a/49557127 for more detail.
+                #
+                # TODO: write a test for this
+                @contextlib.contextmanager
+                def temp_seed(cntxt_seed):
+                    state = np.random.get_state()
+                    np.random.seed(cntxt_seed)
+                    try:
+                        yield
+                    finally:
+                        np.random.set_state(state)
+
+                # choose cancer types to add at random, with the same random
+                # order across experiments (i.e. across varying values of
+                # num_cancer_types)
+                with temp_seed(seed):
+                    shuffled_cancers = np.random.choice(
+                        valid_cancer_types,
+                        size=(len(valid_cancer_types),),
+                        replace=False
+                    )
+                    train_cancer_types += list(shuffled_cancers[:num_cancer_types])
+
+            elif how_to_add == 'similarity':
+                sim_df = similarity_matrix
+                # drop labels that aren't in valid cancer types
+                # this includes test cancer type, we've already added it
+                labels_to_drop = list(
+                    set(sim_df.columns) - set(valid_cancer_types)
+                )
+                # sort descending since we want high similarity
+                cancer_type_rank = (
+                    sim_df.loc[test_cancer_type, :]
+                          .drop(labels=labels_to_drop)
+                          .sort_values(ascending=False)
+                          .index
+                )
+                train_cancer_types += list(cancer_type_rank[:num_cancer_types])
+        # if num_cancer_types==0, use single-cancer model
+        # (don't need to add to train_cancer_types)
+
+        return train_cancer_types
 

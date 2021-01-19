@@ -4,6 +4,7 @@ Functions for writing and processing output files
 """
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from pancancer_evaluation.exceptions import ResultsFileExistsError
@@ -128,6 +129,65 @@ def save_results_cross_cancer(output_dir,
     )
 
 
+def save_results_add_cancer(gene_dir,
+                            check_file,
+                            results,
+                            gene,
+                            test_cancer_type,
+                            train_cancer_types,
+                            num_train_cancer_types,
+                            how_to_add,
+                            seed,
+                            shuffle_labels):
+
+    signal = 'shuffled' if shuffle_labels else 'signal'
+    gene_auc_df = pd.concat(results['gene_auc'])
+    gene_aupr_df = pd.concat(results['gene_aupr'])
+    gene_coef_df = pd.concat(results['gene_coef'])
+    gene_metrics_df = pd.concat(results['gene_metrics'])
+
+    gene_coef_df.to_csv(
+        check_file, sep="\t", index=False, compression="gzip",
+        float_format="%.5g"
+    )
+
+    prefix = '_'.join([gene,
+                       's{}'.format(str(seed)),
+                       test_cancer_type,
+                       str(num_train_cancer_types),
+                       how_to_add,
+                       signal])
+
+    output_file = Path(
+        gene_dir, "{}_auc_threshold_metrics.tsv.gz".format(prefix)
+    ).resolve()
+    gene_auc_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+    output_file = Path(
+        gene_dir, "{}_aupr_threshold_metrics.tsv.gz".format(prefix)
+    ).resolve()
+    gene_aupr_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+    output_file = Path(
+        gene_dir, "{}_classify_metrics.tsv.gz".format(prefix)
+    ).resolve()
+    gene_metrics_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+    # save cancer types we trained the model on
+    # these may be useful for downstream analyses
+    output_file = Path(
+        gene_dir, "{}_train_cancer_types.txt".format(prefix)
+    ).resolve()
+    # train_cancer_types should be a 1D numpy array
+    np.savetxt(output_file, train_cancer_types, fmt='%s')
+
+
 def generate_log_df(log_columns, log_values):
     """Generate and format log output."""
     return pd.DataFrame(dict(zip(log_columns, log_values)), index=[0])
@@ -167,13 +227,19 @@ def write_counts_file(counts_df, counts_file):
         counts_df.to_csv(counts_file, mode='a', sep='\t')
 
 
-def make_gene_dir(results_dir, gene, use_pancancer_cv, use_pancancer_only):
+def make_gene_dir(results_dir,
+                  gene,
+                  use_pancancer_cv=False,
+                  use_pancancer_only=False,
+                  add_cancer=False):
     """Create a directory for the given gene."""
     dirname = 'single_cancer'
     if use_pancancer_cv:
         dirname = 'pancancer'
     elif use_pancancer_only:
         dirname = 'pancancer_only'
+    elif add_cancer:
+        dirname = 'add_cancer'
     gene_dir = Path(results_dir, dirname, gene).resolve()
     gene_dir.mkdir(parents=True, exist_ok=True)
     return gene_dir
@@ -228,6 +294,33 @@ def check_cross_cancer_file(output_dir,
         raise ResultsFileExistsError(
             'Results file already exists for train identifier: {}, '
             'test identifier: {}\n'.format(train_gene_or_identifier, test_identifier)
+        )
+    return check_file
+
+
+def check_add_cancer_file(gene_dir,
+                          gene,
+                          test_cancer_type,
+                          num_train_cancer_types,
+                          how_to_add,
+                          seed,
+                          shuffle_labels):
+    # note that the specific train cancer types used for this experiment have
+    # to be stored in the results dataframe (rather than in the filename)
+    # the filename just stores the number of them
+    signal = 'shuffled' if shuffle_labels else 'signal'
+    prefix = '_'.join([gene,
+                       's{}'.format(str(seed)),
+                       test_cancer_type,
+                       str(num_train_cancer_types),
+                       how_to_add,
+                       signal])
+    check_file = Path(
+        gene_dir, "{}_coefficients.tsv.gz".format(prefix)
+    ).resolve()
+    if check_status(check_file):
+        raise ResultsFileExistsError(
+            'Results file already exists for gene: {}\n'.format(gene)
         )
     return check_file
 
