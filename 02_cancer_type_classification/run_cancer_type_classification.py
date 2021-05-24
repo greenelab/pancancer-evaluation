@@ -145,8 +145,7 @@ if __name__ == '__main__':
                                             use_pancancer_only=use_pancancer_only)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
-                                                use_pancancer=use_pancancer,
-                                                shuffle_labels=shuffle_labels)
+                                                use_pancancer=use_pancancer)
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
                 # (or has a different alias, TODO check for this later)

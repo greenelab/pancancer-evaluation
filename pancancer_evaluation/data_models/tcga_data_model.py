@@ -98,8 +98,7 @@ class TCGADataModel():
                               gene,
                               classification,
                               gene_dir,
-                              use_pancancer=False,
-                              shuffle_labels=False):
+                              use_pancancer=False):
         """
         Prepare to run cancer type experiments for a given gene.
 
@@ -113,7 +112,6 @@ class TCGADataModel():
                               the given gene
         gene_dir (str): directory to write output to, if None don't write output
         use_pancancer (bool): whether or not to use pancancer data
-        shuffle_labels (bool): whether or not to shuffle labels (negative control)
         """
         y_df_raw = self._generate_labels(gene, classification, gene_dir)
 
@@ -123,10 +121,6 @@ class TCGADataModel():
             use_pancancer
         )
         rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
-
-        if shuffle_labels:
-            y_filtered_df.status = np.random.permutation(
-                y_filtered_df.status.values)
 
         self.X_df = rnaseq_filtered_df
         self.y_df = y_filtered_df

@@ -233,6 +233,14 @@ def run_cv_cancer_type(data_model,
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
         y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
 
+        if shuffle_labels:
+            # we set a temp seed here to make sure this shuffling order
+            # is the same for each gene between data types, otherwise
+            # it might be slightly different depending on the global state
+            with temp_seed(data_model.seed):
+                y_train_df.status = np.random.permutation(y_train_df.status.values)
+                y_test_df.status = np.random.permutation(y_test_df.status.values)
+
         X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
                                                    data_model.gene_features,
                                                    data_model.subset_mad_genes)
@@ -339,6 +347,14 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
 
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
         y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
+
+        if shuffle_labels:
+            # we set a temp seed here to make sure this shuffling order
+            # is the same for each gene between data types, otherwise
+            # it might be slightly different depending on the global state
+            with temp_seed(data_model.seed):
+                y_train_df.status = np.random.permutation(y_train_df.status.values)
+                y_test_df.status = np.random.permutation(y_test_df.status.values)
 
         X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
                                                    data_model.gene_features,
@@ -448,7 +464,7 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
         param_grid=clf_parameters,
         n_jobs=-1,
         cv=n_folds,
-        scoring="roc_auc",
+        scoring='average_precision',
         return_train_score=True,
         iid=False
     )
@@ -733,4 +749,18 @@ def summarize_results_cc(results, train_identifier, test_identifier, signal,
     )
 
     return metrics_out_, roc_df_, pr_df_
+
+
+@contextlib.contextmanager
+def temp_seed(cntxt_seed):
+    """Set a temporary np.random seed in the resulting context.
+    This saves the global random number state and puts it back once the context
+    is closed. See https://stackoverflow.com/a/49557127 for more detail.
+    """
+    state = np.random.get_state()
+    np.random.seed(cntxt_seed)
+    try:
+        yield
+    finally:
+        np.random.set_state(state)
 
