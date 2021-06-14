@@ -27,6 +27,10 @@ import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
+    p.add_argument('--coral', action='store_true',
+                   help='if true, use CORAL method to align source and'
+                        'target distributions')
+    p.add_argument('--coral_lambda', type=float, default=1.0)
     p.add_argument('--custom_genes', nargs='*', default=None,
                    help='currently this needs to be a subset of top_50')
     p.add_argument('--debug', action='store_true',
@@ -104,7 +108,8 @@ if __name__ == '__main__':
         log_df = pd.DataFrame(columns=log_columns)
         log_df.to_csv(args.log_file, sep='\t')
 
-    tcga_data = TCGADataModel(seed=args.seed,
+    tcga_data = TCGADataModel(sample_info=sample_info_df,
+                              seed=args.seed,
                               subset_mad_genes=args.subset_mad_genes,
                               verbose=args.verbose,
                               debug=args.debug)
@@ -168,12 +173,20 @@ if __name__ == '__main__':
                 cancer_type_log_df = None
 
                 try:
-                    check_file = fu.check_cancer_type_file(gene_dir, gene,
-                                                           cancer_type, shuffle_labels)
-                    results = run_cv_cancer_type(tcga_data, gene, cancer_type,
-                                                 sample_info_df, args.num_folds,
-                                                 use_pancancer_cv, use_pancancer_only,
-                                                 shuffle_labels)
+                    check_file = fu.check_cancer_type_file(gene_dir,
+                                                           gene,
+                                                           cancer_type,
+                                                           shuffle_labels)
+                    results = run_cv_cancer_type(tcga_data,
+                                                 gene,
+                                                 cancer_type,
+                                                 sample_info_df,
+                                                 args.num_folds,
+                                                 use_pancancer_cv,
+                                                 use_pancancer_only,
+                                                 shuffle_labels,
+                                                 use_coral=args.coral,
+                                                 coral_lambda=args.coral_lambda)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '

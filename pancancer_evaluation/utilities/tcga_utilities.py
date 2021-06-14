@@ -179,7 +179,12 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
     return use_samples, x_df, y, gene_features
 
 
-def preprocess_data(X_train_raw_df, X_test_raw_df, gene_features, subset_mad_genes=-1):
+def preprocess_data(X_train_raw_df,
+                    X_test_raw_df,
+                    gene_features,
+                    subset_mad_genes=-1,
+                    use_coral=False,
+                    coral_lambda=1.0):
     """
     Data processing and feature selection, if applicable.
 
@@ -191,9 +196,40 @@ def preprocess_data(X_train_raw_df, X_test_raw_df, gene_features, subset_mad_gen
         )
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
+        gene_features = gene_features_filtered
     else:
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features)
+    if use_coral:
+        print('Running CORAL...', end='')
+        from transfertools.models import CORAL
+
+        # we just scaled columns in standardize_gene_features above, so we
+        # don't need to do it again (CORAL does by default)
+        transform = CORAL(scaling='none', tol=1e-3, lambda_val=coral_lambda)
+
+        # we want to do this only with the gene features, leaving out the
+        # non-gene (cancer type and mutation burden) features
+        X_train_gene_df = X_train_df.loc[:, gene_features]
+        X_train_non_gene_df = X_train_df.loc[:, ~gene_features]
+        X_test_gene_df = X_test_df.loc[:, gene_features]
+
+        # align source domain (training cancer type) distribution with target
+        # domain (test cancer type) distribution
+        X_train_gene_trans, _ = transform.fit_transfer(X_train_gene_df.values,
+                                                       X_test_gene_df.values)
+        assert X_train_gene_trans.shape == X_train_gene_df.values.shape
+
+        # now reset gene feature columns and recreate train dataframe
+        X_train_trans_df = pd.DataFrame(
+            X_train_gene_trans,
+            index=X_train_gene_df.index.copy(),
+            columns=X_train_gene_df.columns.copy()
+        )
+        X_train_df = pd.concat((X_train_trans_df, X_train_non_gene_df), axis=1)
+        assert X_train_df.shape[1] == X_test_df.shape[1]
+        print('...done')
+
     return X_train_df, X_test_df
 
 
