@@ -176,7 +176,9 @@ def run_cv_cancer_type(data_model,
                        use_pancancer_only,
                        shuffle_labels,
                        use_coral=False,
-                       coral_lambda=1.0):
+                       coral_lambda=1.0,
+                       use_tca=False,
+                       tca_params=None):
     """
     Run cross-validation experiments for a given gene/cancer type combination,
     then write them to files in the results directory. If the relevant files
@@ -252,7 +254,9 @@ def run_cv_cancer_type(data_model,
                                                    data_model.gene_features,
                                                    data_model.subset_mad_genes,
                                                    use_coral,
-                                                   coral_lambda)
+                                                   coral_lambda,
+                                                   use_tca,
+                                                   tca_params)
 
         try:
             # also ignore warnings here, same deal as above

@@ -57,6 +57,12 @@ def process_args():
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
+    p.add_argument('--tca', action='store_true',
+                   help='if true, use TCA method to map source and target'
+                        'data into same feature space')
+    p.add_argument('--tca_kernel_type', choices=['linear', 'rbf'], default='linear')
+    p.add_argument('--tca_mu', type=float, default=0.1)
+    p.add_argument('--tca_n_components', type=int, default=100)
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -77,6 +83,14 @@ def process_args():
         if len(not_in_tcga) > 0:
             p.error('some cancer types not present in TCGA: {}'.format(
                 ' '.join(not_in_tcga)))
+
+    if args.tca:
+        args.tca_params = {
+            'mu': args.tca_mu,
+            'kernel_type':args.tca_kernel_type,
+            'sigma': 1.0,
+            'n_components': args.tca_n_components
+        }
 
     args.results_dir = Path(args.results_dir).resolve()
 
@@ -186,7 +200,9 @@ if __name__ == '__main__':
                                                  use_pancancer_only,
                                                  shuffle_labels,
                                                  use_coral=args.coral,
-                                                 coral_lambda=args.coral_lambda)
+                                                 coral_lambda=args.coral_lambda,
+                                                 use_tca=args.tca,
+                                                 tca_params=args.tca_params)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '
