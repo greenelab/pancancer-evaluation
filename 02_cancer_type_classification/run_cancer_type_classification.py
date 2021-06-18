@@ -91,6 +91,8 @@ def process_args():
             'sigma': 1.0,
             'n_components': args.tca_n_components
         }
+    else:
+        args.tca_params = None
 
     args.results_dir = Path(args.results_dir).resolve()
 
