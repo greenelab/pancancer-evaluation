@@ -185,6 +185,8 @@ def preprocess_data(X_train_raw_df,
                     subset_mad_genes=-1,
                     use_coral=False,
                     coral_lambda=1.0,
+                    coral_by_cancer_type=False,
+                    cancer_types=None,
                     use_tca=False,
                     tca_params=None):
     """
@@ -204,31 +206,32 @@ def preprocess_data(X_train_raw_df,
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features)
     if use_coral:
         print('Running CORAL...', end='')
-        from transfertools.models import CORAL
+        if coral_by_cancer_type:
+            assert cancer_types is not None, (
+                'cancer types list required to run per-cancer CORAL'
+            )
+            # for cancer type in training data, map data from that cancer
+            # type to test domain
+            train_cancer_types = cancer_types.reindex(X_train_df.index).values
+            for cancer_type in np.unique(train_cancer_types):
+                cancer_samples = (train_cancer_types == cancer_type)
+                print(X_train_df.shape)
+                print(X_train_df.loc[cancer_samples, :].head())
+                X_train_df = map_coral(X_train_df,
+                                       X_test_df,
+                                       gene_features,
+                                       coral_lambda,
+                                       samples=cancer_samples)
+                print(X_train_df.shape)
+                print(X_train_df.loc[cancer_samples, :].head())
 
-        # we just scaled columns in standardize_gene_features above, so we
-        # don't need to do it again (CORAL does by default)
-        transform = CORAL(scaling='none', tol=1e-3, lambda_val=coral_lambda)
+        else:
+            # map all data in training set to test domain simultaneously
+            X_train_df = map_coral(X_train_df,
+                                   X_test_df,
+                                   gene_features,
+                                   coral_lambda)
 
-        # we want to do this only with the gene features, leaving out the
-        # non-gene (cancer type and mutation burden) features
-        X_train_gene_df = X_train_df.loc[:, gene_features]
-        X_train_non_gene_df = X_train_df.loc[:, ~gene_features]
-        X_test_gene_df = X_test_df.loc[:, gene_features]
-
-        # align source domain (training cancer type) distribution with target
-        # domain (test cancer type) distribution
-        X_train_gene_trans, _ = transform.fit_transfer(X_train_gene_df.values,
-                                                       X_test_gene_df.values)
-        assert X_train_gene_trans.shape == X_train_gene_df.values.shape
-
-        # now reset gene feature columns and recreate train dataframe
-        X_train_trans_df = pd.DataFrame(
-            X_train_gene_trans,
-            index=X_train_gene_df.index.copy(),
-            columns=X_train_gene_df.columns.copy()
-        )
-        X_train_df = pd.concat((X_train_trans_df, X_train_non_gene_df), axis=1)
         assert X_train_df.shape[1] == X_test_df.shape[1]
         print('...done')
     if use_tca:
@@ -344,4 +347,39 @@ def get_valid_cancer_types(gene, output_dir):
                        "{}_filtered_cancertypes.tsv".format(gene)).resolve()
     filter_df = pd.read_csv(filter_file, sep='\t')
     return list(filter_df[filter_df.disease_included].DISEASE)
+
+
+def map_coral(X_train_df, X_test_df, gene_features, coral_lambda, samples=None):
+    """Run CORAL domain adaptation on training dataset.
+
+    TODO document
+    """
+    from transfertools.models import CORAL
+
+    # if sample list is not provided, use all samples
+    if samples is None:
+        samples = np.ones(X_train_df.shape[0]).astype('bool')
+
+    # columns should already be scaled using standardize_gene_features, so we
+    # don't need to do it again (CORAL does by default)
+    transform = CORAL(scaling='none', tol=1e-3, lambda_val=coral_lambda)
+
+    # we want to only use the gene features, leaving out the non-gene
+    # (cancer type and mutation burden) features
+    X_train_gene_df = X_train_df.loc[samples, gene_features]
+    X_train_non_gene_df = X_train_df.loc[samples, ~gene_features]
+    X_test_gene_df = X_test_df.loc[:, gene_features]
+
+    # align source domain (training cancer type) distribution with target
+    # domain (test cancer type) distribution
+    X_train_gene_trans, _ = transform.fit_transfer(X_train_gene_df.values,
+                                                   X_test_gene_df.values)
+    assert X_train_gene_trans.shape == X_train_gene_df.values.shape
+
+    # now reset gene feature columns and recreate train dataframe
+    X_train_trans_df = X_train_df.copy()
+    X_train_trans_df.loc[samples, gene_features] = X_train_gene_trans
+
+    return X_train_trans_df
+
 

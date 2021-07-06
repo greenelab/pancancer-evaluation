@@ -30,6 +30,9 @@ def process_args():
     p.add_argument('--coral', action='store_true',
                    help='if true, use CORAL method to align source and'
                         'target distributions')
+    p.add_argument('--coral_by_cancer_type', action='store_true',
+                   help='if true, use CORAL method to align source and'
+                        'target distributions, per cancer type')
     p.add_argument('--coral_lambda', type=float, default=1.0)
     p.add_argument('--custom_genes', nargs='*', default=None,
                    help='currently this needs to be a subset of top_50')
@@ -137,7 +140,8 @@ if __name__ == '__main__':
     #   (shuffled labels acts as our lower baseline)
     # - for all genes in the given gene set
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
-    for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
+    # for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
+    for use_pancancer, shuffle_labels in [(True, False), (True, True)]:
         # use_pancancer_cv is true if we want to use all pancancer data (not just
         # non-testing pancancer data)
         use_pancancer_cv = (use_pancancer and not args.pancancer_only)
@@ -193,6 +197,13 @@ if __name__ == '__main__':
                                                            gene,
                                                            cancer_type,
                                                            shuffle_labels)
+                    if args.coral_by_cancer_type:
+                        cancer_types = sample_info_df[
+                            sample_info_df.index.isin(tcga_data.X_df.index)
+                        ].cancer_type
+                    else:
+                        cancer_types = None
+
                     results = run_cv_cancer_type(tcga_data,
                                                  gene,
                                                  cancer_type,
@@ -203,6 +214,8 @@ if __name__ == '__main__':
                                                  shuffle_labels,
                                                  use_coral=args.coral,
                                                  coral_lambda=args.coral_lambda,
+                                                 coral_by_cancer_type=args.coral_by_cancer_type,
+                                                 cancer_types=cancer_types,
                                                  use_tca=args.tca,
                                                  tca_params=args.tca_params)
                 except ResultsFileExistsError:

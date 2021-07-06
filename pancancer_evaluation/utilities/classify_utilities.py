@@ -177,6 +177,8 @@ def run_cv_cancer_type(data_model,
                        shuffle_labels,
                        use_coral=False,
                        coral_lambda=1.0,
+                       coral_by_cancer_type=False,
+                       cancer_types=None,
                        use_tca=False,
                        tca_params=None):
     """
@@ -255,6 +257,8 @@ def run_cv_cancer_type(data_model,
                                                    data_model.subset_mad_genes,
                                                    use_coral,
                                                    coral_lambda,
+                                                   coral_by_cancer_type,
+                                                   cancer_types,
                                                    use_tca,
                                                    tca_params)
 
