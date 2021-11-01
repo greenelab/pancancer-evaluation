@@ -2,6 +2,8 @@
 **/.ipynb_checkpoints/*
 *.egg-info*
 
+**/da_images/*
+
 data/EBPlusPlusAdjustPANCAN_IlluminaHiSeq_RNASeqV2-v2.geneExp.tsv
 data/*.gz
 data/*.pkl

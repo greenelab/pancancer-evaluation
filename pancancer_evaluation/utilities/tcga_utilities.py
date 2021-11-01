@@ -215,16 +215,11 @@ def preprocess_data(X_train_raw_df,
             train_cancer_types = cancer_types.reindex(X_train_df.index).values
             for cancer_type in np.unique(train_cancer_types):
                 cancer_samples = (train_cancer_types == cancer_type)
-                print(X_train_df.shape)
-                print(X_train_df.loc[cancer_samples, :].head())
                 X_train_df = map_coral(X_train_df,
                                        X_test_df,
                                        gene_features,
                                        coral_lambda,
                                        samples=cancer_samples)
-                print(X_train_df.shape)
-                print(X_train_df.loc[cancer_samples, :].head())
-
         else:
             # map all data in training set to test domain simultaneously
             X_train_df = map_coral(X_train_df,

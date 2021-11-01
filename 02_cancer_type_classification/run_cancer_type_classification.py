@@ -140,8 +140,7 @@ if __name__ == '__main__':
     #   (shuffled labels acts as our lower baseline)
     # - for all genes in the given gene set
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
-    # for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
-    for use_pancancer, shuffle_labels in [(True, False), (True, True)]:
+    for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
         # use_pancancer_cv is true if we want to use all pancancer data (not just
         # non-testing pancancer data)
         use_pancancer_cv = (use_pancancer and not args.pancancer_only)
