@@ -22,6 +22,10 @@ get_ipython().run_line_magic('autoreload', '2')
 # ### Simulated data
 # 
 # How do domain adaptation algorithms available in `transfertools` scale with the number of samples/features?
+
+# In[2]:
+
+
 def coral_samples(n_samples, n_features, tol=1e-8, seed=1):
     np.random.seed(seed)
     t = time.time()
@@ -39,7 +43,13 @@ def tca_samples(n_samples, n_features, n_components=10, seed=1):
     Xs = np.random.normal(size=(n_samples, n_features))
     Xt = np.random.normal(size=(n_samples, n_features))
     Xs_trans, Xt_trans = transform.fit_transfer(Xs, Xt)
-    return time.time() - tcoral_times = []
+    return time.time() - t
+
+
+# In[3]:
+
+
+coral_times = []
 tca_times = []
 n_samples = 1000
 n_feats_list = [10, 50, 100, 500, 1000, 2000]
@@ -48,8 +58,20 @@ for n_features in tqdm(n_feats_list):
     coral_times.append((n_features,
                         coral_samples(n_samples, n_features)))
     tca_times.append((n_features,
-                      tca_samples(n_samples, n_features)))print(coral_times)
-print(tca_times)sns.set()
+                      tca_samples(n_samples, n_features)))
+
+
+# In[4]:
+
+
+print(coral_times)
+print(tca_times)
+
+
+# In[5]:
+
+
+sns.set()
 
 coral_plot_times = list(zip(*coral_times))
 tca_plot_times = list(zip(*tca_times))
@@ -58,7 +80,13 @@ plt.plot(coral_plot_times[0], coral_plot_times[1], label='CORAL')
 plt.plot(tca_plot_times[0], tca_plot_times[1], label='TCA')
 plt.xlabel('Number of features')
 plt.ylabel('Runtime (seconds)')
-plt.legend()coral_samples_times = []
+plt.legend()
+
+
+# In[6]:
+
+
+coral_samples_times = []
 tca_samples_times = []
 n_features = 1000
 n_samples_list = [10, 50, 100, 500, 1000, 2000]
@@ -67,8 +95,20 @@ for n_samples in tqdm(n_samples_list):
     coral_samples_times.append((n_samples,
                                 coral_samples(n_samples, n_features)))
     tca_samples_times.append((n_samples,
-                              tca_samples(n_samples, n_features)))print(coral_samples_times)
-print(tca_samples_times)sns.set()
+                              tca_samples(n_samples, n_features)))
+
+
+# In[7]:
+
+
+print(coral_samples_times)
+print(tca_samples_times)
+
+
+# In[8]:
+
+
+sns.set()
 
 coral_plot_times = list(zip(*coral_samples_times))
 tca_plot_times = list(zip(*tca_samples_times))
@@ -78,11 +118,13 @@ plt.plot(tca_plot_times[0], tca_plot_times[1], label='TCA')
 plt.xlabel('Number of samples')
 plt.ylabel('Runtime (seconds)')
 plt.legend()
+
+
 # ### Real data
 # 
 # Does CORAL help us generalize our mutation prediction classifiers across cancer types?
 
-# In[2]:
+# In[9]:
 
 
 import os
@@ -95,7 +137,7 @@ import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.analysis_utilities as au
 
 
-# In[3]:
+# In[10]:
 
 
 lambda_vals = [0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000]
@@ -124,7 +166,7 @@ coral_df['coral'] = True
 coral_df.head()
 
 
-# In[4]:
+# In[11]:
 
 
 control_single_cancer_df = au.load_prediction_results(
@@ -147,7 +189,7 @@ control_df['coral'] = False
 control_df.head()
 
 
-# In[5]:
+# In[12]:
 
 
 sns.set({'figure.figsize': (16, 12)})
@@ -192,7 +234,7 @@ sns.stripplot(data=plot_df, x='lambda', y='aupr', dodge=True,
 axarr[1, 1].set_title('pancancer only, signal, TP53')
 
 
-# In[6]:
+# In[13]:
 
 
 sns.set({'figure.figsize': (16, 12)})
@@ -237,7 +279,7 @@ sns.stripplot(data=plot_df, x='lambda', y='aupr', dodge=True,
 axarr[1, 1].set_title('pancancer only, shuffled, TP53')
 
 
-# In[7]:
+# In[14]:
 
 
 diff_results_df = pd.DataFrame()
@@ -258,7 +300,7 @@ for train_set in ['single_cancer', 'pancancer_only']:
 diff_results_df.head()
 
 
-# In[8]:
+# In[15]:
 
 
 sns.set({'figure.figsize': (16, 12)})
@@ -306,7 +348,7 @@ axarr[1, 1].set_ylabel('AUPR(signal) - AUPR(shuffled)')
 axarr[1, 1].set_title('pancancer only, TP53_LGG')
 
 
-# In[9]:
+# In[16]:
 
 
 # TCA, linear kernel
@@ -338,7 +380,7 @@ tca_df['tca'] = True
 tca_df.head()
 
 
-# In[10]:
+# In[17]:
 
 
 # just use the coral control for now, should be the same
@@ -362,14 +404,14 @@ control_df['tca'] = False
 control_df.head()
 
 
-# In[11]:
+# In[18]:
 
 
 results_df = pd.concat((tca_df, control_df))
 results_df.head()
 
 
-# In[12]:
+# In[19]:
 
 
 diff_results_df = pd.DataFrame()
@@ -390,7 +432,7 @@ for train_set in ['single_cancer', 'pancancer_only']:
 diff_results_df.head()
 
 
-# In[13]:
+# In[20]:
 
 
 sns.set({'figure.figsize': (16, 12)})
