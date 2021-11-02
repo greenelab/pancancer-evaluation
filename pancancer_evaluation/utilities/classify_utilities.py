@@ -4,8 +4,10 @@ Functions for classifying mutation presence/absence based on gene expression dat
 Many of these functions are adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_util.py
 """
+import contextlib
 import warnings
 
+import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import SGDClassifier
@@ -172,7 +174,13 @@ def run_cv_cancer_type(data_model,
                        num_folds,
                        use_pancancer,
                        use_pancancer_only,
-                       shuffle_labels):
+                       shuffle_labels,
+                       use_coral=False,
+                       coral_lambda=1.0,
+                       coral_by_cancer_type=False,
+                       cancer_types=None,
+                       use_tca=False,
+                       tca_params=None):
     """
     Run cross-validation experiments for a given gene/cancer type combination,
     then write them to files in the results directory. If the relevant files
@@ -211,7 +219,9 @@ def run_cv_cancer_type(data_model,
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 X_train_raw_df, X_test_raw_df = du.split_by_cancer_type(
-                   data_model.X_df, sample_info, cancer_type,
+                   data_model.X_df,
+                   sample_info,
+                   cancer_type,
                    num_folds=num_folds,
                    fold_no=fold_no,
                    use_pancancer=use_pancancer,
@@ -233,9 +243,24 @@ def run_cv_cancer_type(data_model,
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
         y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
 
-        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
+        if shuffle_labels:
+            # we set a temp seed here to make sure this shuffling order
+            # is the same for each gene between data types, otherwise
+            # it might be slightly different depending on the global state
+            with temp_seed(data_model.seed):
+                y_train_df.status = np.random.permutation(y_train_df.status.values)
+                y_test_df.status = np.random.permutation(y_test_df.status.values)
+
+        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df,
+                                                   X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+                                                   data_model.subset_mad_genes,
+                                                   use_coral,
+                                                   coral_lambda,
+                                                   coral_by_cancer_type,
+                                                   cancer_types,
+                                                   use_tca,
+                                                   tca_params)
 
         try:
             # also ignore warnings here, same deal as above
@@ -339,6 +364,14 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
 
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
         y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
+
+        if shuffle_labels:
+            # we set a temp seed here to make sure this shuffling order
+            # is the same for each gene between data types, otherwise
+            # it might be slightly different depending on the global state
+            with temp_seed(data_model.seed):
+                y_train_df.status = np.random.permutation(y_train_df.status.values)
+                y_test_df.status = np.random.permutation(y_test_df.status.values)
 
         X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
                                                    data_model.gene_features,
@@ -448,9 +481,9 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
         param_grid=clf_parameters,
         n_jobs=-1,
         cv=n_folds,
-        scoring="roc_auc",
+        scoring='average_precision',
         return_train_score=True,
-        iid=False
+        # iid=False
     )
 
     # Fit the model
@@ -733,4 +766,18 @@ def summarize_results_cc(results, train_identifier, test_identifier, signal,
     )
 
     return metrics_out_, roc_df_, pr_df_
+
+
+@contextlib.contextmanager
+def temp_seed(cntxt_seed):
+    """Set a temporary np.random seed in the resulting context.
+    This saves the global random number state and puts it back once the context
+    is closed. See https://stackoverflow.com/a/49557127 for more detail.
+    """
+    state = np.random.get_state()
+    np.random.seed(cntxt_seed)
+    try:
+        yield
+    finally:
+        np.random.set_state(state)
 

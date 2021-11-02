@@ -27,6 +27,13 @@ import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
+    p.add_argument('--coral', action='store_true',
+                   help='if true, use CORAL method to align source and'
+                        'target distributions')
+    p.add_argument('--coral_by_cancer_type', action='store_true',
+                   help='if true, use CORAL method to align source and'
+                        'target distributions, per cancer type')
+    p.add_argument('--coral_lambda', type=float, default=1.0)
     p.add_argument('--custom_genes', nargs='*', default=None,
                    help='currently this needs to be a subset of top_50')
     p.add_argument('--debug', action='store_true',
@@ -53,6 +60,12 @@ def process_args():
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
+    p.add_argument('--tca', action='store_true',
+                   help='if true, use TCA method to map source and target'
+                        'data into same feature space')
+    p.add_argument('--tca_kernel_type', choices=['linear', 'rbf'], default='linear')
+    p.add_argument('--tca_mu', type=float, default=0.1)
+    p.add_argument('--tca_n_components', type=int, default=100)
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -73,6 +86,16 @@ def process_args():
         if len(not_in_tcga) > 0:
             p.error('some cancer types not present in TCGA: {}'.format(
                 ' '.join(not_in_tcga)))
+
+    if args.tca:
+        args.tca_params = {
+            'mu': args.tca_mu,
+            'kernel_type':args.tca_kernel_type,
+            'sigma': 1.0,
+            'n_components': args.tca_n_components
+        }
+    else:
+        args.tca_params = None
 
     args.results_dir = Path(args.results_dir).resolve()
 
@@ -104,7 +127,8 @@ if __name__ == '__main__':
         log_df = pd.DataFrame(columns=log_columns)
         log_df.to_csv(args.log_file, sep='\t')
 
-    tcga_data = TCGADataModel(seed=args.seed,
+    tcga_data = TCGADataModel(sample_info=sample_info_df,
+                              seed=args.seed,
                               subset_mad_genes=args.subset_mad_genes,
                               verbose=args.verbose,
                               debug=args.debug)
@@ -145,8 +169,7 @@ if __name__ == '__main__':
                                             use_pancancer_only=use_pancancer_only)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
-                                                use_pancancer=use_pancancer,
-                                                shuffle_labels=shuffle_labels)
+                                                use_pancancer=use_pancancer)
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
                 # (or has a different alias, TODO check for this later)
@@ -169,12 +192,31 @@ if __name__ == '__main__':
                 cancer_type_log_df = None
 
                 try:
-                    check_file = fu.check_cancer_type_file(gene_dir, gene,
-                                                           cancer_type, shuffle_labels)
-                    results = run_cv_cancer_type(tcga_data, gene, cancer_type,
-                                                 sample_info_df, args.num_folds,
-                                                 use_pancancer_cv, use_pancancer_only,
-                                                 shuffle_labels)
+                    check_file = fu.check_cancer_type_file(gene_dir,
+                                                           gene,
+                                                           cancer_type,
+                                                           shuffle_labels)
+                    if args.coral_by_cancer_type:
+                        cancer_types = sample_info_df[
+                            sample_info_df.index.isin(tcga_data.X_df.index)
+                        ].cancer_type
+                    else:
+                        cancer_types = None
+
+                    results = run_cv_cancer_type(tcga_data,
+                                                 gene,
+                                                 cancer_type,
+                                                 sample_info_df,
+                                                 args.num_folds,
+                                                 use_pancancer_cv,
+                                                 use_pancancer_only,
+                                                 shuffle_labels,
+                                                 use_coral=args.coral,
+                                                 coral_lambda=args.coral_lambda,
+                                                 coral_by_cancer_type=args.coral_by_cancer_type,
+                                                 cancer_types=cancer_types,
+                                                 use_tca=args.tca,
+                                                 tca_params=args.tca_params)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '

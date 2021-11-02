@@ -120,8 +120,7 @@ if __name__ == '__main__':
                                                 shuffle_labels=shuffle_labels)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
-                                                use_pancancer=True,
-                                                shuffle_labels=shuffle_labels)
+                                                use_pancancer=True)
             except ResultsFileExistsError:
                 # this happens if cross-validation for this gene has already been
                 # run (i.e. the results file already exists)
