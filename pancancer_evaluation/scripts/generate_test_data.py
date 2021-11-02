@@ -27,8 +27,7 @@ def generate_stratified_test_data(tcga_data, sample_info_df, verbose=False):
             print(gene, classification)
             print(output_file)
         # TODO: option to ignore checking all files?
-        tcga_data.process_data_for_gene(gene, classification,
-                                        shuffle_labels=False)
+        tcga_data.process_data_for_gene(gene, classification, gene_dir=None)
         results = cu.run_cv_stratified(tcga_data, gene, sample_info_df,
                                        num_folds=4, shuffle_labels=False)
         metrics_df = pd.concat(results['gene_metrics'])
@@ -43,11 +42,11 @@ def generate_cancer_type_test_data(tcga_data, sample_info_df, verbose=False):
             print(gene, classification, cancer_type)
             print(output_file)
         # TODO: option to ignore checking all files?
-        tcga_data.process_data_for_gene(gene, classification,
-                                        shuffle_labels=False)
+        tcga_data.process_data_for_gene(gene, classification, gene_dir=None)
         results = cu.run_cv_cancer_type(tcga_data, gene, cancer_type,
                                         sample_info_df, num_folds=4,
                                         use_pancancer=False,
+                                        use_pancancer_only=False,
                                         shuffle_labels=False)
         metrics_df = pd.concat(results['gene_metrics'])
         np.savetxt(output_file, metrics_df['auroc'].values)
