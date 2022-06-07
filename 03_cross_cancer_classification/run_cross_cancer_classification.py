@@ -34,12 +34,18 @@ def process_args():
                    help='use subset of data for fast debugging')
     p.add_argument('--log_file', default=None,
                    help='name of file to log skipped cancer types to')
+    p.add_argument('--output_grid', action='store_true',
+                   help='if included, save train/test results for inner CV grid search')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
+    p.add_argument('--train_identifiers', nargs='+',
+                   help='identifiers to use to train model')
+    p.add_argument('--test_identifiers', nargs='+',
+                   help='identifiers to use to evaluate model')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -76,17 +82,8 @@ if __name__ == '__main__':
                               verbose=args.verbose,
                               debug=args.debug)
 
-    # sample 10 random genes from vogelstein gene set
+    # load cancer gene info
     genes_df = du.load_vogelstein()
-    sampled_genes = np.random.choice(genes_df.gene.values, size=10, replace=False)
-
-    # and use all cancer types in TCGA
-    sample_info_df = du.load_sample_info(args.verbose)
-    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
-
-    # identifiers have the format {gene}_{cancer_type}
-    identifiers = ['_'.join(t) for t in it.product(sampled_genes,
-                                                   tcga_cancer_types)]
 
     # create output directory
     output_dir = Path(args.results_dir, 'cross_cancer').resolve()
@@ -96,8 +93,8 @@ if __name__ == '__main__':
 
         print('shuffle_labels: {}'.format(shuffle_labels))
 
-        outer_progress = tqdm(identifiers,
-                              total=len(identifiers),
+        outer_progress = tqdm(args.train_identifiers,
+                              total=len(args.train_identifiers),
                               ncols=100,
                               file=sys.stdout)
 
@@ -160,8 +157,8 @@ if __name__ == '__main__':
                 fu.write_log_file(log_df, args.log_file)
                 continue
 
-            inner_progress = tqdm(identifiers,
-                                  total=len(identifiers),
+            inner_progress = tqdm(args.test_identifiers,
+                                  total=len(args.test_identifiers),
                                   ncols=100,
                                   file=sys.stdout)
 
@@ -205,7 +202,8 @@ if __name__ == '__main__':
                                                     test_identifier,
                                                     model_results,
                                                     coef_df,
-                                                    shuffle_labels)
+                                                    shuffle_labels,
+                                                    output_grid=args.output_grid)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '

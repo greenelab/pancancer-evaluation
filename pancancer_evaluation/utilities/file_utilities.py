@@ -128,6 +128,13 @@ def save_results_cross_cancer(output_dir,
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
+    if 'gene_param_grid' in results:
+        params_df = results['gene_param_grid']
+        output_file = Path(
+            output_dir, "{}_param_grid.tsv.gz".format(
+                fname_prefix)).resolve()
+        params_df.to_csv(output_file, sep="\t")
+
 
 def save_results_add_cancer(gene_dir,
                             check_file,
