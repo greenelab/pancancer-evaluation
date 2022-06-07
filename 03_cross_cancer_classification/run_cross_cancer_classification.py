@@ -196,7 +196,8 @@ if __name__ == '__main__':
                     check_file = fu.check_cross_cancer_file(output_dir,
                                                             train_identifier,
                                                             test_identifier,
-                                                            shuffle_labels)
+                                                            shuffle_labels,
+                                                            args.seed)
                     results = evaluate_cross_cancer(tcga_data,
                                                     train_identifier,
                                                     test_identifier,
@@ -251,7 +252,8 @@ if __name__ == '__main__':
                                                  results,
                                                  train_identifier,
                                                  test_identifier,
-                                                 shuffle_labels)
+                                                 shuffle_labels,
+                                                 args.seed)
 
                 if log_df is not None:
                     fu.write_log_file(log_df, args.log_file)
