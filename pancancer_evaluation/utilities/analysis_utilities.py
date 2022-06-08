@@ -628,7 +628,9 @@ def heatmap_from_results(results_df,
     # then pivot to wideform heatmap and re-sort
     # (pivot sorts indexes alphabetically by default, so we have to override
     # that by reindexing afterward)
-    heatmap_df = heatmap_df.pivot(index=train_id, columns=test_id, values='aupr')
+    heatmap_df = heatmap_df.pivot_table(
+            index=train_id, columns=test_id, values='aupr', aggfunc=np.mean
+    )
     if sort_results:
         if train_pancancer:
             heatmap_df = heatmap_df.reindex(sorted_genes)
