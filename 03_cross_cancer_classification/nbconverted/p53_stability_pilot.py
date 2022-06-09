@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ## p53 feature stability analysis
+# 
+# How stable (in terms of performance, and eventually coefficients) are TP53 mutation prediction models fit on the same dataset? We're particularly interested in how they generalize across domains (in our case tissues/cancer types): can models with similar performance on the training set have very different generalization performance?
+
 # In[1]:
 
 
@@ -14,6 +18,8 @@ import seaborn as sns
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.analysis_utilities as au
 
+
+# ### Load results
 
 # In[2]:
 
@@ -34,6 +40,8 @@ print(cross_cancer_df.shape)
 cross_cancer_df.head()
 
 
+# ### Look at overall cross-cancer performance
+
 # In[4]:
 
 
@@ -52,6 +60,14 @@ plt.title('Cross-cancer mutation detection, AUPR heatmap')
 plt.xlabel('Test identifier')
 plt.ylabel('Train identifier')
 
+
+# ### Look at variance in cross-cancer performance
+# 
+# Our expectations/hypotheses are:
+# 
+# * Performance across domains (tissue types) < performance within domain
+# * Variance across domains > variance within domain
+# * Low coefficient overlap for different models trained on the same dataset (we’ve seen this in the past)
 
 # In[6]:
 
@@ -161,3 +177,10 @@ for row in range(num_ids):
     diag_ix = (num_ids * row) + row
     g.axes[diag_ix].set_facecolor('xkcd:light blue grey')
 
+
+# These plots do seem to show that:
+# 
+# * Performance across domains (tissue types) < performance within domain (with the exception of sarcoma which performs poorly within-domain)
+# * Variance across domains > variance within domain
+# 
+# We haven't looked at coefficients yet, that will be a future analysis.
