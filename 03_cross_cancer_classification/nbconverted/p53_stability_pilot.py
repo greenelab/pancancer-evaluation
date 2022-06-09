@@ -126,6 +126,11 @@ g = sns.catplot(
 )
 g.set_titles(col_template='{col_name}')
 
+num_ids = len(plot_big_df.train_identifier.unique())
+for row in range(num_ids):
+    diag_ix = (num_ids * row) + row
+    g.axes[diag_ix].set_facecolor('xkcd:light blue grey')
+
 
 # In[10]:
 
@@ -136,6 +141,10 @@ g = sns.catplot(
     height=2.5, aspect=1.35
 )
 g.set_titles(col_template='{col_name}')
+num_ids = len(plot_big_df.train_identifier.unique())
+for row in range(num_ids):
+    diag_ix = (num_ids * row) + row
+    g.axes[diag_ix].set_facecolor('xkcd:light blue grey')
 
 
 # In[11]:
@@ -147,4 +156,8 @@ g = sns.catplot(
     color='green', ci=None, height=2.5, aspect=1.35
 )
 g.set_titles(col_template='{col_name}')
+num_ids = len(plot_big_df.train_identifier.unique())
+for row in range(num_ids):
+    diag_ix = (num_ids * row) + row
+    g.axes[diag_ix].set_facecolor('xkcd:light blue grey')
 
