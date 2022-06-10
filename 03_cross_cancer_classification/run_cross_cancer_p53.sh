@@ -1,4 +1,10 @@
 #!/bin/bash
+
+# This script is designed as a wrapper for
+# 03_cross_cancer_classification/run_cross_cancer_classification.py,
+# to run cross-cancer prediction experiments for TP53 across commonly
+# mutated cancer types.
+
 RESULTS_DIR=./03_cross_cancer_classification/results/p53_stability_pilot
 ERRORS_DIR=./p53_stability_pilot_errors
 

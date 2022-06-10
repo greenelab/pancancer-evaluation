@@ -135,6 +135,7 @@ plot_big_df.head()
 # In[9]:
 
 
+# box plots comparing train set CV performance with test set (out-of-domain) performance
 g = sns.catplot(
     data=plot_big_df,
     x='split', y='aupr', col='identifiers', kind='box', col_wrap=8,
@@ -151,6 +152,8 @@ for row in range(num_ids):
 # In[10]:
 
 
+# line plots, same as above showing trend
+# positive slope = performance improves out-of-domain, negative slope = performance worsens
 g = sns.catplot(
     data=plot_big_df,
     x='split', y='aupr', col='identifiers', kind='point', col_wrap=8,
@@ -166,6 +169,8 @@ for row in range(num_ids):
 # In[11]:
 
 
+# line plots, same as above but one line per model/random seed
+# (rather than mean/CI summarizing models as above)
 g = sns.catplot(
     data=plot_big_df,
     x='split', y='aupr', col='identifiers', kind='point', hue='seed', col_wrap=8,
