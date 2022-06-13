@@ -8,4 +8,4 @@ data/EBPlusPlusAdjustPANCAN_IlluminaHiSeq_RNASeqV2-v2.geneExp.tsv
 data/*.gz
 data/*.pkl
 
-results/*
+**/results/*

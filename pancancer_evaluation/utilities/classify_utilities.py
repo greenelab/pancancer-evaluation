@@ -106,7 +106,8 @@ def evaluate_cross_cancer(data_model,
                           model_results,
                           coef_df,
                           shuffle_labels=False,
-                          train_pancancer=False):
+                          train_pancancer=False,
+                          output_grid=False):
     """
     Evaluate a trained model for a given identifier (gene/cancer type combination).
 
@@ -164,6 +165,10 @@ def evaluate_cross_cancer(data_model,
         'gene_aupr': gene_aupr_df,
         'gene_coef': coef_df
     }
+
+    if output_grid:
+        results['gene_param_grid'] = generate_param_grid(cv_pipeline.cv_results_)
+
     return results
 
 
@@ -766,6 +771,38 @@ def summarize_results_cc(results, train_identifier, test_identifier, signal,
     )
 
     return metrics_out_, roc_df_, pr_df_
+
+
+def generate_param_grid(cv_results, fold_no=-1):
+    """Generate dataframe with results of parameter search, from sklearn
+       cv_results object.
+    """
+    # add fold number to parameter grid
+    results_grid = [
+        [fold_no] * cv_results['mean_test_score'].shape[0]
+    ]
+    columns = ['fold']
+
+    # add all of the classifier parameters to the parameter grid
+    for key_str in cv_results.keys():
+        if key_str.startswith('param_'):
+            results_grid.append(cv_results[key_str])
+            columns.append(
+                # these prefixes indicate the step in the "pipeline", we
+                # don't really need them in our parameter search results
+                key_str.replace('param_', '')
+                       .replace('classify__', '')
+                       .replace('module__', '')
+                       .replace('optimizer__', '')
+            )
+
+    # add mean train/test scores across inner folds to parameter grid
+    results_grid.append(cv_results['mean_train_score'])
+    columns.append('mean_train_score')
+    results_grid.append(cv_results['mean_test_score'])
+    columns.append('mean_test_score')
+
+    return pd.DataFrame(np.array(results_grid).T, columns=columns)
 
 
 @contextlib.contextmanager

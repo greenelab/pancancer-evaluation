@@ -1,0 +1,11 @@
+name: pancancer-evaluation
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - pandas=0.24
+  - pytest
+  - python
+  - scikit-learn=0.21
+
