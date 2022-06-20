@@ -189,6 +189,45 @@ min_max_df.sort_values(by='pancan', ascending=False).head(15)
 # In[15]:
 
 
+from sklearn.neighbors import LocalOutlierFactor
+
+# get LOF of max f-statistic for each row
+# more negative LOF = more "outlier-y", closer to -1 = more normal
+lof_rows = []
+for gene, row in f_stats_df.iterrows():
+    row = row.drop(index='pancan')
+    max_ix = row.idxmax()
+    lof = LocalOutlierFactor(n_neighbors=2,
+                             contamination='auto')
+    lof.fit_predict(
+        row.values.reshape(-1, 1)
+    )
+    max_lof = lof.negative_outlier_factor_[
+        row.index.get_loc(max_ix)
+    ]
+    lof_rows.append([gene, max_ix, max_lof])
+    
+lof_df = (
+    pd.DataFrame(lof_rows,
+                 columns=['gene', 'max_cancer_type', 'max_lof'])
+      .set_index('gene')
+)
+lof_df.head()
+
+
+# In[16]:
+
+
+rank_df = (min_max_df
+    .merge(lof_df, left_index=True, right_index=True)
+    .sort_values(by='pancan', ascending=False)
+)
+rank_df.head(20)
+
+
+# In[17]:
+
+
 # want to look at correlation of f-statistics with sample size
 ss_df = (y_df
     .groupby('cancer_type')
@@ -210,28 +249,28 @@ def plot_f_dist(plot_gene):
     return dist_df, f_ss_df
 
 
-# In[16]:
+# In[18]:
 
 
 sorted_genes = min_max_df.pancan.sort_values(ascending=False).index
 print(sorted_genes[:10])
 
 
-# In[17]:
+# In[19]:
 
 
-plot_gene = sorted_genes[16]
+plot_gene = sorted_genes[18]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
 dist_df.sort_values(ascending=False).head()
 
 
-# In[18]:
+# In[20]:
 
 
 f_ss_df.sort_values(by='f_statistic', ascending=False).head()
 
 
-# In[19]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (12, 6)})
