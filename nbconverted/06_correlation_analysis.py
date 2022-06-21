@@ -20,6 +20,7 @@ from sklearn.preprocessing import StandardScaler
 
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.data_utilities as du
+import pancancer_evaluation.utilities.tcga_utilities as tu
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
@@ -291,14 +292,21 @@ rank_df.head(20)
 # In[22]:
 
 
-# this is an example of a fairly skewed distribution (BRCA has
-# a large LOF)
+symbol_to_entrez, _ = tu.get_symbol_map()
+entrez_to_symbol = {v: k for k, v in symbol_to_entrez.items()}
+assert entrez_to_symbol[673] == 'BRAF'
+
+
+# In[23]:
+
+
+# this is an example of a fairly skewed distribution (BRCA has a large LOF)
 plot_gene = sorted_genes[2]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
 f_ss_df.sort_values(by='f_statistic', ascending=False).head()
 
 
-# In[23]:
+# In[24]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -307,24 +315,25 @@ fig, axarr = plt.subplots(1, 2)
 
 sns.histplot(dist_df, ax=axarr[0])
 axarr[0].set_xlabel('f-statistic')
-axarr[0].set_title(r'Gene {} (pancan $f$-statistic: {:.3e})'.format(plot_gene, f_stats_df.loc[plot_gene, 'pancan']))
+axarr[0].set_title(r'Gene {} (pancan $f$-statistic: {:.3e})'.format(
+    entrez_to_symbol[int(plot_gene)],
+    f_stats_df.loc[plot_gene, 'pancan']))
 
 sns.scatterplot(data=f_ss_df, x='count', y='f_statistic', ax=axarr[1])
 axarr[1].set_ylabel('f-statistic')
 axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
 
 
-# In[24]:
+# In[25]:
 
 
-# this is an example of a less skewed distribution (BRCA has
-# a much smaller LOF)
+# this is an example of a less skewed distribution (BRCA has a much smaller LOF)
 plot_gene = sorted_genes[18]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
 f_ss_df.sort_values(by='f_statistic', ascending=False).head()
 
 
-# In[25]:
+# In[26]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -333,7 +342,9 @@ fig, axarr = plt.subplots(1, 2)
 
 sns.histplot(dist_df, ax=axarr[0])
 axarr[0].set_xlabel('f-statistic')
-axarr[0].set_title(r'Gene {} (pancan $f$-statistic: {:.3e})'.format(plot_gene, f_stats_df.loc[plot_gene, 'pancan']))
+axarr[0].set_title(r'Gene {} (pancan $f$-statistic: {:.3e})'.format(
+    entrez_to_symbol[int(plot_gene)],
+    f_stats_df.loc[plot_gene, 'pancan']))
 
 sns.scatterplot(data=f_ss_df, x='count', y='f_statistic', ax=axarr[1])
 axarr[1].set_ylabel('f-statistic')

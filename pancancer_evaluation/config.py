@@ -66,3 +66,7 @@ cross_cancer_types = [
 num_train_cancer_types = [0, 1, 2, 4, -1]
 # similarity matrix to use for 'similarity' addition option
 similarity_matrix_file = data_dir / 'expression_confusion_matrix.tsv'
+
+# repo/commit information to retrieve precomputed cancer gene information
+genes_base_url = 'https://raw.githubusercontent.com/cognoma/genes/'
+genes_commit = 'ad9631bb4e77e2cdc5413b0d77cb8f7e93fc5bee'
