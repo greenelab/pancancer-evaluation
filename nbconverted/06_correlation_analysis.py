@@ -173,8 +173,7 @@ f_stats_df.iloc[-5:, :5]
 # In[14]:
 
 
-# get difference between max and min f-statistic (without considering
-# pan-cancer f-statistic)
+# get difference between max and min single-cancer f-statistic
 max_df = f_stats_df.drop(columns='pancan').max(axis='columns')
 min_df = f_stats_df.drop(columns='pancan').min(axis='columns')
 min_max_df = (
@@ -194,9 +193,10 @@ from sklearn.neighbors import LocalOutlierFactor
 # get LOF of max f-statistic for each row
 # more negative LOF = more "outlier-y", closer to -1 = more normal
 lof_rows = []
-for gene, row in f_stats_df.iterrows():
+for gene_id, row in f_stats_df.iterrows():
     row = row.drop(index='pancan')
     max_ix = row.idxmax()
+    max_f_statistic = row.max()
     lof = LocalOutlierFactor(n_neighbors=2,
                              contamination='auto')
     lof.fit_predict(
@@ -205,11 +205,12 @@ for gene, row in f_stats_df.iterrows():
     max_lof = lof.negative_outlier_factor_[
         row.index.get_loc(max_ix)
     ]
-    lof_rows.append([gene, max_ix, max_lof])
+    lof_rows.append([gene_id, max_ix, max_f_statistic, max_lof])
     
 lof_df = (
     pd.DataFrame(lof_rows,
-                 columns=['gene', 'max_cancer_type', 'max_lof'])
+                 columns=['gene', 'max_cancer_type',
+                          'max_f_statistic', 'max_lof'])
       .set_index('gene')
 )
 lof_df.head()
@@ -222,10 +223,35 @@ rank_df = (min_max_df
     .merge(lof_df, left_index=True, right_index=True)
     .sort_values(by='pancan', ascending=False)
 )
-rank_df.head(20)
 
 
 # In[17]:
+
+
+sns.set({'figure.figsize': (8, 6)})
+
+rank_df['abs_max_lof'] = rank_df.max_lof.abs()
+
+sns.scatterplot(data=rank_df, x='pancan', y='abs_max_lof')
+plt.xlabel('pan-cancer f-statistic')
+plt.ylabel('abs(max LOF)')
+plt.title('{} pan-cancer f-statistic vs. max individual LOF, per gene'
+            .format(gene))
+
+
+# In[18]:
+
+
+sns.set({'figure.figsize': (8, 6)})
+
+sns.scatterplot(data=rank_df, x='max_f_statistic', y='abs_max_lof')
+plt.xlabel('highest single-cancer f-statistic')
+plt.ylabel('abs(max LOF)')
+plt.title('{} max single-cancer f-statistic vs. max individual LOF, per gene'
+          .format(gene))
+
+
+# In[19]:
 
 
 # want to look at correlation of f-statistics with sample size
@@ -249,28 +275,56 @@ def plot_f_dist(plot_gene):
     return dist_df, f_ss_df
 
 
-# In[18]:
+# In[20]:
 
 
 sorted_genes = min_max_df.pancan.sort_values(ascending=False).index
 print(sorted_genes[:10])
 
 
-# In[19]:
+# In[21]:
 
 
-plot_gene = sorted_genes[18]
+rank_df.head(20)
+
+
+# In[22]:
+
+
+# this is an example of a fairly skewed distribution (BRCA has
+# a large LOF)
+plot_gene = sorted_genes[2]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
-dist_df.sort_values(ascending=False).head()
-
-
-# In[20]:
-
-
 f_ss_df.sort_values(by='f_statistic', ascending=False).head()
 
 
-# In[21]:
+# In[23]:
+
+
+sns.set({'figure.figsize': (12, 6)})
+
+fig, axarr = plt.subplots(1, 2)
+
+sns.histplot(dist_df, ax=axarr[0])
+axarr[0].set_xlabel('f-statistic')
+axarr[0].set_title(r'Gene {} (pancan $f$-statistic: {:.3e})'.format(plot_gene, f_stats_df.loc[plot_gene, 'pancan']))
+
+sns.scatterplot(data=f_ss_df, x='count', y='f_statistic', ax=axarr[1])
+axarr[1].set_ylabel('f-statistic')
+axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
+
+
+# In[24]:
+
+
+# this is an example of a less skewed distribution (BRCA has
+# a much smaller LOF)
+plot_gene = sorted_genes[18]
+dist_df, f_ss_df = plot_f_dist(plot_gene)
+f_ss_df.sort_values(by='f_statistic', ascending=False).head()
+
+
+# In[25]:
 
 
 sns.set({'figure.figsize': (12, 6)})
