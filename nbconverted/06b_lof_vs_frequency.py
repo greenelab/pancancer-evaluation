@@ -37,6 +37,7 @@ mad_threshold = 100
 output_dir = cfg.data_dir / 'univariate_corrs'
 output_file = output_dir / '{}_{}_corrs.tsv'.format(gene, mad_threshold)
 rank_df = pd.read_csv(output_file, sep='\t')
+rank_df['entrez_id'] = rank_df.entrez_id.astype('str')
 
 print(rank_df.shape)
 rank_df.head()
@@ -100,17 +101,17 @@ plt.title('Number of models where feature was selected, out of 8')
 plt.xlabel('')
 
 
-# In[14]:
+# In[8]:
 
 
 feats_in_top_n = (
-    nz_models_df.index.isin(rank_df.entrez_id.astype(str))
+    nz_models_df.index.isin(rank_df.entrez_id)
 )
 
 nz_models_df.loc[feats_in_top_n, :].head()
 
 
-# In[16]:
+# In[9]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -122,4 +123,44 @@ plt.title(
     'Number of models where feature was selected, out of 8, top {} only'.format(mad_threshold)
 )
 plt.xlabel('')
+
+
+# In[10]:
+
+
+# plot max LOF vs. number of times selected
+# we want to see if there's a correlation
+
+plot_df = (nz_models_df
+    .merge(rank_df, left_index=True, right_on='entrez_id')
+    .drop(columns=['symbol.1'])
+)
+
+print(plot_df.shape)
+plot_df.head()
+
+
+# In[11]:
+
+
+sns.set({'figure.figsize': (8, 6)})
+
+sns.scatterplot(data=plot_df, x='nz_weight', y='abs_max_lof')
+plt.xlabel('Number of models where feature was selected')
+plt.ylabel('Max LOF value (higher = more outlier-y)')
+plt.title('Times selected vs. max LOF value, {}, top {} genes'.format(
+    gene, mad_threshold))
+
+
+# In[12]:
+
+
+sns.set({'figure.figsize': (8, 6)})
+
+sns.scatterplot(data=plot_df, x='nz_weight', y='abs_max_lof')
+plt.gca().set_yscale('log')
+plt.xlabel('Number of models where feature was selected')
+plt.ylabel('Max LOF value (higher = more outlier-y)')
+plt.title('Times selected vs. max LOF value, {}, top {} genes'.format(
+    gene, mad_threshold))
 
