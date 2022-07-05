@@ -286,15 +286,18 @@ print(sorted_genes[:10])
 # In[21]:
 
 
-rank_df.head(20)
+symbol_to_entrez, _ = tu.get_symbol_map()
+entrez_to_symbol = {v: k for k, v in symbol_to_entrez.items()}
+assert entrez_to_symbol[673] == 'BRAF'
 
 
 # In[22]:
 
 
-symbol_to_entrez, _ = tu.get_symbol_map()
-entrez_to_symbol = {v: k for k, v in symbol_to_entrez.items()}
-assert entrez_to_symbol[673] == 'BRAF'
+rank_df['symbol'] = rank_df.index.to_series().astype(int).map(entrez_to_symbol)
+rank_df.index.name = 'entrez_id'
+rank_df = rank_df.reset_index().set_index('symbol', drop=False)
+rank_df.head(20)
 
 
 # In[23]:
@@ -303,7 +306,7 @@ assert entrez_to_symbol[673] == 'BRAF'
 # this is an example of a fairly skewed distribution (BRCA has a large LOF)
 plot_gene = sorted_genes[2]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
-f_ss_df.sort_values(by='f_statistic', ascending=False).head()
+f_ss_df.sort_values(by='f_statistic', ascending=False).head(10)
 
 
 # In[24]:
@@ -330,7 +333,7 @@ axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
 # this is an example of a less skewed distribution (BRCA has a much smaller LOF)
 plot_gene = sorted_genes[18]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
-f_ss_df.sort_values(by='f_statistic', ascending=False).head()
+f_ss_df.sort_values(by='f_statistic', ascending=False).head(10)
 
 
 # In[26]:
@@ -349,4 +352,15 @@ axarr[0].set_title(r'Gene {} (pancan $f$-statistic: {:.3e})'.format(
 sns.scatterplot(data=f_ss_df, x='count', y='f_statistic', ax=axarr[1])
 axarr[1].set_ylabel('f-statistic')
 axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
+
+
+# In[28]:
+
+
+# save univariate correlation results
+output_dir = cfg.data_dir / 'univariate_corrs'
+output_dir.mkdir(exist_ok=True)
+
+output_file = output_dir / '{}_{}_corrs.tsv'.format(gene, mad_threshold)
+rank_df.to_csv(output_file, sep='\t')
 
