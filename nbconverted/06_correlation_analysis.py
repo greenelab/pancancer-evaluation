@@ -3,7 +3,7 @@
 
 # ## Univariate correlation analysis
 # 
-# TODO: describe
+# We wanted to look at whether correlations between gene expression and mutation status are primarily driven by a strong correlation in a single cancer type, or by weak correlations across all cancer types. To make the analysis simpler, we'll just look at univariate correlations between the expression of a single gene and mutation status in a given driver.
 
 # In[1]:
 
@@ -131,12 +131,11 @@ print(X_df.shape)
 X_df.iloc[:5, :5]
 
 
-# ### Calculate pan-cancer univariate feature correlations
+# ### Calculate univariate feature correlations with mutation labels
 
 # In[12]:
 
 
-# now get univariate feature correlations with labels
 from sklearn.feature_selection import f_classif, mutual_info_classif
 
 f_stats_pancan = f_classif(X_df, y_df.status)[0]
@@ -186,13 +185,20 @@ min_max_df = (
 min_max_df.sort_values(by='pancan', ascending=False).head(15)
 
 
+# ### Calculate "outlier-ness" of correlation distributions
+# 
+# We want to identify genes that have a strong univariate pan-cancer correlation, and classify them (roughly) as one of the following:
+# 
+# * Driven mostly by a single cancer type (one cancer type with a large correlation f-statistic, others fairly small)
+# * Driven mostly by 2+ cancer types (two or more cancer types with large correlations)
+# 
+# One way to do that is using the [local outlier factor](https://en.wikipedia.org/wiki/Local_outlier_factor) of the cancer type with the maximum correlation. A more negative LOF means the distribution is more "outlier-ish", and a LOF closer to 1 means the distribution is more uniform/less likely to contain an outlier.
+
 # In[15]:
 
 
 from sklearn.neighbors import LocalOutlierFactor
 
-# get LOF of max f-statistic for each row
-# more negative LOF = more "outlier-y", closer to -1 = more normal
 lof_rows = []
 for gene_id, row in f_stats_df.iterrows():
     row = row.drop(index='pancan')
