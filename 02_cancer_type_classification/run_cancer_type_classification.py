@@ -57,7 +57,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
+    p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
     p.add_argument('--tca', action='store_true',

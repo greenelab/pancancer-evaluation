@@ -48,7 +48,7 @@ def train_cross_cancer(data_model,
         X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
                                                    data_model.X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+                                                   data_model.num_features)
         y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
     except ValueError:
         if data_model.X_train_raw_df.shape[0] == 0:
@@ -128,7 +128,7 @@ def evaluate_cross_cancer(data_model,
         X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
                                                    data_model.X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+                                                   data_model.num_features)
         y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
     except ValueError:
         if data_model.X_train_raw_df.shape[0] == 0:
@@ -259,7 +259,7 @@ def run_cv_cancer_type(data_model,
         X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df,
                                                    X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes,
+                                                   data_model.num_features,
                                                    use_coral,
                                                    coral_lambda,
                                                    coral_by_cancer_type,
@@ -380,7 +380,7 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
 
         X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+                                                   data_model.num_features)
 
         try:
             # also ignore warnings here, same deal as above

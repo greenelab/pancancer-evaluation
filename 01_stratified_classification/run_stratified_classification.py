@@ -28,6 +28,15 @@ def process_args():
                    help='currently this needs to be a subset of top_50')
     p.add_argument('--debug', action='store_true',
                    help='use subset of data for fast debugging')
+    p.add_argument('--feature_selection',
+                   choices=['mad', 'mad_cancer', 'max_lof', 'average_lof',
+                            'kurtosis'],
+                   default='mad',
+                   help='method to use for feature selection, only applied if '
+                        '0 > num_features > total number of columns')
+    p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
+                   help='if included, select this number of features, using '
+                        'feature selection method specified in feature_selection')
     p.add_argument('--gene_set', type=str,
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
@@ -41,9 +50,6 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
-                   help='if included, subset gene features to this number of '
-                        'features having highest mean absolute deviation')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -87,7 +93,7 @@ if __name__ == '__main__':
     sample_info_df = du.load_sample_info(args.verbose)
 
     tcga_data = TCGADataModel(seed=args.seed,
-                              subset_mad_genes=args.subset_mad_genes,
+                              num_features=args.num_features,
                               verbose=args.verbose,
                               debug=args.debug)
 

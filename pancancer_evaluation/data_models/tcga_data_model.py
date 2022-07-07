@@ -25,7 +25,7 @@ class TCGADataModel():
     def __init__(self,
                  sample_info=None,
                  seed=cfg.default_seed,
-                 subset_mad_genes=-1,
+                 num_features=-1,
                  verbose=False,
                  debug=False,
                  test=False):
@@ -35,7 +35,7 @@ class TCGADataModel():
         Arguments
         ---------
         seed (int): seed for random number generator
-        subset_mad_genes (int): how many genes to keep (top by mean absolute deviation).
+        num_features (int): how many features to select
                                 -1 doesn't do any filtering (all genes will be kept).
         verbose (bool): whether or not to write verbose output
         debug (bool): if True, use a subset of expression data for quick debugging
@@ -44,7 +44,7 @@ class TCGADataModel():
         # save relevant parameters
         np.random.seed(seed)
         self.seed = seed
-        self.subset_mad_genes = subset_mad_genes
+        self.num_features = num_features
         self.verbose = verbose
         self.test = test
 

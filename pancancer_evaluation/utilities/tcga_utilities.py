@@ -184,7 +184,7 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
 def preprocess_data(X_train_raw_df,
                     X_test_raw_df,
                     gene_features,
-                    subset_mad_genes=-1,
+                    num_features=-1,
                     use_coral=False,
                     coral_lambda=1.0,
                     coral_by_cancer_type=False,
@@ -196,9 +196,9 @@ def preprocess_data(X_train_raw_df,
 
     Note this needs to happen for train and test sets independently.
     """
-    if subset_mad_genes > 0:
+    if num_features > 0:
         X_train_raw_df, X_test_raw_df, gene_features_filtered = subset_by_mad(
-            X_train_raw_df, X_test_raw_df, gene_features, subset_mad_genes
+            X_train_raw_df, X_test_raw_df, gene_features, num_features
         )
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
@@ -297,7 +297,7 @@ def standardize_gene_features(x_df, gene_features):
     return pd.concat((x_df_scaled, x_df_other), axis=1)
 
 
-def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbose=False):
+def subset_by_mad(X_train_df, X_test_df, gene_features, num_features, verbose=False):
     """Subset features by mean absolute deviation.
 
     Takes the top subset_mad_genes genes (sorted in descending order),
@@ -308,7 +308,7 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
     X_train_df: training data, samples x genes
     X_test_df: test data, samples x genes
     gene_features: numpy bool array, indicating which features are genes (and should be subsetted/standardized)
-    subset_mad_genes (int): number of genes to take
+    num_features (int): number of genes to take
 
     Returns
     -------
@@ -324,7 +324,7 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
                   .reset_index()
     )
     mad_genes_df.columns = ['gene_id', 'mean_absolute_deviation']
-    mad_genes = mad_genes_df.iloc[:subset_mad_genes, :].gene_id.astype(str).values
+    mad_genes = mad_genes_df.iloc[:num_features, :].gene_id.astype(str).values
 
     non_gene_features = X_train_df.columns.values[~gene_features]
     valid_features = np.concatenate((mad_genes, non_gene_features))
