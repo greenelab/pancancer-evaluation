@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+import pancancer_evaluation.config as cfg
+
 def process_y_matrix(
     y_mutation,
     y_copy,
@@ -378,3 +380,26 @@ def map_coral(X_train_df, X_test_df, gene_features, coral_lambda, samples=None):
     return X_train_trans_df
 
 
+def get_symbol_map():
+    """Get dict mapping gene symbols to Entrez IDs.
+
+    Also returns a dict mapping "old" Entrez IDs to "new" ones, for genes where
+    the Entrez ID was updated.
+    """
+    genes_url = '/'.join((cfg.genes_base_url, cfg.genes_commit, 'data', 'genes.tsv'))
+    gene_df = (
+        pd.read_csv(genes_url, sep='\t')
+          # only consider protein-coding genes
+          .query("gene_type == 'protein-coding'")
+    )
+    # load gene updater - define up to date Entrez gene identifiers where appropriate
+    updater_url = '/'.join((cfg.genes_base_url, cfg.genes_commit, 'data', 'updater.tsv'))
+    updater_df = pd.read_csv(updater_url, sep='\t')
+
+    symbol_to_entrez = dict(zip(gene_df.symbol.values,
+                                gene_df.entrez_gene_id.values))
+
+    old_to_new_entrez = dict(zip(updater_df.old_entrez_gene_id.values,
+                                 updater_df.new_entrez_gene_id.values))
+
+    return symbol_to_entrez, old_to_new_entrez
