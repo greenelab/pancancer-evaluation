@@ -381,7 +381,11 @@ def map_coral(X_train_df, X_test_df, gene_features, coral_lambda, samples=None):
 
 
 def get_symbol_map():
+    """Get dict mapping gene symbols to Entrez IDs.
 
+    Also returns a dict mapping "old" Entrez IDs to "new" ones, for genes where
+    the Entrez ID was updated.
+    """
     genes_url = '/'.join((cfg.genes_base_url, cfg.genes_commit, 'data', 'genes.tsv'))
     gene_df = (
         pd.read_csv(genes_url, sep='\t')
