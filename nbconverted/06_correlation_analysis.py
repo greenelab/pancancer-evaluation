@@ -3,7 +3,12 @@
 
 # ## Univariate correlation analysis
 # 
-# TODO: describe
+# We wanted to look at whether correlations between gene expression and mutation status are primarily driven by a strong correlation in a single cancer type, or by weak correlations across all cancer types. To make the analysis simpler, we'll just look at univariate correlations between the expression of a single gene and mutation status in a given driver.
+# 
+# More specifically, we want to identify genes that have a strong univariate pan-cancer correlation, and classify them (roughly) as one of the following:
+# 
+# * Driven mostly by a single cancer type (one cancer type with a large correlation f-statistic, others fairly small)
+# * Driven mostly by 2+ cancer types (two or more cancer types with large correlations)
 
 # In[1]:
 
@@ -88,17 +93,20 @@ y_df = (mutation_df
                      'DISEASE': 'cancer_type',
                      'SUBTYPE': 'subtype'})
 )
-print(y_df.shape)
-y_df.head()
+display(y_df.shape, y_df.head())
 
 
 # In[8]:
 
 
 X_df = rnaseq_df.reindex(y_df.index)
-print(X_df.shape)
-print(X_df.isna().sum().sum())
-X_df.iloc[:5, :5]
+
+# make sure we didn't introduce any NA rows
+assert X_df.isna().sum().sum() == 0
+
+display(X_df.shape,
+        X_df.isna().sum().sum(),
+        X_df.iloc[:5, :5])
 
 
 # ### Subset genes by mean absolute deviation
@@ -119,7 +127,13 @@ mad_genes_df.head()
 
 
 mad_genes_df.columns=['gene_id', 'mad']
-mad_genes = mad_genes_df.iloc[:mad_threshold, :].gene_id.astype(str).values
+mad_genes = (mad_genes_df
+  .head(mad_threshold)
+  .gene_id
+  .astype(str)
+  .values
+)
+
 print(mad_genes[:5])
 
 
@@ -127,20 +141,18 @@ print(mad_genes[:5])
 
 
 X_df = X_df.reindex(mad_genes, axis='columns')
-print(X_df.shape)
-X_df.iloc[:5, :5]
+display(X_df.shape, X_df.iloc[:5, :5])
 
 
-# ### Calculate pan-cancer univariate feature correlations
+# ### Calculate univariate feature correlations with mutation labels
 
 # In[12]:
 
 
-# now get univariate feature correlations with labels
 from sklearn.feature_selection import f_classif, mutual_info_classif
 
 f_stats_pancan = f_classif(X_df, y_df.status)[0]
-print(f_stats_pancan)
+display(f_stats_pancan[:10])
 
 
 # In[13]:
@@ -166,9 +178,13 @@ def get_f_stats_for_cancer_types(X_df, y_df):
 
 f_stats_df = get_f_stats_for_cancer_types(X_df, y_df)
 f_stats_df['pancan'] = f_stats_pancan
-print(f_stats_df.shape)
-print(f_stats_df.isna().sum().sum())
-f_stats_df.iloc[-5:, :5]
+
+# make sure we didn't introduce any NA rows
+assert f_stats_df.isna().sum().sum() == 0
+
+display(f_stats_df.shape,
+        f_stats_df.isna().sum().sum(),
+        f_stats_df.iloc[-5:, :5])
 
 
 # In[14]:
@@ -186,13 +202,17 @@ min_max_df = (
 min_max_df.sort_values(by='pancan', ascending=False).head(15)
 
 
+# ### Calculate "outlier-ness" of correlation distributions
+# 
+# To partition genes with strong univariate correlations into "driven by a single cancer type" and "driven by two or more cancer types, we can use the [local outlier factor](https://en.wikipedia.org/wiki/Local_outlier_factor) of the cancer type with the maximum correlation.
+# 
+# A more negative LOF means the distribution is more "outlier-ish", and a LOF closer to 1 means the distribution is more uniform/less likely to contain an outlier.
+
 # In[15]:
 
 
 from sklearn.neighbors import LocalOutlierFactor
 
-# get LOF of max f-statistic for each row
-# more negative LOF = more "outlier-y", closer to -1 = more normal
 lof_rows = []
 for gene_id, row in f_stats_df.iterrows():
     row = row.drop(index='pancan')
@@ -280,7 +300,7 @@ def plot_f_dist(plot_gene):
 
 
 sorted_genes = min_max_df.pancan.sort_values(ascending=False).index
-print(sorted_genes[:10])
+display(sorted_genes[:10])
 
 
 # In[21]:
@@ -303,7 +323,8 @@ rank_df.head(20)
 # In[23]:
 
 
-# this is an example of a fairly skewed distribution (BRCA has a large LOF)
+# this is an example of a fairly skewed distribution
+# (the cancer type with the top f-statistic, BRCA, has a large LOF)
 plot_gene = sorted_genes[2]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
 f_ss_df.sort_values(by='f_statistic', ascending=False).head(10)
@@ -330,7 +351,8 @@ axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
 # In[25]:
 
 
-# this is an example of a less skewed distribution (BRCA has a much smaller LOF)
+# this is an example of less skewed distribution
+# (the cancer type with the top f-statistic, BRCA, has a much smaller LOF)
 plot_gene = sorted_genes[18]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
 f_ss_df.sort_values(by='f_statistic', ascending=False).head(10)
@@ -354,7 +376,11 @@ axarr[1].set_ylabel('f-statistic')
 axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
 
 
-# In[28]:
+# In the plots above, each point is a cancer type. The left plot shows the distribution of f-statistics (higher = better correlation with labels) across cancer types, and the right plot shows f-statistic vs. sample size.
+# 
+# For TP53, we can see that there might be a slight correlation with sample size (BRCA, the largest/best sampled cancer type, tends to have higher f-statistics for most genes) but this isn't necessarily the case for other genes. It's possible/likely that expression is generally just very predictive of TP53 mutation status in many genes.
+
+# In[27]:
 
 
 # save univariate correlation results
