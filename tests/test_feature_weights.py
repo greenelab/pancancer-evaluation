@@ -16,7 +16,7 @@ def sim_data():
     # simulate binary labels and multinomial cancer types
     y_df = pd.DataFrame({
         'status': np.random.binomial(1, 0.5, X_df.shape[0]),
-        'cancer_type': np.random.choice(
+        'DISEASE': np.random.choice(
             ['A', 'B', 'C'], size=X_df.shape[0]
         )
     })
@@ -28,7 +28,7 @@ def test_cancer_type_f_statistics(sim_data):
     X_df, y_df = sim_data
     f_stats = feats._get_cancer_type_f_statistics(X_df, y_df)
     assert f_stats.shape[0] == X_df.shape[1]
-    assert f_stats.shape[1] == y_df.cancer_type.unique().shape[0] + 1
+    assert f_stats.shape[1] == y_df.DISEASE.unique().shape[0] + 1
 
 
 def test_feature_weights(sim_data):

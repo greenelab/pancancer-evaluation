@@ -122,8 +122,12 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir, gene,
                                             use_pancancer_cv=True,
                                             use_pancancer_only=False)
-                check_file = fu.check_gene_file(gene_dir, gene,
-                                                shuffle_labels=shuffle_labels)
+                check_file = fu.check_gene_file(gene_dir,
+                                                gene,
+                                                shuffle_labels,
+                                                args.seed,
+                                                args.feature_selection,
+                                                args.num_features)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=True)
@@ -176,7 +180,10 @@ if __name__ == '__main__':
                                            check_file,
                                            results,
                                            gene,
-                                           shuffle_labels)
+                                           shuffle_labels,
+                                           args.seed,
+                                           args.feature_selection,
+                                           args.num_features)
 
             if cancer_type_log_df is not None:
                 fu.write_log_file(cancer_type_log_df, args.log_file)

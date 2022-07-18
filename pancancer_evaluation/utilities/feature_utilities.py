@@ -15,15 +15,18 @@ def subset_by_feature_weights(X_train_df,
                               y_df,
                               num_features):
 
-    feature_df = _get_cancer_type_f_statistics(X_train_df, y_df)
-    weights = _generate_feature_weights(feature_df, feature_selection_method)
+    gene_feature_names = X_train_df.columns.values[gene_features]
+    non_gene_features = X_train_df.columns.values[~gene_features]
+    feature_df = _get_cancer_type_f_statistics(
+        X_train_df.reindex(gene_feature_names, axis='columns'), y_df
+    )
+    weights_df = _generate_feature_weights(feature_df, feature_selection_method)
 
     # for MAD we want to take the features with the *lowest* variance
     # between cancer types
     # for all others we want to take the features with the highest weight
     ascending = (feature_selection_method == 'mad_f_test')
     top_features = weights_df.sort_values(ascending=ascending).index[:num_features]
-    non_gene_features = X_train_df.columns.values[~gene_features]
     valid_features = np.concatenate((top_features, non_gene_features))
 
     # y_df will get reindexed later to match the X indices
@@ -42,9 +45,9 @@ def _get_cancer_type_f_statistics(X_train_df, y_df):
     f_stats_df = {
         'pancan': f_classif(X_train_df, y_df.status)[0]
     }
-    for cancer_type in y_df.cancer_type.unique():
+    for cancer_type in y_df.DISEASE.unique():
         X_ct_samples = (
-            y_df[y_df.cancer_type == cancer_type].index
+            y_df[y_df.DISEASE == cancer_type].index
               .intersection(X_train_df.index)
         )
         X_ct_df = X_train_df.reindex(X_ct_samples)
