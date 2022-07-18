@@ -378,9 +378,14 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
                 y_train_df.status = np.random.permutation(y_train_df.status.values)
                 y_test_df.status = np.random.permutation(y_test_df.status.values)
 
-        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
-                                                   data_model.gene_features,
-                                                   data_model.num_features)
+        X_train_df, X_test_df = tu.preprocess_data(
+            X_train_raw_df,
+            X_test_raw_df,
+            data_model.gene_features,
+            y_df=y_train_df,
+            feature_selection=data_model.feature_selection,
+            num_features=data_model.num_features
+        )
 
         try:
             # also ignore warnings here, same deal as above

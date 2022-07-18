@@ -29,8 +29,7 @@ def process_args():
     p.add_argument('--debug', action='store_true',
                    help='use subset of data for fast debugging')
     p.add_argument('--feature_selection',
-                   choices=['mad', 'mad_cancer', 'max_lof', 'average_lof',
-                            'kurtosis'],
+                   choices=['mad', 'pancan_f_test', 'median_f_test', 'mad_f_test'],
                    default='mad',
                    help='method to use for feature selection, only applied if '
                         '0 > num_features > total number of columns')
@@ -93,6 +92,7 @@ if __name__ == '__main__':
     sample_info_df = du.load_sample_info(args.verbose)
 
     tcga_data = TCGADataModel(seed=args.seed,
+                              feature_selection=args.feature_selection,
                               num_features=args.num_features,
                               verbose=args.verbose,
                               debug=args.debug)

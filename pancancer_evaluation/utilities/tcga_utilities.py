@@ -12,6 +12,9 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 import pancancer_evaluation.config as cfg
+from pancancer_evaluation.utilities.feature_utilities import (
+   subset_by_feature_weights,
+)
 
 def process_y_matrix(
     y_mutation,
@@ -184,6 +187,8 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
 def preprocess_data(X_train_raw_df,
                     X_test_raw_df,
                     gene_features,
+                    y_df=None,
+                    feature_selection='mad',
                     num_features=-1,
                     use_coral=False,
                     coral_lambda=1.0,
@@ -197,8 +202,13 @@ def preprocess_data(X_train_raw_df,
     Note this needs to happen for train and test sets independently.
     """
     if num_features > 0:
-        X_train_raw_df, X_test_raw_df, gene_features_filtered = subset_by_mad(
-            X_train_raw_df, X_test_raw_df, gene_features, num_features
+        X_train_raw_df, X_test_raw_df, gene_features_filtered = select_features(
+            X_train_raw_df,
+            X_test_raw_df,
+            gene_features,
+            num_features,
+            y_df,
+            feature_selection
         )
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
@@ -295,6 +305,37 @@ def standardize_gene_features(x_df, gene_features):
         columns=x_df_gene.columns.copy()
     )
     return pd.concat((x_df_scaled, x_df_other), axis=1)
+
+
+def select_features(X_train_df,
+                    X_test_df,
+                    gene_features,
+                    num_features,
+                    y_df=None,
+                    feature_selection_method='mad',
+                    mad_preselect=1000,
+                    verbose=False):
+    """Select a subset of features."""
+    if mad_preselect is not None:
+        # sometimes we want to pre-select some number of features by MAD
+        # before doing other feature selection, if so do it here
+        # TODO make this a tunable parameter somewhere external
+        X_train_df, X_test_df, gene_features = subset_by_mad(
+            X_train_df, X_test_df, gene_features, mad_preselect
+        )
+    if feature_selection_method == 'mad':
+        return subset_by_mad(
+            X_train_df, X_test_df, gene_features, num_features
+        )
+    else:
+        return subset_by_feature_weights(
+            X_train_df,
+            X_test_df,
+            feature_selection_method,
+            gene_features,
+            y_df,
+            num_features
+        )
 
 
 def subset_by_mad(X_train_df, X_test_df, gene_features, num_features, verbose=False):
