@@ -70,3 +70,11 @@ similarity_matrix_file = data_dir / 'expression_confusion_matrix.tsv'
 # repo/commit information to retrieve precomputed cancer gene information
 genes_base_url = 'https://raw.githubusercontent.com/cognoma/genes/'
 genes_commit = 'ad9631bb4e77e2cdc5413b0d77cb8f7e93fc5bee'
+
+# feature selection experiments
+fs_methods = [
+    'mad',
+    'pancan_f_test',
+    'median_f_test',
+    'mad_f_test'
+]

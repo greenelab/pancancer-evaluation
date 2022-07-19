@@ -68,6 +68,39 @@ def load_prediction_results_cc(results_dir, experiment_descriptor):
     return results_df
 
 
+def load_prediction_results_fs(results_dir, fs_methods):
+    """Load results of feature selection experiments.
+
+    Arguments
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+    fs_methods (list): list of possible feature selection methods
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of classification experiments
+    """
+    results_df = pd.DataFrame()
+    for gene_name in os.listdir(results_dir):
+        gene_dir = os.path.join(results_dir, gene_name)
+        if not os.path.isdir(gene_dir): continue
+        for results_file in os.listdir(gene_dir):
+            if 'classify' not in results_file: continue
+            if results_file[0] == '.': continue
+            full_results_file = os.path.join(gene_dir, results_file)
+            n_dims = int(results_file.split('_')[-3].replace('n', ''))
+            fs_method = 'none'
+            for method in fs_methods:
+                if method in results_file:
+                    fs_method = method
+            gene_results_df = pd.read_csv(full_results_file, sep='\t')
+            gene_results_df['fs_method'] = fs_method
+            gene_results_df['n_dims'] = n_dims
+            results_df = pd.concat((results_df, gene_results_df))
+    return results_df
+
+
 def load_flip_labels_results(results_dir, experiment_descriptor):
     """Load results of 'flip labels' experiments.
 

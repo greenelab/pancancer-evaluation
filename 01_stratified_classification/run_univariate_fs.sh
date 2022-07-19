@@ -8,7 +8,7 @@ ERRORS_DIR=./stratified_fs_errors
 mkdir -p $ERRORS_DIR
 
 genes=(
-  "TP53"
+  # "TP53"
   "APC"
   "EGFR"
   "SETD2"
@@ -18,7 +18,7 @@ genes=(
 
 for seed in 42 1; do
 
-    for gene in $genes; do
+    for gene in "${genes[@]}"; do
 
         cmd="python 01_stratified_classification/run_stratified_classification.py "
         cmd+="--gene_set custom "
