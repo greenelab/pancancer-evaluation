@@ -34,9 +34,6 @@ results_dir = os.path.join('results', 'univariate_fs', 'pancancer')
 
 results_df = au.load_prediction_results_fs(results_dir, cfg.fs_methods)
 
-# temporary, change later when all genes finish running
-results_df = results_df[results_df.gene == 'TP53'].copy()
-
 results_df.loc[
     (results_df.fs_method == 'mad') & (results_df.n_dims == 100),
     'fs_method'
@@ -72,12 +69,20 @@ compare_df.head()
 # In[5]:
 
 
-sns.set({'figure.figsize': (10, 6)})
+sns.set({'figure.figsize': (18, 9)})
+sns.set_context('notebook')
 
-sns.boxplot(data=compare_df, x='fs_method', y='delta_aupr')
-plt.title('Comparing feature selection methods, {}'.format('TP53'))
-plt.xlabel('Feature selection method')
-plt.ylim(0, 1)
+fig, axarr = plt.subplots(2, 3)
+
+for ix, gene in enumerate(compare_df.identifier.unique()):
+    ax = axarr[ix // 3, ix % 3]
+    plot_df = compare_df[compare_df.identifier == gene]
+    sns.boxplot(data=plot_df, x='fs_method', y='delta_aupr', ax=ax)
+    ax.set_title(gene)
+    ax.set_xlabel('Feature selection method')
+    ax.set_ylim(0, 1)
+
+plt.tight_layout()
 
 
 # In[6]:
@@ -87,10 +92,14 @@ plt.ylim(0, 1)
 # overlap of features in at least one model
 # f-statistic distributions for features in at least one model
 # f-statistic distributions per fold
+
+# gene to analyze features for
+gene = 'TP53'
+
 id_coefs_info = []
 for identifier, coefs_list in au.generate_nonzero_coefficients_fs(
         results_dir, cfg.fs_methods):
-    if not identifier.startswith('TP53'): continue
+    if not identifier.startswith(gene): continue
     for fold_no, coefs in enumerate(coefs_list):
         id_coefs_info.append([identifier, fold_no, coefs])
         
@@ -124,8 +133,8 @@ print(list(fs_method_coefs.keys()))
 # In[9]:
 
 
-print(len(fs_method_coefs['TP53_mad_n100']))
-print(list(fs_method_coefs['TP53_mad_n100'])[:5])
+print(len(fs_method_coefs['{}_mad_n100'.format(gene)]))
+print(list(fs_method_coefs['{}_mad_n100'.format(gene)])[:5])
 
 
 # In[10]:

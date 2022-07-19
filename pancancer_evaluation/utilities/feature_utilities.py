@@ -43,7 +43,7 @@ def subset_by_feature_weights(X_train_df,
 def _get_cancer_type_f_statistics(X_train_df, y_df):
     # first get pan-cancer f-statistic for each gene
     f_stats_df = {
-        'pancan': f_classif(X_train_df, y_df.status)[0]
+        'pancan': f_classif(X_train_df, y_df.reindex(X_train_df.index).status)[0]
     }
     for cancer_type in y_df.DISEASE.unique():
         X_ct_samples = (
