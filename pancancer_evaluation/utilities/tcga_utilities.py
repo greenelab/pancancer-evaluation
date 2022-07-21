@@ -321,7 +321,6 @@ def select_features(X_train_df,
     if mad_preselect is not None:
         # sometimes we want to pre-select some number of features by MAD
         # before doing other feature selection, if so do it here
-        # TODO make this a tunable parameter somewhere external
         X_train_df, X_test_df, gene_features = subset_by_mad(
             X_train_df, X_test_df, gene_features, mad_preselect
         )

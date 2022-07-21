@@ -1,5 +1,9 @@
 """
-TODO: documentation
+Utilities for testing feature selection methods.
+
+subset_by_feature_weights() is the main external function, and the
+internal functions implement the different methods for ranking/selecting
+features.
 """
 import warnings
 
