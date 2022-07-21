@@ -1,7 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Analysis of mutation prediction results
+# ## Analysis of feature selection results
+# 
+# We tried a few different feature selection methods for mutation prediction:
+# 
+# * mean absolute deviation
+# * pan-cancer univariate f-statistic (on training data, separate samples into mutated/not mutated and do an f-test)
+# * median univariate f-statistic across cancer types (same as above for each individual cancer type, then take median)
+# * MAD of univariate f-statistic across cancer types (same as above, but look for least variable genes)
+# 
+# Here, we're just looking at stratified CV across all cancer types, as a sanity check - the idea is to make sure the univariate correlation-based feature selection methods perform reasonably well. This isn't necessarily where we'd expect them to help performance, but we still don't want them to _hurt_ it.
 
 # In[1]:
 
@@ -22,6 +31,8 @@ import pancancer_evaluation.utilities.analysis_utilities as au
 get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 
+
+# ### Load results and look at overall performance
 
 # In[2]:
 
@@ -85,13 +96,16 @@ for ix, gene in enumerate(compare_df.identifier.unique()):
 plt.tight_layout()
 
 
+# We can see that the blue box (median f-test) and the purple box (pan-cancer f-test) are reasonably similar in most cases to the green box (no feature selection from 1000 features), suggesting that selecting features by f-statistic doesn't seem to harm performance, at the very least. This is good.
+
+# ### Further analysis of selected features
+# 
+# We want to look at:
+# * Overlap of features in at least one model (for different FS methods)
+# * f-statistic distributions for features in at least one model
+
 # In[6]:
 
-
-# analysis of selected features:
-# overlap of features in at least one model
-# f-statistic distributions for features in at least one model
-# f-statistic distributions per fold
 
 # gene to analyze features for
 gene = 'TP53'
@@ -195,17 +209,15 @@ upset_series_small[upset_series_small != 0].sort_values(ascending=False).head(5)
 up.plot(upset_series_small[upset_series_small != 0])
 
 
+# We can see in the upset plots that the median and MAD methods (the ones that try to summarize/normalize across cancer types) tend to select the most distinct features relative to the other methods.
+# 
+# We can also see that the pan-cancer f-test and the median f-test tend to have a decent number of features in common, but not too many (much fewer than each of them alone). This is good in the sense that it means we're selecting fairly distinct features with the different methods.
+
+# ### Get distribution of univariate feature correlations
+# 
+# NOTE: these won't be exactly what was used for feature selection since we're not doing the same train/test splits here, or filtering cancer types by mutation count -- instead we're just calculating on the whole dataset. This could and probably should be fixed in the future, the actual distributions that we're selecting features based on could be quite different.
+
 # In[15]:
-
-
-# get distribution of univariate feature correlations
-# NOTE these won't be exactly what was used for feature selection since
-# we're not doing the same train/test splits here, we're just calculating
-# on the whole dataset
-# (this could be fixed but not sure it's worth the effort at the moment)
-
-
-# In[16]:
 
 
 from sklearn.preprocessing import StandardScaler
@@ -232,14 +244,14 @@ print('Standardizing columns of expression data...', file=sys.stderr)
 rnaseq_df[rnaseq_df.columns] = StandardScaler().fit_transform(rnaseq_df[rnaseq_df.columns])
 
 
-# In[17]:
+# In[16]:
 
 
 print(rnaseq_df.shape)
 rnaseq_df.iloc[:5, :5]
 
 
-# In[18]:
+# In[17]:
 
 
 y_df = (mutation_df
@@ -254,7 +266,7 @@ y_df = (mutation_df
 display(y_df.shape, y_df.head())
 
 
-# In[19]:
+# In[18]:
 
 
 X_df = rnaseq_df.reindex(y_df.index)
@@ -267,7 +279,7 @@ display(X_df.shape,
         X_df.iloc[:5, :5])
 
 
-# In[20]:
+# In[19]:
 
 
 def get_f_stats_for_cancer_types(X_df, y_df):
@@ -284,7 +296,7 @@ def get_f_stats_for_cancer_types(X_df, y_df):
     return pd.DataFrame(f_stats_df, index=X_df.columns)
 
 
-# In[21]:
+# In[20]:
 
 
 f_stats = {}
@@ -298,7 +310,7 @@ fs_1 = list(fs_method_coefs.keys())[0]
 display(fs_1, f_stats[fs_1].iloc[:5, :5])
 
 
-# In[32]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (18, 9)})
@@ -319,3 +331,5 @@ for ix, (fs_method, f_stats_df) in enumerate(f_stats.items()):
     
 plt.tight_layout()
 
+
+# These distributions all look pretty similar to me TBH - really we probably need to do the cancer type filtering for this analysis to make any sense.
