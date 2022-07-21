@@ -194,3 +194,128 @@ upset_series_small[upset_series_small != 0].sort_values(ascending=False).head(5)
 
 up.plot(upset_series_small[upset_series_small != 0])
 
+
+# In[15]:
+
+
+# get distribution of univariate feature correlations
+# NOTE these won't be exactly what was used for feature selection since
+# we're not doing the same train/test splits here, we're just calculating
+# on the whole dataset
+# (this could be fixed but not sure it's worth the effort at the moment)
+
+
+# In[16]:
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import f_classif
+
+import pancancer_evaluation.utilities.data_utilities as du
+
+print('Loading gene label data...', file=sys.stderr)
+genes_df = du.load_top_50()
+sample_info_df = du.load_sample_info(verbose=True)
+
+# this returns a tuple of dataframes, unpack it below
+pancancer_data = du.load_pancancer_data(verbose=True)
+(sample_freeze_df,
+ mutation_df,
+ copy_loss_df,
+ copy_gain_df,
+ mut_burden_df) = pancancer_data
+
+rnaseq_df = du.load_expression_data(verbose=True)
+
+# standardize columns of expression dataframe
+print('Standardizing columns of expression data...', file=sys.stderr)
+rnaseq_df[rnaseq_df.columns] = StandardScaler().fit_transform(rnaseq_df[rnaseq_df.columns])
+
+
+# In[17]:
+
+
+print(rnaseq_df.shape)
+rnaseq_df.iloc[:5, :5]
+
+
+# In[18]:
+
+
+y_df = (mutation_df
+    .loc[:, [gene]]
+    .merge(sample_freeze_df, left_index=True, right_on='SAMPLE_BARCODE')
+    .drop(columns='PATIENT_BARCODE')
+    .set_index('SAMPLE_BARCODE')
+    .rename(columns={gene: 'status',
+                     'DISEASE': 'cancer_type',
+                     'SUBTYPE': 'subtype'})
+)
+display(y_df.shape, y_df.head())
+
+
+# In[19]:
+
+
+X_df = rnaseq_df.reindex(y_df.index)
+
+# make sure we didn't introduce any NA rows
+assert X_df.isna().sum().sum() == 0
+
+display(X_df.shape,
+        X_df.isna().sum().sum(),
+        X_df.iloc[:5, :5])
+
+
+# In[20]:
+
+
+def get_f_stats_for_cancer_types(X_df, y_df):
+    f_stats_df = {
+        'pancan': f_classif(X_df, y_df.status)[0]
+    }
+    for cancer_type in y_df.cancer_type.unique():
+        ct_samples = y_df[y_df.cancer_type == cancer_type].index
+        X_ct_df = X_df.reindex(ct_samples)
+        y_ct_df = y_df.reindex(ct_samples)
+        
+        f_stats_df[cancer_type] = f_classif(X_ct_df, y_ct_df.status)[0]
+        
+    return pd.DataFrame(f_stats_df, index=X_df.columns)
+
+
+# In[21]:
+
+
+f_stats = {}
+
+for fs_method, genes in fs_method_coefs.items():
+    X_selected_df = X_df.loc[:, X_df.columns.intersection(genes)]
+    f_stats_df = get_f_stats_for_cancer_types(X_selected_df, y_df)
+    f_stats[fs_method] = f_stats_df
+    
+fs_1 = list(fs_method_coefs.keys())[0]
+display(fs_1, f_stats[fs_1].iloc[:5, :5])
+
+
+# In[32]:
+
+
+sns.set({'figure.figsize': (18, 9)})
+sns.set_context('notebook')
+
+fig, axarr = plt.subplots(2, 3)
+
+for ix, (fs_method, f_stats_df) in enumerate(f_stats.items()):
+    ax = axarr[ix // 3, ix % 3]
+    dist_vals = (f_stats_df
+        .loc[:, ~(f_stats_df.columns == 'pancan')]
+        .values
+        .flatten()
+    )
+    print(fs_method, dist_vals.shape)
+    sns.histplot(dist_vals, ax=ax, binwidth=10)
+    ax.set_title(fs_method)
+    
+plt.tight_layout()
+
