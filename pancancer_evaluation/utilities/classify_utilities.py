@@ -256,16 +256,20 @@ def run_cv_cancer_type(data_model,
                 y_train_df.status = np.random.permutation(y_train_df.status.values)
                 y_test_df.status = np.random.permutation(y_test_df.status.values)
 
-        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df,
-                                                   X_test_raw_df,
-                                                   data_model.gene_features,
-                                                   data_model.num_features,
-                                                   use_coral,
-                                                   coral_lambda,
-                                                   coral_by_cancer_type,
-                                                   cancer_types,
-                                                   use_tca,
-                                                   tca_params)
+        X_train_df, X_test_df = tu.preprocess_data(
+            X_train_raw_df,
+            X_test_raw_df,
+            data_model.gene_features,
+            y_df=None,
+            feature_selection='mad',
+            num_features=data_model.num_features,
+            use_coral=use_coral,
+            coral_lambda=coral_lambda,
+            coral_by_cancer_type=coral_by_cancer_type,
+            cancer_types=cancer_types,
+            use_tca=use_tca,
+            tca_params=tca_params
+        )
 
         try:
             # also ignore warnings here, same deal as above
