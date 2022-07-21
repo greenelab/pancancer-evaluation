@@ -388,7 +388,8 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
             data_model.gene_features,
             y_df=y_train_df,
             feature_selection=data_model.feature_selection,
-            num_features=data_model.num_features
+            num_features=data_model.num_features,
+            mad_preselect=data_model.mad_preselect
         )
 
         try:

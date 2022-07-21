@@ -36,6 +36,9 @@ def process_args():
     p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, select this number of features, using '
                         'feature selection method specified in feature_selection')
+    p.add_argument('--mad_preselect', type=int, default=None,
+                   help='if included, pre-select this many features by MAD, '
+                        'before applying primary feature selection method')
     p.add_argument('--gene_set', type=str,
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
@@ -94,6 +97,7 @@ if __name__ == '__main__':
     tcga_data = TCGADataModel(seed=args.seed,
                               feature_selection=args.feature_selection,
                               num_features=args.num_features,
+                              mad_preselect=args.mad_preselect,
                               verbose=args.verbose,
                               debug=args.debug)
 

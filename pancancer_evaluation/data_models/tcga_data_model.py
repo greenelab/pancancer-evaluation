@@ -27,6 +27,7 @@ class TCGADataModel():
                  seed=cfg.default_seed,
                  feature_selection='mad',
                  num_features=-1,
+                 mad_preselect=None,
                  verbose=False,
                  debug=False,
                  test=False):
@@ -48,6 +49,7 @@ class TCGADataModel():
         self.seed = seed
         self.feature_selection = feature_selection
         self.num_features = num_features
+        self.mad_preselect = mad_preselect
         self.verbose = verbose
         self.test = test
 
