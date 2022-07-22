@@ -258,9 +258,17 @@ def split_by_cancer_type(rnaseq_df,
     """Split expression data into train and test sets.
 
     The test set will contain data from a single cancer type. The train set
-    will contain either the remaining data from that cancer type, or the
-    remaining data from that cancer type and data from all other cancer types
-    in the dataset.
+    will contain one of the following:
+        - only the remaining data from the same cancer type
+          (use_pancancer == False, use_pancancer_only == False)
+        - the remaining data from the same cancer type, and data from all other
+          cancer types
+          (use_pancancer == True, use_pancancer_only == False)
+        - only data from all other cancer types, without the test cancer type
+          (use_pancancer == False, use_pancancer_only == True)
+
+    use_pancancer and use_pancancer_only shouldn't ever both be true (if they
+    are, the code defaults to the use_pancancer case).
 
     Arguments
     ---------
