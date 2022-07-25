@@ -37,7 +37,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
+    p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
     p.add_argument('--verbose', action='store_true')
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         log_df.to_csv(args.log_file, sep='\t')
 
     tcga_data = TCGADataModel(seed=args.seed,
-                              subset_mad_genes=args.subset_mad_genes,
+                              num_features=args.num_features,
                               verbose=args.verbose,
                               debug=args.debug)
 

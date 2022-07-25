@@ -9,7 +9,16 @@ import pandas as pd
 
 from pancancer_evaluation.exceptions import ResultsFileExistsError
 
-def save_results_stratified(gene_dir, check_file, results, gene, signal):
+def save_results_stratified(gene_dir,
+                            check_file,
+                            results,
+                            gene,
+                            shuffle_labels,
+                            seed,
+                            feature_selection,
+                            num_features):
+
+    signal = 'shuffled' if shuffle_labels else 'signal'
     gene_auc_df = pd.concat(results['gene_auc'])
     gene_aupr_df = pd.concat(results['gene_aupr'])
     gene_coef_df = pd.concat(results['gene_coef'])
@@ -21,21 +30,21 @@ def save_results_stratified(gene_dir, check_file, results, gene, signal):
     )
 
     output_file = Path(
-        gene_dir, "{}_{}_auc_threshold_metrics.tsv.gz".format(
-            gene, signal)).resolve()
+        gene_dir, "{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
+            gene, signal, feature_selection, seed, num_features)).resolve()
     gene_auc_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
     output_file = Path(
-        gene_dir, "{}_{}_aupr_threshold_metrics.tsv.gz".format(
-            gene, signal)).resolve()
+        gene_dir, "{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
+            gene, signal, feature_selection, seed, num_features)).resolve()
     gene_aupr_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
-    output_file = Path(gene_dir, "{}_{}_classify_metrics.tsv.gz".format(
-        gene, signal)).resolve()
+    output_file = Path(gene_dir, "{}_{}_{}_s{}_n{}_classify_metrics.tsv.gz".format(
+        gene, signal, feature_selection, seed, num_features)).resolve()
     gene_metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -253,11 +262,16 @@ def make_gene_dir(results_dir,
     return gene_dir
 
 
-def check_gene_file(gene_dir, gene, shuffle_labels):
+def check_gene_file(gene_dir,
+                    gene,
+                    shuffle_labels,
+                    seed,
+                    feature_selection,
+                    num_features):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    check_file = Path(gene_dir,
-                      "{}_{}_coefficients.tsv.gz".format(
-                          gene, signal)).resolve()
+    check_file = Path(
+        gene_dir, "{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
+            gene, signal, feature_selection, seed, num_features)).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for gene: {}\n'.format(gene)

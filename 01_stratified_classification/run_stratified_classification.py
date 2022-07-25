@@ -28,6 +28,17 @@ def process_args():
                    help='currently this needs to be a subset of top_50')
     p.add_argument('--debug', action='store_true',
                    help='use subset of data for fast debugging')
+    p.add_argument('--feature_selection',
+                   choices=['mad', 'pancan_f_test', 'median_f_test', 'mad_f_test'],
+                   default='mad',
+                   help='method to use for feature selection, only applied if '
+                        '0 > num_features > total number of columns')
+    p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
+                   help='if included, select this number of features, using '
+                        'feature selection method specified in feature_selection')
+    p.add_argument('--mad_preselect', type=int, default=None,
+                   help='if included, pre-select this many features by MAD, '
+                        'before applying primary feature selection method')
     p.add_argument('--gene_set', type=str,
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
@@ -41,9 +52,6 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--subset_mad_genes', type=int, default=cfg.num_features_raw,
-                   help='if included, subset gene features to this number of '
-                        'features having highest mean absolute deviation')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -87,7 +95,9 @@ if __name__ == '__main__':
     sample_info_df = du.load_sample_info(args.verbose)
 
     tcga_data = TCGADataModel(seed=args.seed,
-                              subset_mad_genes=args.subset_mad_genes,
+                              feature_selection=args.feature_selection,
+                              num_features=args.num_features,
+                              mad_preselect=args.mad_preselect,
                               verbose=args.verbose,
                               debug=args.debug)
 
@@ -116,8 +126,12 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir, gene,
                                             use_pancancer_cv=True,
                                             use_pancancer_only=False)
-                check_file = fu.check_gene_file(gene_dir, gene,
-                                                shuffle_labels=shuffle_labels)
+                check_file = fu.check_gene_file(gene_dir,
+                                                gene,
+                                                shuffle_labels,
+                                                args.seed,
+                                                args.feature_selection,
+                                                args.num_features)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=True)
@@ -170,7 +184,10 @@ if __name__ == '__main__':
                                            check_file,
                                            results,
                                            gene,
-                                           shuffle_labels)
+                                           shuffle_labels,
+                                           args.seed,
+                                           args.feature_selection,
+                                           args.num_features)
 
             if cancer_type_log_df is not None:
                 fu.write_log_file(cancer_type_log_df, args.log_file)

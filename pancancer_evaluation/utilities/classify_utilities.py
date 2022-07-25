@@ -48,7 +48,7 @@ def train_cross_cancer(data_model,
         X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
                                                    data_model.X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+                                                   data_model.num_features)
         y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
     except ValueError:
         if data_model.X_train_raw_df.shape[0] == 0:
@@ -128,7 +128,7 @@ def evaluate_cross_cancer(data_model,
         X_train_df, X_test_df = tu.preprocess_data(data_model.X_train_raw_df,
                                                    data_model.X_test_raw_df,
                                                    data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+                                                   data_model.num_features)
         y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
     except ValueError:
         if data_model.X_train_raw_df.shape[0] == 0:
@@ -256,16 +256,20 @@ def run_cv_cancer_type(data_model,
                 y_train_df.status = np.random.permutation(y_train_df.status.values)
                 y_test_df.status = np.random.permutation(y_test_df.status.values)
 
-        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df,
-                                                   X_test_raw_df,
-                                                   data_model.gene_features,
-                                                   data_model.subset_mad_genes,
-                                                   use_coral,
-                                                   coral_lambda,
-                                                   coral_by_cancer_type,
-                                                   cancer_types,
-                                                   use_tca,
-                                                   tca_params)
+        X_train_df, X_test_df = tu.preprocess_data(
+            X_train_raw_df,
+            X_test_raw_df,
+            data_model.gene_features,
+            y_df=None,
+            feature_selection='mad',
+            num_features=data_model.num_features,
+            use_coral=use_coral,
+            coral_lambda=coral_lambda,
+            coral_by_cancer_type=coral_by_cancer_type,
+            cancer_types=cancer_types,
+            use_tca=use_tca,
+            tca_params=tca_params
+        )
 
         try:
             # also ignore warnings here, same deal as above
@@ -378,9 +382,15 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
                 y_train_df.status = np.random.permutation(y_train_df.status.values)
                 y_test_df.status = np.random.permutation(y_test_df.status.values)
 
-        X_train_df, X_test_df = tu.preprocess_data(X_train_raw_df, X_test_raw_df,
-                                                   data_model.gene_features,
-                                                   data_model.subset_mad_genes)
+        X_train_df, X_test_df = tu.preprocess_data(
+            X_train_raw_df,
+            X_test_raw_df,
+            data_model.gene_features,
+            y_df=y_train_df,
+            feature_selection=data_model.feature_selection,
+            num_features=data_model.num_features,
+            mad_preselect=data_model.mad_preselect
+        )
 
         try:
             # also ignore warnings here, same deal as above

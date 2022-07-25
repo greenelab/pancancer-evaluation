@@ -12,6 +12,9 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 import pancancer_evaluation.config as cfg
+from pancancer_evaluation.utilities.feature_utilities import (
+   subset_by_feature_weights,
+)
 
 def process_y_matrix(
     y_mutation,
@@ -184,7 +187,10 @@ def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
 def preprocess_data(X_train_raw_df,
                     X_test_raw_df,
                     gene_features,
-                    subset_mad_genes=-1,
+                    y_df=None,
+                    feature_selection='mad',
+                    num_features=-1,
+                    mad_preselect=None,
                     use_coral=False,
                     coral_lambda=1.0,
                     coral_by_cancer_type=False,
@@ -196,9 +202,15 @@ def preprocess_data(X_train_raw_df,
 
     Note this needs to happen for train and test sets independently.
     """
-    if subset_mad_genes > 0:
-        X_train_raw_df, X_test_raw_df, gene_features_filtered = subset_by_mad(
-            X_train_raw_df, X_test_raw_df, gene_features, subset_mad_genes
+    if num_features > 0:
+        X_train_raw_df, X_test_raw_df, gene_features_filtered = select_features(
+            X_train_raw_df,
+            X_test_raw_df,
+            gene_features,
+            num_features,
+            y_df,
+            feature_selection,
+            mad_preselect
         )
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
@@ -297,7 +309,37 @@ def standardize_gene_features(x_df, gene_features):
     return pd.concat((x_df_scaled, x_df_other), axis=1)
 
 
-def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbose=False):
+def select_features(X_train_df,
+                    X_test_df,
+                    gene_features,
+                    num_features,
+                    y_df=None,
+                    feature_selection_method='mad',
+                    mad_preselect=None,
+                    verbose=False):
+    """Select a subset of features."""
+    if mad_preselect is not None:
+        # sometimes we want to pre-select some number of features by MAD
+        # before doing other feature selection, if so do it here
+        X_train_df, X_test_df, gene_features = subset_by_mad(
+            X_train_df, X_test_df, gene_features, mad_preselect
+        )
+    if feature_selection_method == 'mad':
+        return subset_by_mad(
+            X_train_df, X_test_df, gene_features, num_features
+        )
+    else:
+        return subset_by_feature_weights(
+            X_train_df,
+            X_test_df,
+            feature_selection_method,
+            gene_features,
+            y_df,
+            num_features
+        )
+
+
+def subset_by_mad(X_train_df, X_test_df, gene_features, num_features, verbose=False):
     """Subset features by mean absolute deviation.
 
     Takes the top subset_mad_genes genes (sorted in descending order),
@@ -308,7 +350,7 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
     X_train_df: training data, samples x genes
     X_test_df: test data, samples x genes
     gene_features: numpy bool array, indicating which features are genes (and should be subsetted/standardized)
-    subset_mad_genes (int): number of genes to take
+    num_features (int): number of genes to take
 
     Returns
     -------
@@ -324,7 +366,7 @@ def subset_by_mad(X_train_df, X_test_df, gene_features, subset_mad_genes, verbos
                   .reset_index()
     )
     mad_genes_df.columns = ['gene_id', 'mean_absolute_deviation']
-    mad_genes = mad_genes_df.iloc[:subset_mad_genes, :].gene_id.astype(str).values
+    mad_genes = mad_genes_df.iloc[:num_features, :].gene_id.astype(str).values
 
     non_gene_features = X_train_df.columns.values[~gene_features]
     valid_features = np.concatenate((mad_genes, non_gene_features))

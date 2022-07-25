@@ -306,15 +306,18 @@ display(sorted_genes[:10])
 # In[21]:
 
 
-rank_df.head(20)
+symbol_to_entrez, _ = tu.get_symbol_map()
+entrez_to_symbol = {v: k for k, v in symbol_to_entrez.items()}
+assert entrez_to_symbol[673] == 'BRAF'
 
 
 # In[22]:
 
 
-symbol_to_entrez = tu.get_symbol_map()[0]
-entrez_to_symbol = {v: k for k, v in symbol_to_entrez.items()}
-assert entrez_to_symbol[673] == 'BRAF'
+rank_df['symbol'] = rank_df.index.to_series().astype(int).map(entrez_to_symbol)
+rank_df.index.name = 'entrez_id'
+rank_df = rank_df.reset_index().set_index('symbol', drop=False)
+rank_df.head(20)
 
 
 # In[23]:
@@ -324,7 +327,7 @@ assert entrez_to_symbol[673] == 'BRAF'
 # (the cancer type with the top f-statistic, BRCA, has a large LOF)
 plot_gene = sorted_genes[2]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
-f_ss_df.sort_values(by='f_statistic', ascending=False).head()
+f_ss_df.sort_values(by='f_statistic', ascending=False).head(10)
 
 
 # In[24]:
@@ -352,10 +355,10 @@ axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
 # (the cancer type with the top f-statistic, BRCA, has a much smaller LOF)
 plot_gene = sorted_genes[18]
 dist_df, f_ss_df = plot_f_dist(plot_gene)
-f_ss_df.sort_values(by='f_statistic', ascending=False).head()
+f_ss_df.sort_values(by='f_statistic', ascending=False).head(10)
 
 
-# In[ ]:
+# In[26]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -376,3 +379,14 @@ axarr[1].set_title('Sample count vs. f-statistic, per cancer type')
 # In the plots above, each point is a cancer type. The left plot shows the distribution of f-statistics (higher = better correlation with labels) across cancer types, and the right plot shows f-statistic vs. sample size.
 # 
 # For TP53, we can see that there might be a slight correlation with sample size (BRCA, the largest/best sampled cancer type, tends to have higher f-statistics for most genes) but this isn't necessarily the case for other genes. It's possible/likely that expression is generally just very predictive of TP53 mutation status in many genes.
+
+# In[27]:
+
+
+# save univariate correlation results
+output_dir = cfg.data_dir / 'univariate_corrs'
+output_dir.mkdir(exist_ok=True)
+
+output_file = output_dir / '{}_{}_corrs.tsv'.format(gene, mad_threshold)
+rank_df.to_csv(output_file, sep='\t')
+
