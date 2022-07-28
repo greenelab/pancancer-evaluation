@@ -50,7 +50,7 @@ def train_cross_cancer(data_model,
                                                    data_model.gene_features,
                                                    data_model.num_features)
         y_train_df, y_test_df = data_model.y_train_df, data_model.y_test_df
-    except ValueError:
+    except (ValueError, AttributeError) as e:
         if data_model.X_train_raw_df.shape[0] == 0:
             raise NoTrainSamplesError(
                 'No train samples found for train identifier: {}'.format(
@@ -260,8 +260,8 @@ def run_cv_cancer_type(data_model,
             X_train_raw_df,
             X_test_raw_df,
             data_model.gene_features,
-            y_df=None,
-            feature_selection='mad',
+            y_df=y_train_df,
+            feature_selection=data_model.feature_selection,
             num_features=data_model.num_features,
             use_coral=use_coral,
             coral_lambda=coral_lambda,
