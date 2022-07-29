@@ -236,3 +236,35 @@ for ix, to_plot_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, by test cancer type'.format(gene), y=0.99)
 plt.tight_layout()
 
+
+# In[11]:
+
+
+sns.set({'figure.figsize': (15, 6)})
+sns.set_context('notebook')
+
+plot_fs_methods = [
+    'mad_250',
+    'pancan_f_test',
+    'median_f_test'
+]
+
+plot_df = (
+    pancancer_only_compare_df[
+        (pancancer_only_compare_df.identifier == gene) &
+        (pancancer_only_compare_df.holdout_cancer_type.isin(cancer_types)) &
+        (pancancer_only_compare_df.fs_method.isin(plot_fs_methods))
+    ].sort_values(by='holdout_cancer_type')
+).sort_values(by=['seed', 'fold'])
+plot_df['seed/fold'] = plot_df.seed.astype(str) + ', ' + plot_df.fold.astype(str)
+
+g = sns.catplot(
+    data=plot_df, x='fs_method', y='delta_aupr', col='holdout_cancer_type',
+    hue='seed/fold', kind='point', col_wrap=4, order=plot_fs_methods,
+    palette='viridis'
+)
+g.set_titles(col_template='{col_name}')
+# plt.xlabel('Holdout cancer type')
+# plt.ylim(-0.2, 1)
+# plt.title('{}, by test cancer type'.format(gene))
+
