@@ -39,7 +39,7 @@ def process_args():
     p.add_argument('--debug', action='store_true',
                    help='use subset of data for fast debugging')
     p.add_argument('--feature_selection',
-                   choices=['mad', 'pancan_f_test', 'median_f_test', 'mad_f_test'],
+                   choices=['mad', 'pancan_f_test', 'median_f_test', 'random'],
                    default='mad',
                    help='method to use for feature selection, only applied if '
                         '0 > num_features > total number of columns')

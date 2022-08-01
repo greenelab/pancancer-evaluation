@@ -263,6 +263,8 @@ def run_cv_cancer_type(data_model,
             y_df=y_train_df,
             feature_selection=data_model.feature_selection,
             num_features=data_model.num_features,
+            mad_preselect=data_model.mad_preselect,
+            seed=data_model.seed,
             use_coral=use_coral,
             coral_lambda=coral_lambda,
             coral_by_cancer_type=coral_by_cancer_type,
@@ -389,7 +391,8 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
             y_df=y_train_df,
             feature_selection=data_model.feature_selection,
             num_features=data_model.num_features,
-            mad_preselect=data_model.mad_preselect
+            mad_preselect=data_model.mad_preselect,
+            seed=data_model.seed
         )
 
         try:
