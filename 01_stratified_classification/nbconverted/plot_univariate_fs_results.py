@@ -41,10 +41,6 @@ get_ipython().run_line_magic('autoreload', '2')
 # 01_stratified_classification/run_stratified_classification.py
 # (with varying feature_selection parameters)
 
-# results_dir = os.path.join('results', 'univariate_fs', 'pancancer')
-# large_n_dims = 1000
-# small_n_dims = 100
-
 results_dir = os.path.join('results', 'univariate_fs_big', 'pancancer')
 large_n_dims = 8000
 small_n_dims = 1000

@@ -3,7 +3,7 @@
 
 # ## Analysis of feature selection results; single-cancer holdouts
 # 
-# For our "cross-cancer" feature selection method, we expect it to provide a performance improvement (or at least to be more resistant to drops im performance) "across" cancer types; or in other words, when a single cancer type is held out and a model is trained on other (potentially related, but not exactly the same) cancer types from TCGA.
+# For our "cross-cancer" feature selection method, we expect it to provide a performance improvement (or at least to be more resistant to drops in performance) "across" cancer types; or in other words, when a single cancer type is held out and a model is trained on other (potentially related, but not exactly the same) cancer types from TCGA.
 # 
 # This script visualizes results from 3 types of data splitting experiments, implemented in `02_cancer_type_classification/run_cancer_type_classification.py`:
 # 

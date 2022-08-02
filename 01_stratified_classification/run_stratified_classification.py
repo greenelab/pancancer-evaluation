@@ -46,7 +46,9 @@ def process_args():
                    help='name of file to log skipped cancer types to')
     p.add_argument('--mad_preselect', type=int, default=None,
                    help='if included, pre-select this many features by MAD, '
-                        'before applying primary feature selection method')
+                        'before applying primary feature selection method. this '
+                        'can help to speed up more complicated feature selection '
+                        'approaches')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
     p.add_argument('--results_dir', default=cfg.results_dir,

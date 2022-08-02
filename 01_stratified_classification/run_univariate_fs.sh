@@ -7,6 +7,7 @@ ERRORS_DIR=./stratified_fs_errors
 
 # number of features to use as 'upper bound' model by variance selection
 # this should be larger than the actual experimental methods
+# -1 means the large model will use all gene expression features/genes
 NUM_FEATURES_LARGE=-1
 
 # number of features to use feature selection methods to select to

@@ -56,7 +56,9 @@ def process_args():
                    help='name of file to log skipped cancer types to')
     p.add_argument('--mad_preselect', type=int, default=None,
                    help='if included, pre-select this many features by MAD, '
-                        'before applying primary feature selection method')
+                        'before applying primary feature selection method. this '
+                        'can help to speed up more complicated feature selection '
+                        'approaches')
     p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, subset gene features to this number of '
                         'features having highest mean absolute deviation')
