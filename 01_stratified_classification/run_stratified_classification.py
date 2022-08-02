@@ -36,9 +36,6 @@ def process_args():
     p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, select this number of features, using '
                         'feature selection method specified in feature_selection')
-    p.add_argument('--mad_preselect', type=int, default=None,
-                   help='if included, pre-select this many features by MAD, '
-                        'before applying primary feature selection method')
     p.add_argument('--gene_set', type=str,
                    choices=['top_50', 'vogelstein', 'custom'],
                    default='top_50',
@@ -47,6 +44,11 @@ def process_args():
                         'any gene or set of genes in TCGA, specified in --custom_genes')
     p.add_argument('--log_file', default=None,
                    help='name of file to log skipped cancer types to')
+    p.add_argument('--mad_preselect', type=int, default=None,
+                   help='if included, pre-select this many features by MAD, '
+                        'before applying primary feature selection method. this '
+                        'can help to speed up more complicated feature selection '
+                        'approaches')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
     p.add_argument('--results_dir', default=cfg.results_dir,

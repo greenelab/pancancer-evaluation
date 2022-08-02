@@ -48,7 +48,9 @@ def test_cv_pancancer(expression_data, cancer_type):
     rnaseq_df, sample_info_df = expression_data
     # testing the pancancer case
     train_df_pancancer, test_df_pancancer = du.split_by_cancer_type(
-            rnaseq_df, sample_info_df, cancer_type, use_pancancer=True)
+        rnaseq_df, sample_info_df, cancer_type,
+        training_data='pancancer'
+    )
 
     assert train_df_pancancer.shape[1] == test_df_pancancer.shape[1]
     assert train_df_pancancer.shape[1] == rnaseq_df.shape[1]
@@ -64,13 +66,14 @@ def test_cv_pancancer(expression_data, cancer_type):
 
 
 @pytest.mark.parametrize("cancer_type", ['BRCA', 'COAD', 'GBM'])
-def test_cv_pancancer_only(expression_data, cancer_type):
+def test_cv_all_other_cancers(expression_data, cancer_type):
     rnaseq_df, sample_info_df = expression_data
-    # testing the pancancer only case (no data from held-out cancer
+    # testing the 'all_other_cancers' case (no data from held-out cancer
     # type in the training set)
     train_df_pancancer, test_df_pancancer = du.split_by_cancer_type(
-            rnaseq_df, sample_info_df, cancer_type,
-            use_pancancer_only=True)
+        rnaseq_df, sample_info_df, cancer_type,
+        training_data='all_other_cancers'
+    )
 
     assert train_df_pancancer.shape[1] == test_df_pancancer.shape[1]
     assert train_df_pancancer.shape[1] == rnaseq_df.shape[1]
