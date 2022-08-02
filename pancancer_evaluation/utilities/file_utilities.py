@@ -260,16 +260,10 @@ def write_counts_file(counts_df, counts_file):
 
 def make_gene_dir(results_dir,
                   gene,
-                  use_pancancer_cv=False,
-                  use_pancancer_only=False,
+                  dirname='gene',
                   add_cancer=False):
     """Create a directory for the given gene."""
-    dirname = 'single_cancer'
-    if use_pancancer_cv:
-        dirname = 'pancancer'
-    elif use_pancancer_only:
-        dirname = 'pancancer_only'
-    elif add_cancer:
+    if add_cancer:
         dirname = 'add_cancer'
     gene_dir = Path(results_dir, dirname, gene).resolve()
     gene_dir.mkdir(parents=True, exist_ok=True)

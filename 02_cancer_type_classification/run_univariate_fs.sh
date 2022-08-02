@@ -53,8 +53,8 @@ for seed in 42 1; do
         cmd+="--feature_selection mad "
         cmd+="--num_features $NUM_FEATURES_LARGE "
         cmd+="--mad_preselect $MAD_PRESELECT "
-        cmd+="--pancancer_only "
-        cmd+="2>$ERRORS_DIR/errors_${gene}_${seed}_mad_pancancer_only.txt"
+        cmd+="--all_other_cancers "
+        cmd+="2>$ERRORS_DIR/errors_${gene}_${seed}_mad_all_other_cancers.txt"
         echo "Running: $cmd"
         eval $cmd
 
@@ -81,8 +81,8 @@ for seed in 42 1; do
             cmd+="--feature_selection $fs_method "
             cmd+="--num_features $NUM_FEATURES_SMALL "
             cmd+="--mad_preselect $MAD_PRESELECT "
-            cmd+="--pancancer_only "
-            cmd+="2>$ERRORS_DIR/errors_${gene}_${seed}_${fs_method}_pancancer_only.txt"
+            cmd+="--all_other_cancers "
+            cmd+="2>$ERRORS_DIR/errors_${gene}_${seed}_${fs_method}_all_other_cancers.txt"
             echo "Running: $cmd"
             eval $cmd
 

@@ -27,6 +27,9 @@ import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
+    p.add_argument('--all_other_cancers', action='store_true',
+                   help='if included, omit test cancer type data from training '
+                        'set for pancancer experiments')
     p.add_argument('--coral', action='store_true',
                    help='if true, use CORAL method to align source and'
                         'target distributions')
@@ -64,9 +67,6 @@ def process_args():
                         'features having highest mean absolute deviation')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
-    p.add_argument('--pancancer_only', action='store_true',
-                   help='if included, omit test cancer type data from training '
-                        'set for pancancer experiments')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
@@ -153,14 +153,14 @@ if __name__ == '__main__':
     # - for all genes in the given gene set
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
-        # use_pancancer_cv is true if we want to use all pancancer data (not just
-        # non-testing pancancer data)
-        use_pancancer_cv = (use_pancancer and not args.pancancer_only)
-        # use_pancancer_only is true if we want to use only non-testing pancancer data
-        # (i.e. if the pancancer_only flag is included)
-        use_pancancer_only = (use_pancancer and args.pancancer_only)
-        # make sure these flags are mutually exclusive (they should be)
-        assert not (use_pancancer_cv and use_pancancer_only)
+
+        # TODO document
+        if use_pancancer and args.all_other_cancers:
+            training_data = 'all_other_cancers'
+        elif use_pancancer:
+            training_data = 'pancancer'
+        else:
+            training_data = 'single_cancer'
 
         print('use_pancancer: {}, shuffle_labels: {}'.format(
             use_pancancer, shuffle_labels))
@@ -176,9 +176,9 @@ if __name__ == '__main__':
             outer_progress.set_description('gene: {}'.format(gene))
 
             try:
-                gene_dir = fu.make_gene_dir(args.results_dir, gene,
-                                            use_pancancer_cv=use_pancancer_cv,
-                                            use_pancancer_only=use_pancancer_only)
+                gene_dir = fu.make_gene_dir(args.results_dir,
+                                            gene,
+                                            dirname=training_data)
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=use_pancancer)
@@ -223,8 +223,7 @@ if __name__ == '__main__':
                                                  cancer_type,
                                                  sample_info_df,
                                                  args.num_folds,
-                                                 use_pancancer_cv,
-                                                 use_pancancer_only,
+                                                 training_data,
                                                  shuffle_labels,
                                                  use_coral=args.coral,
                                                  coral_lambda=args.coral_lambda,
