@@ -177,8 +177,7 @@ def run_cv_cancer_type(data_model,
                        cancer_type,
                        sample_info,
                        num_folds,
-                       use_pancancer,
-                       use_pancancer_only,
+                       training_data,
                        shuffle_labels,
                        use_coral=False,
                        coral_lambda=1.0,
@@ -198,8 +197,7 @@ def run_cv_cancer_type(data_model,
     cancer_type (str): cancer type in TCGA to hold out
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
-    use_pancancer (bool): whether or not to use pancancer data
-    use_pancancer_only (bool): whether or not to use only pancancer data
+    training_data (str): 'single_cancer', 'pancancer', 'all_other_cancers'
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
 
     TODO: what class variables does data_model need to have? should document
@@ -229,8 +227,7 @@ def run_cv_cancer_type(data_model,
                    cancer_type,
                    num_folds=num_folds,
                    fold_no=fold_no,
-                   use_pancancer=use_pancancer,
-                   use_pancancer_only=use_pancancer_only,
+                   training_data=training_data,
                    seed=data_model.seed)
         except ValueError:
             raise NoTestSamplesError(

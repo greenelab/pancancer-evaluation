@@ -48,8 +48,10 @@ print(len(id_coefs_info))
 # In[4]:
 
 
+# format of id_coefs_info:
+# [experiment descriptor, fold no, [list of features and effect sizes]]
 print(len(id_coefs_info[0]))
-print(id_coefs_info[0])
+print(id_coefs_info[0][:2], id_coefs_info[0][2][:5])
 
 
 # In[5]:
@@ -265,6 +267,8 @@ for ix, gene_to_plot in enumerate(genes_to_plot):
     dist_df = f_df.loc[gene_to_plot, :]
     sns.histplot(dist_df.values, ax=ax, bins=20)
     ax.set_title(gene_to_plot)
+    ax.set_xlabel('f-statistic')
+    ax.set_ylabel('Cancer type count')
     
 plt.suptitle('Top median f-test genes')
 plt.tight_layout()
@@ -296,12 +300,14 @@ for ix, gene_to_plot in enumerate(genes_to_plot):
     dist_df = f_df.loc[gene_to_plot, :]
     sns.histplot(dist_df.values, ax=ax, bins=20)
     ax.set_title(gene_to_plot)
+    ax.set_xlabel('f-statistic')
+    ax.set_ylabel('Cancer type count')
     
 plt.suptitle('Top pan-cancer f-test genes')
 plt.tight_layout()
 
 
-# In[23]:
+# In[18]:
 
 
 # top 6 MAD genes
@@ -317,7 +323,7 @@ mad_df = (X_filtered_df
 mad_df.iloc[:5]
 
 
-# In[24]:
+# In[19]:
 
 
 sns.set({'figure.figsize': (18, 9)})
@@ -331,6 +337,8 @@ for ix, gene_to_plot in enumerate(genes_to_plot):
     dist_df = f_df.loc[gene_to_plot, :]
     sns.histplot(dist_df.values, ax=ax, bins=20)
     ax.set_title(gene_to_plot)
+    ax.set_xlabel('f-statistic')
+    ax.set_ylabel('Cancer type count')
     
 plt.suptitle('Top MAD genes')
 plt.tight_layout()
