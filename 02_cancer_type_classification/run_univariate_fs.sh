@@ -1,31 +1,48 @@
 #!/bin/bash
 
-# Run feature selection experiments across a few genes, with all cancer
-# types held out
+# Run feature selection experiments across a few genes, with selected cancer
+# types held out (either partially or completely)
 
 RESULTS_DIR=./02_cancer_type_classification/results/univariate_fs
 ERRORS_DIR=./cancer_type_fs_errors
 
+# number of features to "preselect" to
+# -1 == no preselection
 NUM_FEATURES_LARGE=1000
+
+# number of features to use feature selection methods to select to
 NUM_FEATURES_SMALL=250
-MAD_PRESELECT=5000
+MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 
+# genes=(
+#   "TP53"
+#   "APC"
+#   "EGFR"
+#   "SETD2"
+#   "ARID1A"
+#   "PIK3CA"
+# )
+
 genes=(
-  "TP53"
-  "APC"
-  "EGFR"
-  "SETD2"
-  "ARID1A"
-  "PIK3CA"
+  "PTEN"
+  "RB1"
+  "KRAS"
+  "BRAF"
+  "ATRX"
+  # "CDK4"
 )
+
+# non-carcinoma cancer types
+# eventually should run with carcinomas for comparison
+# cancer_types="GBM LGG SARC SKCM TGCT"
 
 fs_methods=(
   "mad"
   "pancan_f_test"
   "median_f_test"
-  "mad_f_test"
+  "random"
 )
 
 for seed in 42 1; do
@@ -36,6 +53,7 @@ for seed in 42 1; do
         cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
         cmd+="--gene_set custom "
         cmd+="--custom_genes $gene "
+        # cmd+="--holdout_cancer_types $cancer_types "
         cmd+="--results_dir $RESULTS_DIR "
         cmd+="--seed $seed "
         cmd+="--feature_selection mad "
@@ -48,6 +66,7 @@ for seed in 42 1; do
         cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
         cmd+="--gene_set custom "
         cmd+="--custom_genes $gene "
+        # cmd+="-- holdout_cancer_types $cancer_types "
         cmd+="--results_dir $RESULTS_DIR "
         cmd+="--seed $seed "
         cmd+="--feature_selection mad "
@@ -64,6 +83,7 @@ for seed in 42 1; do
             cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
             cmd+="--gene_set custom "
             cmd+="--custom_genes $gene "
+            # cmd+="--holdout_cancer_types $cancer_types "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "
@@ -76,6 +96,7 @@ for seed in 42 1; do
             cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
             cmd+="--gene_set custom "
             cmd+="--custom_genes $gene "
+            # cmd+="--holdout_cancer_types $cancer_types "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "
