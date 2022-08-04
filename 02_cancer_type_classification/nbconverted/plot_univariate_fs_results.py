@@ -42,7 +42,8 @@ get_ipython().run_line_magic('autoreload', '2')
 
 single_cancer_dir = os.path.join('results', 'univariate_fs', 'single_cancer')
 pancancer_dir = os.path.join('results', 'univariate_fs', 'pancancer')
-pancancer_only_dir = os.path.join('results', 'univariate_fs', 'pancancer_only')
+pancancer_only_dir = os.path.join('results', 'univariate_fs', 'all_other_cancers')
+
 large_n_dims = 1000
 small_n_dims = 250
 
@@ -157,6 +158,18 @@ single_cancer_compare_df.head()
 # In[8]:
 
 
+print(single_cancer_compare_df.identifier.unique())
+
+
+# In[9]:
+
+
+print(single_cancer_compare_df.fs_method.unique())
+
+
+# In[10]:
+
+
 gene = 'EGFR'
 
 # if we want to filter to certain cancer types we can set that here
@@ -178,7 +191,7 @@ cancer_types = None
 # ]
 
 
-# In[9]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (18, 6)})
@@ -203,7 +216,7 @@ fs_method_order = [
     'mad_1000',
     'pancan_f_test',
     'median_f_test',
-    'mad_f_test'
+    'random'
 ]
 
 
@@ -225,7 +238,7 @@ plt.suptitle('{}, averaged over all holdout cancer types'.format(gene))
 plt.tight_layout()
 
 
-# In[10]:
+# In[12]:
 
 
 # these are "non-carcinoma" cancer types in TCGA
@@ -241,7 +254,7 @@ non_carcinomas = [
 ]
 
 
-# In[11]:
+# In[13]:
 
 
 sns.set({'figure.figsize': (18, 6)})
@@ -282,7 +295,7 @@ plt.tight_layout()
 
 # ### Plot performance broken down by cancer type
 
-# In[12]:
+# In[14]:
 
 
 sns.set({'figure.figsize': (15, 12)})
@@ -335,7 +348,7 @@ plt.tight_layout()
 # 
 # This will show trends for each data partition: i.e. is improved performance for a particular feature selection method driven by a large increase in performance for one or two data partitions and no change for the others, or a small increase in performance across all the data partitions?
 
-# In[13]:
+# In[15]:
 
 
 sns.set({'figure.figsize': (15, 6)})

@@ -76,5 +76,6 @@ fs_methods = [
     'mad',
     'pancan_f_test',
     'median_f_test',
-    'mad_f_test'
+    'mad_f_test',
+    'random'
 ]
