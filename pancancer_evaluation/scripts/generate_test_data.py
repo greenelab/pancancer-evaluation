@@ -45,8 +45,7 @@ def generate_cancer_type_test_data(tcga_data, sample_info_df, verbose=False):
         tcga_data.process_data_for_gene(gene, classification, gene_dir=None)
         results = cu.run_cv_cancer_type(tcga_data, gene, cancer_type,
                                         sample_info_df, num_folds=4,
-                                        use_pancancer=False,
-                                        use_pancancer_only=False,
+                                        training_data='single_cancer',
                                         shuffle_labels=False)
         metrics_df = pd.concat(results['gene_metrics'])
         np.savetxt(output_file, metrics_df['auroc'].values)

@@ -470,7 +470,6 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
     """
     # Setup the classifier parameters
     clf_parameters = {
-        "classify__loss": ["log"],
         "classify__penalty": ["elasticnet"],
         "classify__alpha": alphas,
         "classify__l1_ratio": l1_ratios,
@@ -483,7 +482,7 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
                 SGDClassifier(
                     random_state=seed,
                     class_weight="balanced",
-                    loss="log",
+                    loss="log_loss",
                     max_iter=max_iter,
                     tol=1e-3,
                 ),
