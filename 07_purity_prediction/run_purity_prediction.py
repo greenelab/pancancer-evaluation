@@ -122,29 +122,42 @@ if __name__ == '__main__':
         output_dir = fu.make_output_dir(args.results_dir, training_data)
 
         tcga_data.process_purity_data(output_dir, classify=args.classify)
-        print(tcga_data.X_df.shape, tcga_data.y_df.shape)
-        print(tcga_data.X_df.head())
-        print(tcga_data.y_df.head())
-        exit()
 
-        # progress = tqdm(args.holdout_cancer_types,
-        #                 ncols=100,
-        #                 file=sys.stdout)
+        progress = tqdm(args.holdout_cancer_types,
+                        ncols=100,
+                        file=sys.stdout)
 
-        # for cancer_type in progress:
+        for cancer_type in progress:
 
-        #     progress.set_description('cancer type: {}'.format(cancer_type))
-        #     cancer_type_log_df = None
+            progress.set_description('cancer type: {}'.format(cancer_type))
+            cancer_type_log_df = None
 
-        #     check_file = fu.check_purity_file(output_dir,
-                                            
-        # except ResultsFileExistsError:
-        #     if args.verbose:
-        #         print('Skipping because results file exists already: '
-        #               'cancer type {}'.format(cancer_type),
-        #               file=sys.stderr)
-        #     cancer_type_log_df = fu.generate_log_df(
-        #         log_columns,
-        #         [cancer_type, use_pancancer, shuffle_labels, 'file_exists']
-        #     )
+            try:
+                check_file = fu.check_purity_file(output_dir,
+                                                  cancer_type,
+                                                  shuffle_labels,
+                                                  args.seed,
+                                                  args.feature_selection,
+                                                  args.num_features)
+                # TODO:
+                # feature selection for continuous labels
+                # prediction for continuous labels
+                results = run_cv_cancer_type(tcga_data,
+                                             'N/A',
+                                             cancer_type,
+                                             sample_info_df,
+                                             args.num_folds,
+                                             training_data,
+                                             shuffle_labels)
+                print(results)
+                exit()
+            except ResultsFileExistsError:
+                if args.verbose:
+                    print('Skipping because results file exists already: '
+                          'cancer type {}'.format(cancer_type),
+                          file=sys.stderr)
+                cancer_type_log_df = fu.generate_log_df(
+                    log_columns,
+                    [cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                )
 

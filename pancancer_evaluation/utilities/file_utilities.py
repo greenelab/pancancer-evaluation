@@ -324,7 +324,7 @@ def check_purity_file(output_dir,
                       num_features):
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(
-        gene_dir, "purity_{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
+        output_dir, "purity_{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
             cancer_type, signal, feature_selection, seed, num_features
         )).resolve()
     if check_status(check_file):
