@@ -131,6 +131,37 @@ class TCGADataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
+    def process_purity_data(self,
+                            output_dir,
+                            classify=False,
+                            use_pancancer=False):
+        """
+        Prepare to run tumor purity prediction experiments for a given gene.
+
+        Arguments
+        ---------
+        output_dir (str): where to write output
+        classify (bool): if True binarize and do classification, else regression
+        use_pancancer (bool): whether or not to use pancancer data
+        """
+        y_df_raw = du.load_purity(self.mut_burden_df,
+                                  self.sample_info_df,
+                                  classify=classify,
+                                  verbose=self.verbose)
+
+        filtered_data = self._filter_data_for_gene(
+            self.rnaseq_df,
+            y_df_raw,
+            use_pancancer
+        )
+
+        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        self.X_df = rnaseq_filtered_df
+        self.y_df = y_filtered_df
+        self.gene_features = gene_features
+
+
     def process_data_for_identifiers(self,
                                      train_identifier,
                                      test_identifier,
