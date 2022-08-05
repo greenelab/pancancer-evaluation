@@ -16,27 +16,19 @@ MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 
-# genes=(
-#   "TP53"
-#   "APC"
-#   "EGFR"
-#   "SETD2"
-#   "ARID1A"
-#   "PIK3CA"
-# )
-
 genes=(
+  "TP53"
+  "APC"
+  "EGFR"
+  "SETD2"
+  "ARID1A"
+  "PIK3CA"
   "PTEN"
   "RB1"
   "KRAS"
   "BRAF"
   "ATRX"
-  # "CDK4"
 )
-
-# non-carcinoma cancer types
-# eventually should run with carcinomas for comparison
-# cancer_types="GBM LGG SARC SKCM TGCT"
 
 fs_methods=(
   "mad"
@@ -53,7 +45,6 @@ for seed in 42 1; do
         cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
         cmd+="--gene_set custom "
         cmd+="--custom_genes $gene "
-        # cmd+="--holdout_cancer_types $cancer_types "
         cmd+="--results_dir $RESULTS_DIR "
         cmd+="--seed $seed "
         cmd+="--feature_selection mad "
@@ -66,7 +57,6 @@ for seed in 42 1; do
         cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
         cmd+="--gene_set custom "
         cmd+="--custom_genes $gene "
-        # cmd+="-- holdout_cancer_types $cancer_types "
         cmd+="--results_dir $RESULTS_DIR "
         cmd+="--seed $seed "
         cmd+="--feature_selection mad "
@@ -83,7 +73,6 @@ for seed in 42 1; do
             cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
             cmd+="--gene_set custom "
             cmd+="--custom_genes $gene "
-            # cmd+="--holdout_cancer_types $cancer_types "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "
@@ -96,7 +85,6 @@ for seed in 42 1; do
             cmd="python 02_cancer_type_classification/run_cancer_type_classification.py "
             cmd+="--gene_set custom "
             cmd+="--custom_genes $gene "
-            # cmd+="--holdout_cancer_types $cancer_types "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "

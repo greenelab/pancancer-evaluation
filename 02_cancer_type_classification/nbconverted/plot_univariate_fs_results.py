@@ -23,8 +23,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import upsetplot as up
-from venn import generate_petal_labels
 
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.analysis_utilities as au
@@ -44,8 +42,14 @@ single_cancer_dir = os.path.join('results', 'univariate_fs', 'single_cancer')
 pancancer_dir = os.path.join('results', 'univariate_fs', 'pancancer')
 pancancer_only_dir = os.path.join('results', 'univariate_fs', 'all_other_cancers')
 
+output_plots = True
+output_plots_dir = cfg.cancer_type_fs_plots_dir
+
 large_n_dims = 1000
 small_n_dims = 250
+
+# gene to plot results for
+gene = 'PTEN'
 
 
 # ### Load results
@@ -170,8 +174,6 @@ print(single_cancer_compare_df.fs_method.unique())
 # In[10]:
 
 
-gene = 'EGFR'
-
 # if we want to filter to certain cancer types we can set that here
 # cancer_types = None applies no filtering (i.e. all cancer types where
 # results files exist)
@@ -237,6 +239,11 @@ for ix, compare_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, averaged over all holdout cancer types'.format(gene))
 plt.tight_layout()
 
+if output_plots:
+    output_plots_dir.mkdir(exist_ok=True)
+    plt.savefig(output_plots_dir / '{}_all_holdout.png'.format(gene),
+                dpi=200, bbox_inches='tight')
+
 
 # In[12]:
 
@@ -292,6 +299,10 @@ for ix, compare_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, averaged over non-carcinoma cancer types'.format(gene))
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_non_carcinoma_holdout.png'.format(gene),
+                dpi=200, bbox_inches='tight')
+
 
 # ### Plot performance broken down by cancer type
 
@@ -343,6 +354,10 @@ for ix, to_plot_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, by test cancer type'.format(gene), y=0.99)
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_by_cancer_type.png'.format(gene),
+                dpi=200, bbox_inches='tight')
+
 
 # ### Plot performance broken down by cancer type and test set
 # 
@@ -383,6 +398,10 @@ g = sns.catplot(
     palette='viridis'
 )
 g.set_titles(col_template='{col_name}')
+
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_by_cancer_type_lines.png'.format(gene),
+                dpi=200, bbox_inches='tight')
 
 
 # Particularly for EGFR and TP53, we do tend to see that selecting features by a metric that aggregates across cancer types (`median_f_test`) improves performance particularly on the non-carcinomas, relative to other methods that can be driven by strong signal/correlation in a single cancer type (`mad`, `pancan_f_test`). This is the case where we're expecting `median_f_test` to provide an improvement.
