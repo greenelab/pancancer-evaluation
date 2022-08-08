@@ -149,8 +149,6 @@ if __name__ == '__main__':
                                              args.num_folds,
                                              training_data,
                                              shuffle_labels)
-                print(results)
-                exit()
             except ResultsFileExistsError:
                 if args.verbose:
                     print('Skipping because results file exists already: '
@@ -160,4 +158,36 @@ if __name__ == '__main__':
                     log_columns,
                     [cancer_type, use_pancancer, shuffle_labels, 'file_exists']
                 )
+            except NoTrainSamplesError:
+                if args.verbose:
+                    print('Skipping due to no train samples: '
+                          'cancer type {}'.format(cancer_type),
+                          file=sys.stderr)
+                cancer_type_log_df = fu.generate_log_df(
+                    log_columns,
+                    [cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
+                )
+            except NoTestSamplesError:
+                if args.verbose:
+                    print('Skipping due to no test samples: '
+                          'cancer type {}'.format(cancer_type),
+                          file=sys.stderr)
+                cancer_type_log_df = fu.generate_log_df(
+                    log_columns,
+                    [cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
+                )
+            else:
+                # only save results if no exceptions
+                fu.save_results_cancer_type(output_dir,
+                                            check_file,
+                                            results,
+                                            'purity',
+                                            cancer_type,
+                                            shuffle_labels,
+                                            args.seed,
+                                            args.feature_selection,
+                                            args.num_features)
+
+            if cancer_type_log_df is not None:
+                fu.write_log_file(cancer_type_log_df, args.log_file)
 

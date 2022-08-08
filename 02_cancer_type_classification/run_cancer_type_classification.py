@@ -268,7 +268,6 @@ if __name__ == '__main__':
                         [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
                     )
                 else:
-                    pass
                     # only save results if no exceptions
                     fu.save_results_cancer_type(gene_dir,
                                                 check_file,
