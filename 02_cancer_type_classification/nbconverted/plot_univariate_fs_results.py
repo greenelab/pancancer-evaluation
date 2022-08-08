@@ -177,20 +177,22 @@ print(single_cancer_compare_df.fs_method.unique())
 # if we want to filter to certain cancer types we can set that here
 # cancer_types = None applies no filtering (i.e. all cancer types where
 # results files exist)
-cancer_types = None
 
 # these are the cancer types we use for TP53 (visualizing all of them gets a bit large/noisy)
-# cancer_types = [
-#     'BLCA',
-#     'BRCA',
-#     'COAD',
-#     'LGG',
-#     'LUAD',
-#     'SARC',
-#     'SKCM',
-#     'STAD',
-#     'UCEC'
-# ]
+if gene == 'TP53':
+    cancer_types = [
+        'BLCA',
+        'BRCA',
+        'COAD',
+        'LGG',
+        'LUAD',
+        'SARC',
+        'SKCM',
+        'STAD',
+        'UCEC'
+    ]
+else:
+    cancer_types = None
 
 
 # In[11]:
