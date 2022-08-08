@@ -70,6 +70,10 @@ def process_args():
     if args.log_file is None:
         args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
 
+    # TODO: remove when regression implemented
+    if not args.classify:
+        p.error('regression not yet implemented, must use --classify flag')
+
     return args, sample_info_df
 
 

@@ -222,12 +222,28 @@ def load_purity(mut_burden_df,
     purity_df.index.rename('sample_id', inplace=True)
 
     # for classification, we want to binarize purity values into above/below
-    # the median (1 = above, 0 = below; this is somewhat arbitrary but seems
-    # like a decent place to start)
+    # the median for each cancer type (1 = above, 0 = below; this is somewhat
+    # arbitrary but seems like a decent place to start)
     if classify:
-        purity_df['purity'] = (
-            purity_df.purity > purity_df.purity.median()
-        ).astype('int')
+
+        all_ids = pd.Index([])
+        for cancer_type in sample_info_df.cancer_type.unique():
+            cancer_type_ids = (
+                sample_info_df[sample_info_df.cancer_type == cancer_type]
+                  .index
+                  .intersection(purity_df.index)
+            )
+            all_ids = all_ids.union(cancer_type_ids)
+            cancer_type_median = purity_df.loc[cancer_type_ids, :].purity.median()
+            cancer_type_labels = (
+                purity_df.loc[cancer_type_ids, 'purity'] > cancer_type_median
+            ).astype('int')
+            purity_df.loc[cancer_type_ids, 'purity'] = cancer_type_labels
+
+        # make sure all cancer types have been assigned labels
+        purity_df = purity_df.reindex(all_ids)
+        purity_df['purity'] = purity_df.purity.astype('int')
+        assert np.array_equal(purity_df.purity.unique(), [0, 1])
 
     # join mutation burden information and cancer type information
     # these are necessary to generate non-gene covariates later on
