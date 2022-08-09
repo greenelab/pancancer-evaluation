@@ -656,7 +656,6 @@ class TCGADataModel():
         elif num_cancer_types >= 1:
             # add desired number of cancer types to train set
             if how_to_add == 'random':
-                import contextlib
                 # We want this random addition of cancer types to be the same
                 # each time we add them. We can accomplish this by reseeding
                 # np.random each time we call this function.
@@ -668,20 +667,11 @@ class TCGADataModel():
                 # relevant Python context.
                 #
                 # See https://stackoverflow.com/a/49557127 for more detail.
-                #
-                # TODO: write a test for this
-                @contextlib.contextmanager
-                def temp_seed(cntxt_seed):
-                    state = np.random.get_state()
-                    np.random.seed(cntxt_seed)
-                    try:
-                        yield
-                    finally:
-                        np.random.set_state(state)
 
                 # choose cancer types to add at random, with the same random
                 # order across experiments (i.e. across varying values of
                 # num_cancer_types)
+                from pancancer_evaluation.utilities.classify_utilities import temp_seed
                 with temp_seed(seed):
                     shuffled_cancers = np.random.choice(
                         valid_cancer_types,

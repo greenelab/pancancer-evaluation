@@ -23,8 +23,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import upsetplot as up
-from venn import generate_petal_labels
 
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.utilities.analysis_utilities as au
@@ -42,9 +40,16 @@ get_ipython().run_line_magic('autoreload', '2')
 
 single_cancer_dir = os.path.join('results', 'univariate_fs', 'single_cancer')
 pancancer_dir = os.path.join('results', 'univariate_fs', 'pancancer')
-pancancer_only_dir = os.path.join('results', 'univariate_fs', 'pancancer_only')
+pancancer_only_dir = os.path.join('results', 'univariate_fs', 'all_other_cancers')
+
+output_plots = True
+output_plots_dir = cfg.cancer_type_fs_plots_dir
+
 large_n_dims = 1000
 small_n_dims = 250
+
+# gene to plot results for
+gene = 'PTEN'
 
 
 # ### Load results
@@ -157,28 +162,40 @@ single_cancer_compare_df.head()
 # In[8]:
 
 
-gene = 'EGFR'
+print(single_cancer_compare_df.identifier.unique())
+
+
+# In[9]:
+
+
+print(single_cancer_compare_df.fs_method.unique())
+
+
+# In[10]:
+
 
 # if we want to filter to certain cancer types we can set that here
 # cancer_types = None applies no filtering (i.e. all cancer types where
 # results files exist)
-cancer_types = None
 
 # these are the cancer types we use for TP53 (visualizing all of them gets a bit large/noisy)
-# cancer_types = [
-#     'BLCA',
-#     'BRCA',
-#     'COAD',
-#     'LGG',
-#     'LUAD',
-#     'SARC',
-#     'SKCM',
-#     'STAD',
-#     'UCEC'
-# ]
+if gene == 'TP53':
+    cancer_types = [
+        'BLCA',
+        'BRCA',
+        'COAD',
+        'LGG',
+        'LUAD',
+        'SARC',
+        'SKCM',
+        'STAD',
+        'UCEC'
+    ]
+else:
+    cancer_types = None
 
 
-# In[9]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (18, 6)})
@@ -203,7 +220,7 @@ fs_method_order = [
     'mad_1000',
     'pancan_f_test',
     'median_f_test',
-    'mad_f_test'
+    'random'
 ]
 
 
@@ -224,8 +241,13 @@ for ix, compare_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, averaged over all holdout cancer types'.format(gene))
 plt.tight_layout()
 
+if output_plots:
+    output_plots_dir.mkdir(exist_ok=True)
+    plt.savefig(output_plots_dir / '{}_all_holdout.png'.format(gene),
+                dpi=200, bbox_inches='tight')
 
-# In[10]:
+
+# In[12]:
 
 
 # these are "non-carcinoma" cancer types in TCGA
@@ -241,7 +263,7 @@ non_carcinomas = [
 ]
 
 
-# In[11]:
+# In[13]:
 
 
 sns.set({'figure.figsize': (18, 6)})
@@ -279,10 +301,14 @@ for ix, compare_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, averaged over non-carcinoma cancer types'.format(gene))
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_non_carcinoma_holdout.png'.format(gene),
+                dpi=200, bbox_inches='tight')
+
 
 # ### Plot performance broken down by cancer type
 
-# In[12]:
+# In[14]:
 
 
 sns.set({'figure.figsize': (15, 12)})
@@ -330,12 +356,16 @@ for ix, to_plot_df in enumerate(dfs_to_plot):
 plt.suptitle('{}, by test cancer type'.format(gene), y=0.99)
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_by_cancer_type.png'.format(gene),
+                dpi=200, bbox_inches='tight')
+
 
 # ### Plot performance broken down by cancer type and test set
 # 
 # This will show trends for each data partition: i.e. is improved performance for a particular feature selection method driven by a large increase in performance for one or two data partitions and no change for the others, or a small increase in performance across all the data partitions?
 
-# In[13]:
+# In[15]:
 
 
 sns.set({'figure.figsize': (15, 6)})
@@ -370,6 +400,10 @@ g = sns.catplot(
     palette='viridis'
 )
 g.set_titles(col_template='{col_name}')
+
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_by_cancer_type_lines.png'.format(gene),
+                dpi=200, bbox_inches='tight')
 
 
 # Particularly for EGFR and TP53, we do tend to see that selecting features by a metric that aggregates across cancer types (`median_f_test`) improves performance particularly on the non-carcinomas, relative to other methods that can be driven by strong signal/correlation in a single cancer type (`mad`, `pancan_f_test`). This is the case where we're expecting `median_f_test` to provide an improvement.

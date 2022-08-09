@@ -76,5 +76,11 @@ fs_methods = [
     'mad',
     'pancan_f_test',
     'median_f_test',
-    'mad_f_test'
+    'mad_f_test',
+    'random'
 ]
+
+# location of feature selection results
+cancer_type_fs_plots_dir = (
+    repo_root / '02_cancer_type_classification' / 'fs_plots'
+)

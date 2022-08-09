@@ -32,15 +32,11 @@ def test_cancer_type_f_statistics(sim_data):
 
 
 def test_feature_weights(sim_data):
-    """Test properties of generated feature weights."""
+    """Test dimensions of generated feature weights."""
     X_df, y_df = sim_data
     f_stats = feats._get_cancer_type_f_statistics(X_df, y_df)
     w1 = feats._generate_feature_weights(f_stats, weights_type='pancan_f_test')
     w2 = feats._generate_feature_weights(f_stats, weights_type='median_f_test')
-    w3 = feats._generate_feature_weights(f_stats, weights_type='mad_f_test')
 
-    for w in [w1, w2, w3]:
+    for w in [w1, w2]:
         assert w.shape[0] == X_df.shape[1]
-
-    # TODO some stuff about the actual data
-

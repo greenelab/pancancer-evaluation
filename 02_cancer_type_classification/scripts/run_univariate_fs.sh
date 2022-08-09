@@ -1,14 +1,18 @@
 #!/bin/bash
 
-# Run feature selection experiments across a few genes, with all cancer
-# types held out
+# Run feature selection experiments across a few genes, with selected cancer
+# types held out (either partially or completely)
 
 RESULTS_DIR=./02_cancer_type_classification/results/univariate_fs
 ERRORS_DIR=./cancer_type_fs_errors
 
+# number of features to "preselect" to
+# -1 == no preselection
 NUM_FEATURES_LARGE=1000
+
+# number of features to use feature selection methods to select to
 NUM_FEATURES_SMALL=250
-MAD_PRESELECT=5000
+MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 
@@ -19,13 +23,18 @@ genes=(
   "SETD2"
   "ARID1A"
   "PIK3CA"
+  "PTEN"
+  "RB1"
+  "KRAS"
+  "BRAF"
+  "ATRX"
 )
 
 fs_methods=(
   "mad"
   "pancan_f_test"
   "median_f_test"
-  "mad_f_test"
+  "random"
 )
 
 for seed in 42 1; do

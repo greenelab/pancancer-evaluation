@@ -125,9 +125,7 @@ if __name__ == '__main__':
             outer_progress.set_description('gene: {}'.format(gene))
 
             try:
-                gene_dir = fu.make_gene_dir(args.results_dir, gene,
-                                            use_pancancer_cv=True,
-                                            use_pancancer_only=False)
+                gene_dir = fu.make_gene_dir(args.results_dir, gene)
                 check_file = fu.check_gene_file(gene_dir,
                                                 gene,
                                                 shuffle_labels,

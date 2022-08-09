@@ -13,6 +13,8 @@ from sklearn.preprocessing import StandardScaler
 
 import pancancer_evaluation.config as cfg
 from pancancer_evaluation.utilities.feature_utilities import (
+   subset_by_mad,
+   subset_random,
    subset_by_feature_weights,
 )
 
@@ -191,6 +193,7 @@ def preprocess_data(X_train_raw_df,
                     feature_selection='mad',
                     num_features=-1,
                     mad_preselect=None,
+                    seed=cfg.default_seed,
                     use_coral=False,
                     coral_lambda=1.0,
                     coral_by_cancer_type=False,
@@ -210,7 +213,8 @@ def preprocess_data(X_train_raw_df,
             num_features,
             y_df,
             feature_selection,
-            mad_preselect
+            mad_preselect,
+            seed
         )
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
@@ -316,6 +320,7 @@ def select_features(X_train_df,
                     y_df=None,
                     feature_selection_method='mad',
                     mad_preselect=None,
+                    seed=cfg.default_seed,
                     verbose=False):
     """Select a subset of features."""
     if mad_preselect is not None:
@@ -328,6 +333,10 @@ def select_features(X_train_df,
         return subset_by_mad(
             X_train_df, X_test_df, gene_features, num_features
         )
+    elif feature_selection_method == 'random':
+        return subset_random(
+            X_train_df, X_test_df, gene_features, num_features, seed=seed
+        )
     else:
         return subset_by_feature_weights(
             X_train_df,
@@ -337,47 +346,6 @@ def select_features(X_train_df,
             y_df,
             num_features
         )
-
-
-def subset_by_mad(X_train_df, X_test_df, gene_features, num_features, verbose=False):
-    """Subset features by mean absolute deviation.
-
-    Takes the top subset_mad_genes genes (sorted in descending order),
-    calculated on the training set.
-
-    Arguments
-    ---------
-    X_train_df: training data, samples x genes
-    X_test_df: test data, samples x genes
-    gene_features: numpy bool array, indicating which features are genes (and should be subsetted/standardized)
-    num_features (int): number of genes to take
-
-    Returns
-    -------
-    (train_df, test_df, gene_features) datasets with filtered features
-    """
-    if verbose:
-        print('Taking subset of gene features', file=sys.stderr)
-
-    mad_genes_df = (
-        X_train_df.loc[:, gene_features]
-                  .mad(axis=0)
-                  .sort_values(ascending=False)
-                  .reset_index()
-    )
-    mad_genes_df.columns = ['gene_id', 'mean_absolute_deviation']
-    mad_genes = mad_genes_df.iloc[:num_features, :].gene_id.astype(str).values
-
-    non_gene_features = X_train_df.columns.values[~gene_features]
-    valid_features = np.concatenate((mad_genes, non_gene_features))
-
-    gene_features = np.concatenate((
-        np.ones(mad_genes.shape[0]).astype('bool'),
-        np.zeros(non_gene_features.shape[0]).astype('bool')
-    ))
-    train_df = X_train_df.reindex(valid_features, axis='columns')
-    test_df = X_test_df.reindex(valid_features, axis='columns')
-    return train_df, test_df, gene_features
 
 
 def get_valid_cancer_types(gene, output_dir):
