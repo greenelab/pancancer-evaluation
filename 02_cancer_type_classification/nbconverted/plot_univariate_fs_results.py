@@ -42,14 +42,18 @@ single_cancer_dir = os.path.join('results', 'univariate_fs', 'single_cancer')
 pancancer_dir = os.path.join('results', 'univariate_fs', 'pancancer')
 pancancer_only_dir = os.path.join('results', 'univariate_fs', 'all_other_cancers')
 
-output_plots = True
+output_plots = False
 output_plots_dir = cfg.cancer_type_fs_plots_dir
 
 large_n_dims = 1000
 small_n_dims = 250
 
 # gene to plot results for
-gene = 'PTEN'
+gene = 'EGFR'
+
+# metric to plot results for
+metric = 'auroc'
+delta_metric = 'delta_{}'.format(metric)
 
 
 # ### Load results
@@ -136,7 +140,7 @@ def compare_from_experiment(experiment_df):
                     experiment_df[
                         (experiment_df.fs_method == fs_method) &
                         (experiment_df.holdout_cancer_type == holdout_cancer_type)
-                    ], metric='aupr', verbose=True)
+                    ], metric=metric, verbose=True)
                   .assign(fs_method=fs_method,
                           holdout_cancer_type=holdout_cancer_type)
             )
@@ -232,7 +236,7 @@ for ix, compare_df in enumerate(dfs_to_plot):
     else:
         plot_df = compare_df[(compare_df.identifier == gene) &
                              (compare_df.holdout_cancer_type.isin(cancer_types))]
-    sns.boxplot(data=plot_df, x='fs_method', y='delta_aupr',
+    sns.boxplot(data=plot_df, x='fs_method', y=delta_metric,
                 order=fs_method_order, ax=ax)
     ax.set_title(names_to_plot[ix])
     ax.set_xlabel('Feature selection method')
@@ -292,7 +296,7 @@ for ix, compare_df in enumerate(dfs_to_plot):
     if ix == 0:
         # look at which cancer types are actually present in dataset
         print(plot_df.holdout_cancer_type.unique(), file=sys.stderr)
-    sns.boxplot(data=plot_df, x='fs_method', y='delta_aupr',
+    sns.boxplot(data=plot_df, x='fs_method', y=delta_metric,
                 order=fs_method_order, ax=ax)
     ax.set_title(names_to_plot[ix])
     ax.set_xlabel('Feature selection method')
@@ -343,7 +347,7 @@ for ix, to_plot_df in enumerate(dfs_to_plot):
               .sort_values(by='holdout_cancer_type')
         )
     sns.boxplot(data=plot_df, x='holdout_cancer_type', 
-                y='delta_aupr', hue='fs_method', 
+                y=delta_metric, hue='fs_method', 
                 hue_order=fs_method_order, ax=ax)
     ax.set_title(names_to_plot[ix])
     if ix == len(dfs_to_plot) - 1:
@@ -395,7 +399,7 @@ else:
 plot_df['seed/fold'] = plot_df.seed.astype(str) + ', ' + plot_df.fold.astype(str)
 
 g = sns.catplot(
-    data=plot_df, x='fs_method', y='delta_aupr', col='holdout_cancer_type',
+    data=plot_df, x='fs_method', y=delta_metric, col='holdout_cancer_type',
     hue='seed/fold', kind='point', col_wrap=4, order=plot_fs_methods,
     palette='viridis'
 )

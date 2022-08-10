@@ -101,6 +101,43 @@ def load_prediction_results_fs(results_dir, fs_methods):
     return results_df
 
 
+def load_purity_results_fs(results_dir, fs_methods, classify=True):
+    """Load results of tumor purity experiments.
+
+    Arguments
+    ---------
+    results_dir (str): directory containing results files
+    fs_methods (list): list of possible feature selection methods
+    classify (bool): whether to load classification or regression results
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of prediction experiments
+    """
+    results_df = pd.DataFrame()
+    for results_file in os.listdir(results_dir):
+        full_results_file = os.path.join(results_dir, results_file)
+        if not os.path.isfile(full_results_file): continue
+        # classification results have format 'classify_metrics.tsv.gz'
+        if classify:
+            if not ('classify_metrics' in results_file): continue
+        # regression results have format 'regress_metrics.tsv.gz'
+        else:
+            if not ('regress_metrics' in results_file): continue
+        if results_file[0] == '.': continue
+        full_results_file = os.path.join(results_dir, results_file)
+        id_results_df = pd.read_csv(full_results_file, sep='\t')
+        n_dims = int(results_file.split('_')[-3].replace('n', ''))
+        fs_method = 'none'
+        for method in fs_methods:
+            if method in results_file:
+                fs_method = method
+        id_results_df['fs_method'] = fs_method
+        id_results_df['n_dims'] = n_dims
+        results_df = pd.concat((results_df, id_results_df))
+    return results_df
+
+
 def load_flip_labels_results(results_dir, experiment_descriptor):
     """Load results of 'flip labels' experiments.
 
