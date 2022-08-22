@@ -326,8 +326,8 @@ def run_cv_cancer_type(data_model,
                     warnings.simplefilter("ignore")
                     metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
                         y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                        y_pred_test_df, gene, 'N/A', signal, data_model.seed,
-                        fold_no
+                        y_pred_test_df, gene, cancer_type, signal,
+                        data_model.seed, fold_no
                     )
                 results['gene_metrics'].append(metric_df)
                 results['gene_auc'].append(gene_auc_df)
