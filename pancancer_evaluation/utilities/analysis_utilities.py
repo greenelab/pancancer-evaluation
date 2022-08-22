@@ -101,7 +101,10 @@ def load_prediction_results_fs(results_dir, fs_methods):
     return results_df
 
 
-def load_purity_results_fs(results_dir, fs_methods, classify=True):
+def load_purity_results_fs(results_dir,
+                           fs_methods,
+                           classify=True,
+                           cancer_type_from_fname=False):
     """Load results of tumor purity experiments.
 
     Arguments
@@ -134,6 +137,9 @@ def load_purity_results_fs(results_dir, fs_methods, classify=True):
                 fs_method = method
         id_results_df['fs_method'] = fs_method
         id_results_df['n_dims'] = n_dims
+        if cancer_type_from_fname:
+            holdout_cancer_type = results_file.split('_')[1]
+            id_results_df['holdout_cancer_type'] = holdout_cancer_type
         results_df = pd.concat((results_df, id_results_df))
     return results_df
 
