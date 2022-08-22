@@ -297,6 +297,45 @@ def generate_nonzero_coefficients_fs(results_dir, fs_methods):
             yield identifier, coefs
 
 
+def generate_nonzero_coefficients_fs_purity(results_dir, fs_methods):
+    """Generate coefficients from mutation prediction model fits.
+
+    Loading all coefficients into memory at once is prohibitive, so we generate
+    them individually and analyze/summarize in analysis scripts.
+
+    Arguments
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+
+    Yields
+    ------
+    identifier (str): identifier for given coefficients
+    coefs (dict): list of nonzero coefficients for each fold of CV, for the
+                  given identifier
+    """
+    coefs = {}
+    all_features = None
+    for coefs_file in os.listdir(results_dir):
+        if coefs_file[0] == '.': continue
+        if 'signal' not in coefs_file: continue
+        if 'coefficients' not in coefs_file: continue
+        cancer_type = coefs_file.split('_')[1]
+        seed = int(coefs_file.split('_')[-4].replace('s', ''))
+        n_dims = int(coefs_file.split('_')[-3].replace('n', ''))
+        fs_method = 'none'
+        for method in fs_methods:
+            if method in coefs_file:
+                fs_method = method
+        full_coefs_file = os.path.join(results_dir, coefs_file)
+        coefs_df = pd.read_csv(full_coefs_file, sep='\t')
+        if all_features is None:
+            all_features = np.unique(coefs_df.feature.values)
+        coefs = process_coefs(coefs_df)
+        coefs_info = [cancer_type, fs_method, n_dims, seed]
+        yield coefs_info, coefs
+
+
 def generate_nonzero_coefficients_for_gene(results_dir, gene_name):
     """Generate coefficients from mutation prediction model fits for a gene.
 
