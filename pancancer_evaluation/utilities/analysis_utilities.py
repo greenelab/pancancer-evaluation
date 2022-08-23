@@ -297,7 +297,9 @@ def generate_nonzero_coefficients_fs(results_dir, fs_methods):
             yield identifier, coefs
 
 
-def generate_nonzero_coefficients_fs_purity(results_dir, fs_methods):
+def generate_coefficients_fs_purity(results_dir,
+                                    fs_methods,
+                                    nonzero_only=True):
     """Generate coefficients from mutation prediction model fits.
 
     Loading all coefficients into memory at once is prohibitive, so we generate
@@ -331,7 +333,7 @@ def generate_nonzero_coefficients_fs_purity(results_dir, fs_methods):
         coefs_df = pd.read_csv(full_coefs_file, sep='\t')
         if all_features is None:
             all_features = np.unique(coefs_df.feature.values)
-        coefs = process_coefs(coefs_df)
+        coefs = process_coefs(coefs_df, nonzero_only)
         coefs_info = [cancer_type, fs_method, n_dims, seed]
         yield coefs_info, coefs
 
@@ -372,15 +374,18 @@ def generate_nonzero_coefficients_for_gene(results_dir, gene_name):
         yield identifier, coefs
 
 
-def process_coefs(coefs_df):
-    """Process and return nonzero coefficients for a single identifier"""
+def process_coefs(coefs_df, nonzero_only=True):
+    """Process and return coefficients for a single identifier"""
     id_coefs = []
     for fold in np.sort(np.unique(coefs_df.fold.values)):
-        conditions = ((coefs_df.fold == fold) &
-                      (coefs_df['abs'] > 0))
-        nz_coefs_df = coefs_df[conditions]
-        id_coefs.append(list(zip(nz_coefs_df.feature.values,
-                                 nz_coefs_df.weight.values)))
+        if nonzero_only:
+            conditions = ((coefs_df.fold == fold) &
+                          (coefs_df['abs'] > 0))
+        else:
+            conditions = (coefs_df.fold == fold)
+        filtered_coefs_df = coefs_df[conditions]
+        id_coefs.append(list(zip(filtered_coefs_df.feature.values,
+                                 filtered_coefs_df.weight.values)))
     return id_coefs
 
 
