@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Analysis of feature selection results; single-cancer holdouts
+# ## Analysis of feature selection for purity prediction; single-cancer holdouts
 # 
-# TODO: document
+# This script is very similar to `02_cancer_type_classification/plot_univariate_fs_results.ipynb`, for analyzing the results of purity prediction on held-out cancer types. We analyze the same 3 types of data splitting experiments here:
+# 
+# * "Train single cancer": train and test on the same individual cancer type
+# * "Train pan-cancer": train on the test cancer type + all other valid TCGA cancer types
+# * "Train all other cancers": train on all other valid TCGA cancer types (without the test cancer type in the training set)
 
 # In[1]:
 
@@ -57,7 +61,7 @@ else:
 
 
 single_cancer_df = au.load_purity_results_fs(
-    single_cancer_dir, cfg.fs_methods, classify=True
+    single_cancer_dir, cfg.fs_methods, classify=True, cancer_type_from_fname=True
 )
 single_cancer_df['train_set'] = 'single_cancer'
 
@@ -81,7 +85,7 @@ single_cancer_df.head()
 
 
 pancancer_df = au.load_purity_results_fs(
-    pancancer_dir, cfg.fs_methods, classify=True
+    pancancer_dir, cfg.fs_methods, classify=True, cancer_type_from_fname=True
 )
 pancancer_df['train_set'] = 'pancancer'
 
@@ -105,7 +109,7 @@ pancancer_df.head()
 
 
 pancancer_only_df = au.load_purity_results_fs(
-    pancancer_only_dir, cfg.fs_methods, classify=True
+    pancancer_only_dir, cfg.fs_methods, classify=True, cancer_type_from_fname=True
 )
 pancancer_only_df['train_set'] = 'pancancer_only'
 
@@ -223,7 +227,7 @@ if output_plots:
 # these are "non-carcinoma" cancer types in TCGA
 # we anticipate that these will be the hardest to transfer models to (since
 # most of TCGA, and thus most of our training set, is generally carcinomas),
-# so it's also valuable to look at results filtered only to these
+# so it's valuable to look at results filtered only to these
 non_carcinomas = [
     'DLBC',
     'GBM',
@@ -262,6 +266,7 @@ for ix, compare_df in enumerate(dfs_to_plot):
     plot_df = compare_df[(compare_df.identifier.isin(non_carcinomas))]
     if ix == 0:
         # look at which cancer types are actually present in dataset
+        # for purity prediction it should be all of them
         print(plot_df.identifier.unique(), file=sys.stderr)
     sns.boxplot(data=plot_df, x='fs_method', y=delta_metric,
                 order=fs_method_order, ax=ax)
@@ -371,8 +376,6 @@ if output_plots:
 
 
 # ### Plot performance broken down by cancer type and test set
-# 
-# This will show trends for each data partition: i.e. is improved performance for a particular feature selection method driven by a large increase in performance for one or two data partitions and no change for the others, or a small increase in performance across all the data partitions?
 
 # In[15]:
 
@@ -436,3 +439,5 @@ if output_plots:
     plt.savefig(output_plots_dir / 'purity_non_carcinoma_by_cancer_type_lines.png',
                 dpi=200, bbox_inches='tight')
 
+
+# In general for purity prediction, we see that the univariate f-test methods `pancan_f_test` and `median_f_test` do perform slightly better than the other methods, particularly for the non-carcinoma data types, but the effect isn't nearly as obvious as it is for some of the mutation prediction examples, and variance is much higher overall.

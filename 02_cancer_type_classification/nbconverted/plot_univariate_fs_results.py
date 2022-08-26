@@ -42,8 +42,7 @@ single_cancer_dir = os.path.join('results', 'univariate_fs', 'single_cancer')
 pancancer_dir = os.path.join('results', 'univariate_fs', 'pancancer')
 pancancer_only_dir = os.path.join('results', 'univariate_fs', 'all_other_cancers')
 
-output_plots = False
-output_plots_dir = cfg.cancer_type_fs_plots_dir
+output_plots = True
 
 large_n_dims = 1000
 small_n_dims = 250
@@ -52,8 +51,12 @@ small_n_dims = 250
 gene = 'EGFR'
 
 # metric to plot results for
-metric = 'auroc'
+metric = 'aupr'
 delta_metric = 'delta_{}'.format(metric)
+output_plots_dir = (
+    cfg.cancer_type_fs_plots_dir / 'auroc' if metric == 'auroc'
+        else cfg.cancer_type_fs_plots_dir
+)
 
 
 # ### Load results
