@@ -5,12 +5,11 @@ Functions for training regression models on TCGA data.
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import RidgeCV
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import (
     cross_val_predict,
     GridSearchCV,
-    RandomizedSearchCV,
 )
 
 def train_regressor(X_train,
@@ -48,24 +47,29 @@ def train_regressor(X_train,
 
     # ElasticNet seems to be less sensitive to initialization/parameter choice
     # than SGDRegressor, but could scale poorly to really large datasets
-    estimator = Pipeline(
-        steps=[
-            (
-                "regress",
-                ElasticNet(
-                    random_state=seed,
-                )
-            )
-        ]
-    )
+    # estimator = Pipeline(
+    #     steps=[
+    #         (
+    #             "regress",
+    #             ElasticNet(
+    #                 random_state=seed,
+    #             )
+    #         )
+    #     ]
+    # )
 
-    cv_pipeline = GridSearchCV(
-        estimator=estimator,
-        param_grid=reg_parameters,
-        n_jobs=-1,
+    # cv_pipeline = GridSearchCV(
+    #     estimator=estimator,
+    #     param_grid=reg_parameters,
+    #     n_jobs=-1,
+    #     cv=n_folds,
+    #     scoring="neg_mean_squared_error",
+    #     return_train_score=True,
+    # )
+    cv_pipeline = RidgeCV(
+        alphas=[1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100],
         cv=n_folds,
         scoring="neg_mean_squared_error",
-        return_train_score=True,
     )
 
     # Fit the model
@@ -73,7 +77,8 @@ def train_regressor(X_train,
 
     # Obtain cross validation results
     y_cv = cross_val_predict(
-        cv_pipeline.best_estimator_,
+        # cv_pipeline.best_estimator_,
+        cv_pipeline,
         X=X_train,
         y=y_train.status,
         cv=n_folds,

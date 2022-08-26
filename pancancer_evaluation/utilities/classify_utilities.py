@@ -272,6 +272,7 @@ def run_cv_cancer_type(data_model,
             num_features=data_model.num_features,
             mad_preselect=data_model.mad_preselect,
             seed=data_model.seed,
+            predictor=predictor,
             use_coral=use_coral,
             coral_lambda=coral_lambda,
             coral_by_cancer_type=coral_by_cancer_type,
@@ -491,8 +492,11 @@ def extract_coefficients(cv_pipeline,
     signal: the signal of interest
     seed: the seed used to compress the data
     """
-    final_pipeline = cv_pipeline.best_estimator_
-    final_classifier = final_pipeline.named_steps[name]
+    try:
+        final_pipeline = cv_pipeline.best_estimator_
+        final_classifier = final_pipeline.named_steps[name]
+    except AttributeError:
+        final_classifier = cv_pipeline
 
     coef_df = pd.DataFrame.from_dict(
         {"feature": feature_names, "weight": final_classifier.coef_[0]}
