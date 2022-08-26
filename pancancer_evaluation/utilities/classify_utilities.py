@@ -305,29 +305,13 @@ def run_cv_cancer_type(data_model,
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
-            if predictor == 'classify':
-                # also ignore warnings here, same deal as above
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
-                        y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                        y_pred_test_df, gene, cancer_type, signal,
-                        data_model.seed, fold_no
-                    )
-                results['gene_auc'].append(gene_auc_df)
-                results['gene_aupr'].append(gene_aupr_df)
-                results['gene_coef'].append(coef_df)
-            elif predictor == 'regress':
-                metric_df = reg.get_metrics(
-                    y_train_df,
-                    y_test_df,
-                    y_cv_df,
-                    y_pred_train_df,
-                    y_pred_test_df,
-                    identifier=cancer_type,
-                    signal=signal,
-                    seed=data_model.seed,
-                    fold_no=fold_no
+            # also ignore warnings here, same deal as above
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                metric_df, gene_auc_df, gene_aupr_df = get_metrics(
+                    y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                    y_pred_test_df, gene, cancer_type, signal,
+                    data_model.seed, fold_no
                 )
         except ValueError:
             raise OneClassError(
