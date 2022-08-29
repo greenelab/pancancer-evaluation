@@ -270,6 +270,13 @@ def make_gene_dir(results_dir,
     return gene_dir
 
 
+def make_output_dir(results_dir, dirname=''):
+    """Create a directory for the given experiment."""
+    gene_dir = Path(results_dir, dirname).resolve()
+    gene_dir.mkdir(parents=True, exist_ok=True)
+    return gene_dir
+
+
 def check_gene_file(gene_dir,
                     gene,
                     shuffle_labels,
@@ -305,6 +312,24 @@ def check_cancer_type_file(gene_dir,
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for gene: {}\n'.format(gene)
+        )
+    return check_file
+
+
+def check_purity_file(output_dir,
+                      cancer_type,
+                      shuffle_labels,
+                      seed,
+                      feature_selection,
+                      num_features):
+    signal = 'shuffled' if shuffle_labels else 'signal'
+    check_file = Path(
+        output_dir, "purity_{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
+            cancer_type, signal, feature_selection, seed, num_features
+        )).resolve()
+    if check_status(check_file):
+        raise ResultsFileExistsError(
+            'Results file already exists for cancer type: {}\n'.format(cancer_type)
         )
     return check_file
 

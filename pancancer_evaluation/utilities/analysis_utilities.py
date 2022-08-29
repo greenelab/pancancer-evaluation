@@ -101,6 +101,49 @@ def load_prediction_results_fs(results_dir, fs_methods):
     return results_df
 
 
+def load_purity_results_fs(results_dir,
+                           fs_methods,
+                           classify=True,
+                           cancer_type_from_fname=False):
+    """Load results of tumor purity experiments.
+
+    Arguments
+    ---------
+    results_dir (str): directory containing results files
+    fs_methods (list): list of possible feature selection methods
+    classify (bool): whether to load classification or regression results
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of prediction experiments
+    """
+    results_df = pd.DataFrame()
+    for results_file in os.listdir(results_dir):
+        full_results_file = os.path.join(results_dir, results_file)
+        if not os.path.isfile(full_results_file): continue
+        # classification results have format 'classify_metrics.tsv.gz'
+        if classify:
+            if not ('classify_metrics' in results_file): continue
+        # regression results have format 'regress_metrics.tsv.gz'
+        else:
+            if not ('regress_metrics' in results_file): continue
+        if results_file[0] == '.': continue
+        full_results_file = os.path.join(results_dir, results_file)
+        id_results_df = pd.read_csv(full_results_file, sep='\t')
+        n_dims = int(results_file.split('_')[-3].replace('n', ''))
+        fs_method = 'none'
+        for method in fs_methods:
+            if method in results_file:
+                fs_method = method
+        id_results_df['fs_method'] = fs_method
+        id_results_df['n_dims'] = n_dims
+        if cancer_type_from_fname:
+            holdout_cancer_type = results_file.split('_')[1]
+            id_results_df['holdout_cancer_type'] = holdout_cancer_type
+        results_df = pd.concat((results_df, id_results_df))
+    return results_df
+
+
 def load_flip_labels_results(results_dir, experiment_descriptor):
     """Load results of 'flip labels' experiments.
 
@@ -254,6 +297,47 @@ def generate_nonzero_coefficients_fs(results_dir, fs_methods):
             yield identifier, coefs
 
 
+def generate_coefficients_fs_purity(results_dir,
+                                    fs_methods,
+                                    nonzero_only=True):
+    """Generate coefficients from mutation prediction model fits.
+
+    Loading all coefficients into memory at once is prohibitive, so we generate
+    them individually and analyze/summarize in analysis scripts.
+
+    Arguments
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+
+    Yields
+    ------
+    identifier (str): identifier for given coefficients
+    coefs (dict): list of nonzero coefficients for each fold of CV, for the
+                  given identifier
+    """
+    coefs = {}
+    all_features = None
+    for coefs_file in os.listdir(results_dir):
+        if coefs_file[0] == '.': continue
+        if 'signal' not in coefs_file: continue
+        if 'coefficients' not in coefs_file: continue
+        cancer_type = coefs_file.split('_')[1]
+        seed = int(coefs_file.split('_')[-4].replace('s', ''))
+        n_dims = int(coefs_file.split('_')[-3].replace('n', ''))
+        fs_method = 'none'
+        for method in fs_methods:
+            if method in coefs_file:
+                fs_method = method
+        full_coefs_file = os.path.join(results_dir, coefs_file)
+        coefs_df = pd.read_csv(full_coefs_file, sep='\t')
+        if all_features is None:
+            all_features = np.unique(coefs_df.feature.values)
+        coefs = process_coefs(coefs_df, nonzero_only)
+        coefs_info = [cancer_type, fs_method, n_dims, seed]
+        yield coefs_info, coefs
+
+
 def generate_nonzero_coefficients_for_gene(results_dir, gene_name):
     """Generate coefficients from mutation prediction model fits for a gene.
 
@@ -290,15 +374,18 @@ def generate_nonzero_coefficients_for_gene(results_dir, gene_name):
         yield identifier, coefs
 
 
-def process_coefs(coefs_df):
-    """Process and return nonzero coefficients for a single identifier"""
+def process_coefs(coefs_df, nonzero_only=True):
+    """Process and return coefficients for a single identifier"""
     id_coefs = []
     for fold in np.sort(np.unique(coefs_df.fold.values)):
-        conditions = ((coefs_df.fold == fold) &
-                      (coefs_df['abs'] > 0))
-        nz_coefs_df = coefs_df[conditions]
-        id_coefs.append(list(zip(nz_coefs_df.feature.values,
-                                 nz_coefs_df.weight.values)))
+        if nonzero_only:
+            conditions = ((coefs_df.fold == fold) &
+                          (coefs_df['abs'] > 0))
+        else:
+            conditions = (coefs_df.fold == fold)
+        filtered_coefs_df = coefs_df[conditions]
+        id_coefs.append(list(zip(filtered_coefs_df.feature.values,
+                                 filtered_coefs_df.weight.values)))
     return id_coefs
 
 

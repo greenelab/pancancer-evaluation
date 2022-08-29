@@ -194,6 +194,68 @@ def load_sample_info(verbose=False):
     return pd.read_csv(cfg.sample_info, sep='\t', index_col='sample_id')
 
 
+def load_purity(mut_burden_df,
+                sample_info_df,
+                classify=False,
+                verbose=False):
+    """Load tumor purity data.
+
+    Arguments
+    ---------
+    mut_burden_df (pd.DataFrame): dataframe with sample mutation burden info
+    sample_info_df (pd.DataFrame): dataframe with sample cancer type info
+    classify (bool): if True, binarize tumor purity values above/below median
+    verbose (bool): if True, print verbose output
+
+    Returns
+    -------
+    purity_df (pd.DataFrame): dataframe where the "status" attribute is purity
+    """
+    if verbose:
+        print('Loading tumor purity info...', file=sys.stderr)
+
+    # some samples don't have purity calls, we can just drop them
+    purity_df = (
+        pd.read_csv(cfg.tumor_purity_data, sep='\t', index_col='array')
+          .dropna(subset=['purity'])
+    )
+    purity_df.index.rename('sample_id', inplace=True)
+
+    # for classification, we want to binarize purity values into above/below
+    # the median for each cancer type (1 = above, 0 = below; this is somewhat
+    # arbitrary but seems like a decent place to start)
+    if classify:
+
+        all_ids = pd.Index([])
+        for cancer_type in sample_info_df.cancer_type.unique():
+            cancer_type_ids = (
+                sample_info_df[sample_info_df.cancer_type == cancer_type]
+                  .index
+                  .intersection(purity_df.index)
+            )
+            all_ids = all_ids.union(cancer_type_ids)
+            cancer_type_median = purity_df.loc[cancer_type_ids, :].purity.median()
+            cancer_type_labels = (
+                purity_df.loc[cancer_type_ids, 'purity'] > cancer_type_median
+            ).astype('int')
+            purity_df.loc[cancer_type_ids, 'purity'] = cancer_type_labels
+
+        # make sure all cancer types have been assigned labels
+        purity_df = purity_df.reindex(all_ids)
+        purity_df['purity'] = purity_df.purity.astype('int')
+        assert np.array_equal(purity_df.purity.unique(), [0, 1])
+
+    # join mutation burden information and cancer type information
+    # these are necessary to generate non-gene covariates later on
+    purity_df = (purity_df
+        .merge(mut_burden_df, left_index=True, right_index=True)
+        .merge(sample_info_df, left_index=True, right_index=True)
+        .rename(columns={'cancer_type': 'DISEASE',
+                         'purity': 'status'})
+    )
+    return purity_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
+
+
 def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
                      seed=cfg.default_seed):
     """Split expression data into train and test sets.
