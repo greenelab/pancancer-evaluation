@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Exploration of selected features
+# ## Exploration of feature selection robustness
+# 
+# We want to look at whether or not there are differences in how "robust" (i.e. stable/consistent between cross-validation folds and random seeds) the feature selection results for different selection methods are.
 
 # In[1]:
 
@@ -54,9 +56,9 @@ print(all_coefs[0][0], all_coefs[0][1][:5])
 
 # ### Get coefficient robustness info
 # 
-# We'll just do this at the pan-cancer level for now -- not sure how best to summarize over individual cancer types.
+# Here, we want to look at how frequently each feature is selected. If a feature is selected almost every time across cancer types and cross-validation folds we'll consider it "robust", and if it's selected comparatively few times we'll consider it "not robust".
 # 
-# TODO more explain
+# We'll just do this at the pan-cancer level for now -- not sure how best to summarize over individual cancer types.
 
 # In[5]:
 
@@ -164,3 +166,7 @@ plt.title('Selection frequency, by feature selection method')
 plt.xlabel('Proportion of times feature was selected')
 plt.ylabel('Number of features')
 
+
+# So here, we can see that the random feature selection is the least "robust" (most unique genes selected), which makes sense since it selects a new random set of genes per CV fold.
+# 
+# The other methods are much more robust (fewer unique genes selected), which makes sense since they are dependent on the data which shouldn't change that much between CV folds in the pan-cancer case. However, we can also see that better robustness doesn't necessarily correspond to better performance: `mad_250` is the most robust in terms of consistency between folds, but it performs worse in terms of AUPR/AUROC than the f-test methods. 
