@@ -144,7 +144,9 @@ def process_y_matrix_cancertype(
     return y_df, count_df
 
 
-def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
+def align_matrices(x_file_or_df,
+                   y,
+                   add_cancertype_covariate=True,
                    add_mutation_covariate=True):
     """
     Process the x matrix for the given input file and align x and y together

@@ -135,12 +135,15 @@ if __name__ == '__main__':
             gene_dir = fu.make_gene_dir(args.results_dir,
                                         gene,
                                         dirname=training_data)
-            ccle_data.process_data_for_gene(gene, classification,
-                                            gene_dir,
-                                            use_pancancer=True)
+            ccle_data.process_data_for_gene(
+                gene,
+                classification,
+                gene_dir,
+                use_pancancer=(training_data == 'pancancer')
+            )
             print(ccle_data.X_df.shape, ccle_data.y_df.shape)
             print(ccle_data.X_df.iloc[:5, :5])
-            print(ccle_data.y_df.head)
+            print(ccle_data.y_df.head())
             exit()
             # except KeyError:
             #     # this might happen if the given gene isn't in the mutation data

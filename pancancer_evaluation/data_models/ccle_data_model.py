@@ -72,9 +72,6 @@ class CCLEDataModel():
         use_pancancer (bool): whether or not to use pancancer data
         """
         y_df_raw = self._generate_labels(gene, classification, gene_dir)
-        print(y_df_raw.shape)
-        print(y_df_raw.head())
-        exit()
 
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
@@ -144,3 +141,12 @@ class CCLEDataModel():
             include_mut_burden=False,
         )
         return y_df
+
+    def _filter_data_for_gene(self, rnaseq_df, y_df, use_pancancer):
+        use_samples, rnaseq_df, y_df, gene_features = align_matrices(
+            x_file_or_df=rnaseq_df,
+            y=y_df,
+            add_cancertype_covariate=use_pancancer,
+            add_mutation_covariate=False
+        )
+        return rnaseq_df, y_df, gene_features

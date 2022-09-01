@@ -179,6 +179,9 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir,
                                             gene,
                                             dirname=training_data)
+                # TODO should use_pancancer be False in the all_other_cancers
+                # case? this may end up introducing a (useless) dummy variable
+                # where we can't use one
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=use_pancancer)
