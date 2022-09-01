@@ -213,11 +213,15 @@ plt.suptitle('Distribution of cell lines across cancer types/tissues')
 plt.tight_layout()
 
 
+# ### Visualize distribution of samples with mutation in a given gene
+# 
+# This should help us with setting sensible thresholds for building classifiers, since the dataset overall is considerably smaller than TCGA.
+
 # In[14]:
 
 
 # gene to explore mutation distribution for
-gene = 'EGFR'
+gene = 'RB1'
 
 gene_index = (ccle_sample_info_df.index
     .intersection(ccle_expression_df.index)
@@ -319,4 +323,36 @@ plt.suptitle(
     'Proportion of cell lines with {} mutation across cancer types/tissues'.format(gene)
 )
 plt.tight_layout()
+
+
+# In[19]:
+
+
+# how many cancer types would be valid for the given gene with the given cutoffs
+mutation_count = 5
+mutation_prop = 0.1
+
+ccle_gene_cancer_types['count_threshold'] = (
+    ccle_gene_cancer_types['{}_count'.format(gene)] > mutation_count
+)
+ccle_gene_cancer_types['prop_threshold'] = (
+    ccle_gene_cancer_types['{}_proportion'.format(gene)] > mutation_prop
+)
+ccle_gene_cancer_types['both_thresholds'] = (
+    ccle_gene_cancer_types['count_threshold'] & ccle_gene_cancer_types['prop_threshold']
+)
+
+ccle_gene_cancer_types.head()
+
+
+# In[20]:
+
+
+print('{} cancer types included for {}: {}'.format(
+    ccle_gene_cancer_types.both_thresholds.sum(),
+    gene,
+    ', '.join(ccle_gene_cancer_types[ccle_gene_cancer_types.both_thresholds].primary_disease.values)
+))
+
+ccle_gene_cancer_types[ccle_gene_cancer_types.both_thresholds].head(10)
 
