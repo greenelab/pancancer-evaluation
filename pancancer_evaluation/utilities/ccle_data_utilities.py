@@ -24,7 +24,7 @@ def load_expression_data(verbose=False):
     """
     if verbose:
         print('Loading CCLE expression data...', file=sys.stderr)
-    return pd.read_csv(cfg.ccle_exp_data, index_col=0)
+    return pd.read_csv(cfg.ccle_expression, index_col=0)
 
 
 def load_sample_info(verbose=False):

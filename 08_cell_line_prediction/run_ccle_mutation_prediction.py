@@ -14,7 +14,7 @@ import pandas as pd
 from tqdm import tqdm
 
 import pancancer_evaluation.config as cfg
-# from pancancer_evaluation.data_models.ccle_data_model import CCLEDataModel
+from pancancer_evaluation.data_models.ccle_data_model import CCLEDataModel
 from pancancer_evaluation.exceptions import (
     NoTrainSamplesError,
     NoTestSamplesError,
@@ -60,7 +60,6 @@ def process_args():
 
     sample_info_df = du.load_sample_info(args.verbose)
     ccle_cancer_types = du.get_cancer_types(sample_info_df)
-    print(ccle_cancer_types)
     if args.holdout_cancer_types is None:
         args.holdout_cancer_types = ccle_cancer_types
     else:
