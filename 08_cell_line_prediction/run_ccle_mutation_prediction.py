@@ -111,54 +111,48 @@ if __name__ == '__main__':
 
     # TODO: figure this out
     genes_df = load_custom_genes(args.genes)
-    print(genes_df.head())
-    exit()
 
-    # we want to run mutation prediction experiments:
-    # - for all combinations of use_pancancer and shuffle_labels
-    #   (shuffled labels acts as our lower baseline)
-    # - for all genes in the given gene set
-    # - for all cancer types in the given holdout cancer types (or all of TCGA)
-    # for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
+    for shuffle_labels in [False, True]:
 
-    #     if use_pancancer and args.all_other_cancers:
-    #         training_data = 'all_other_cancers'
-    #     elif use_pancancer:
-    #         training_data = 'pancancer'
-    #     else:
-    #         training_data = 'single_cancer'
+        if args.all_other_cancers:
+            training_data = 'all_other_cancers'
+        else:
+            training_data = 'pancancer'
 
-    #     print('use_pancancer: {}, shuffle_labels: {}'.format(
-    #         use_pancancer, shuffle_labels))
+        print('shuffle_labels: {}'.format(shuffle_labels))
 
-    #     outer_progress = tqdm(genes_df.iterrows(),
-    #                           total=genes_df.shape[0],
-    #                           ncols=100,
-    #                           file=sys.stdout)
+        outer_progress = tqdm(genes_df.iterrows(),
+                              total=genes_df.shape[0],
+                              ncols=100,
+                              file=sys.stdout)
 
-    #     for gene_idx, gene_series in outer_progress:
-    #         gene = gene_series.gene
-    #         classification = gene_series.classification
-    #         outer_progress.set_description('gene: {}'.format(gene))
+        for gene_idx, gene_series in outer_progress:
+            gene = gene_series.gene
+            classification = gene_series.classification
+            outer_progress.set_description('gene: {}'.format(gene))
 
-    #         try:
-    #             gene_dir = fu.make_gene_dir(args.results_dir,
-    #                                         gene,
-    #                                         dirname=training_data)
-    #             tcga_data.process_data_for_gene(gene, classification,
-    #                                             gene_dir,
-    #                                             use_pancancer=use_pancancer)
-    #         except KeyError:
-    #             # this might happen if the given gene isn't in the mutation data
-    #             # (or has a different alias, TODO check for this later)
-    #             print('Gene {} not found in mutation data, skipping'.format(gene),
-    #                   file=sys.stderr)
-    #             cancer_type_log_df = fu.generate_log_df(
-    #                 log_columns,
-    #                 [gene, 'N/A', use_pancancer, shuffle_labels, 'gene_not_found']
-    #             )
-    #             fu.write_log_file(cancer_type_log_df, args.log_file)
-    #             continue
+            # try:
+            gene_dir = fu.make_gene_dir(args.results_dir,
+                                        gene,
+                                        dirname=training_data)
+            ccle_data.process_data_for_gene(gene, classification,
+                                            gene_dir,
+                                            use_pancancer=True)
+            print(ccle_data.X_df.shape, ccle_data.y_df.shape)
+            print(ccle_data.X_df.iloc[:5, :5])
+            print(ccle_data.y_df.head)
+            exit()
+            # except KeyError:
+            #     # this might happen if the given gene isn't in the mutation data
+            #     # (or has a different alias, TODO check for this later)
+            #     print('Gene {} not found in mutation data, skipping'.format(gene),
+            #           file=sys.stderr)
+            #     cancer_type_log_df = fu.generate_log_df(
+            #         log_columns,
+            #         [gene, 'N/A', True, shuffle_labels, 'gene_not_found']
+            #     )
+            #     fu.write_log_file(cancer_type_log_df, args.log_file)
+            #     continue
 
     #         inner_progress = tqdm(args.holdout_cancer_types,
     #                               ncols=100,

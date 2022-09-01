@@ -97,6 +97,10 @@ ccle_expression = data_dir / 'ccle' / 'ccle_expression.csv'
 ccle_mutation = data_dir / 'ccle' / 'ccle_mutations_maf.csv'
 ccle_mutation_binary = data_dir / 'ccle' / 'ccle_mutations_binary.csv'
 
+# parameters for CCLE experiments
+ccle_filter_count = 5
+ccle_filter_prop = 0.1
+
 # location of "merged" gene set from mpmp repo
 merged_cancer_genes = data_dir / 'merged_with_annotations.tsv'
 # gene aliases for Vogelstein dataset

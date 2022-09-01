@@ -52,6 +52,41 @@ class CCLEDataModel():
         # load and store data in memory
         self._load_data(sample_info=sample_info)
 
+    def process_data_for_gene(self,
+                              gene,
+                              classification,
+                              gene_dir,
+                              use_pancancer=False):
+        """
+        Prepare to run cancer type experiments for a given gene.
+
+        This has to be rerun for each gene, since the data is filtered based
+        on label proportions for the given gene in each cancer type.
+
+        Arguments
+        ---------
+        gene (str): gene to run experiments for
+        classification (str): 'oncogene' or 'TSG'; most likely cancer function for
+                              the given gene
+        gene_dir (str): directory to write output to, if None don't write output
+        use_pancancer (bool): whether or not to use pancancer data
+        """
+        y_df_raw = self._generate_labels(gene, classification, gene_dir)
+        print(y_df_raw.shape)
+        print(y_df_raw.head())
+        exit()
+
+        filtered_data = self._filter_data_for_gene(
+            self.rnaseq_df,
+            y_df_raw,
+            use_pancancer
+        )
+        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        self.X_df = rnaseq_filtered_df
+        self.y_df = y_filtered_df
+        self.gene_features = gene_features
+
     def _load_data(self, sample_info=None):
         """Load and store relevant data.
 
@@ -68,3 +103,44 @@ class CCLEDataModel():
 
         self.mutation_df = du.load_mutation_data(verbose=self.verbose)
 
+    def _generate_labels(self, gene, classification, gene_dir):
+        # process the y matrix for the given gene or pathway
+        y_mutation_df = self.mutation_df.loc[:, gene]
+
+        # include copy number gains for oncogenes
+        # and copy number loss for tumor suppressor genes (TSG)
+        # TODO: no copy number data yet
+        # include_copy = True
+        # if classification == "Oncogene":
+        #     y_copy_number_df = self.copy_gain_df.loc[:, gene]
+        # elif classification == "TSG":
+        #     y_copy_number_df = self.copy_loss_df.loc[:, gene]
+        # else:
+        #     y_copy_number_df = pd.DataFrame()
+        #     include_copy = False
+
+        # format sample_info_df to work with label processing
+        sample_freeze_df = (self.sample_info_df
+            .copy()
+            .loc[:, ['primary_disease']]
+            .rename(columns={'primary_disease': 'DISEASE'})
+        )
+        sample_freeze_df.index.name = 'SAMPLE_BARCODE'
+        sample_freeze_df.reset_index(inplace=True)
+
+        # construct labels from mutation/CNV information, and filter for
+        # cancer types without an extreme label imbalance
+        y_df = process_y_matrix(
+            y_mutation=y_mutation_df,
+            y_copy=None,
+            # include_copy=include_copy,
+            include_copy=False,
+            gene=gene,
+            sample_freeze=sample_freeze_df,
+            mutation_burden=None,
+            filter_count=cfg.ccle_filter_count,
+            filter_prop=cfg.ccle_filter_prop,
+            output_directory=gene_dir,
+            include_mut_burden=False,
+        )
+        return y_df
