@@ -141,13 +141,19 @@ ccle_mutation_binary_df.sum(axis='columns').head()
 # In[8]:
 
 
+ccle_mutation_binary_df.sum(axis='index').sort_values(ascending=False).head(10)
+
+
+# In[9]:
+
+
 ccle_mutation_binary_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_mutations_binary.csv')
 ccle_mutation_binary_df.to_csv(ccle_mutation_binary_file)
 
 
 # ### Visualize distribution of samples across cancer types/tissues
 
-# In[9]:
+# In[10]:
 
 
 all_index = (ccle_sample_info_df.index
@@ -157,10 +163,10 @@ all_index = (ccle_sample_info_df.index
 print(all_index.shape)
 
 
-# In[10]:
+# In[11]:
 
 
-ccle_exp_cancer_types = (ccle_sample_info_df
+ccle_cancer_types = (ccle_sample_info_df
     .reindex(all_index)
     .groupby('primary_disease')
     .count()
@@ -169,14 +175,14 @@ ccle_exp_cancer_types = (ccle_sample_info_df
     .rename(columns={'cell_line_name': 'count'})
 )
 
-ccle_exp_cancer_types.head()
+ccle_cancer_types.head()
 
 
-# In[11]:
+# In[12]:
 
 
-ccle_exp_tissues = (ccle_sample_info_df
-    .reindex(ccle_expression_df.index)
+ccle_tissues = (ccle_sample_info_df
+    .reindex(all_index)
     .groupby('lineage')
     .count()
     .reset_index()
@@ -184,24 +190,133 @@ ccle_exp_tissues = (ccle_sample_info_df
     .rename(columns={'cell_line_name': 'count'})
 )
 
-ccle_exp_tissues.head()
+ccle_tissues.head()
 
 
-# In[12]:
+# In[13]:
 
 
 sns.set({'figure.figsize': (18, 10)})
 fig, axarr = plt.subplots(2, 1)
 
-sns.barplot(data=ccle_exp_cancer_types, x='primary_disease', y='count', ax=axarr[0])
+sns.barplot(data=ccle_cancer_types, x='primary_disease', y='count', ax=axarr[0])
 axarr[0].set_xticklabels(axarr[0].get_xticklabels(), rotation=90)
 axarr[0].set_xlabel('Cancer type')
 axarr[0].set_ylabel('Count')
 
-sns.barplot(data=ccle_exp_tissues, x='lineage', y='count', ax=axarr[1])
+sns.barplot(data=ccle_tissues, x='lineage', y='count', ax=axarr[1])
 axarr[1].set_xticklabels(axarr[1].get_xticklabels(), rotation=90)
 axarr[1].set_xlabel('Tissue lineage')
 axarr[1].set_ylabel('Count')
 
+plt.suptitle('Distribution of cell lines across cancer types/tissues')
+plt.tight_layout()
+
+
+# In[14]:
+
+
+# gene to explore mutation distribution for
+gene = 'EGFR'
+
+gene_index = (ccle_sample_info_df.index
+    .intersection(ccle_expression_df.index)
+    .intersection(ccle_mutation_binary_df[ccle_mutation_binary_df[gene] == 1].index)
+)
+print(gene_index.shape)
+
+
+# In[15]:
+
+
+ccle_gene_cancer_types = (ccle_sample_info_df
+    .reindex(gene_index)
+    .groupby('primary_disease')
+    .count()
+    .reset_index()
+    .iloc[:, [0, 1]]
+    .rename(columns={'cell_line_name': '{}_count'.format(gene)})
+    .merge(ccle_cancer_types, how='right', on='primary_disease')
+    .fillna(value=0)
+)
+
+ccle_gene_cancer_types['{}_proportion'.format(gene)] = (
+    ccle_gene_cancer_types['{}_count'.format(gene)] / ccle_gene_cancer_types['count']
+)
+
+ccle_gene_cancer_types.head()
+
+
+# In[16]:
+
+
+ccle_gene_tissues = (ccle_sample_info_df
+    .reindex(gene_index)
+    .groupby('lineage')
+    .count()
+    .reset_index()
+    .iloc[:, [0, 1]]
+    .rename(columns={'cell_line_name': '{}_count'.format(gene)})
+    .merge(ccle_tissues, how='right', on='lineage')
+    .fillna(value=0)
+)
+ccle_gene_tissues['{}_proportion'.format(gene)] = (
+    ccle_gene_tissues['{}_count'.format(gene)] / ccle_gene_tissues['count']
+)
+
+ccle_gene_tissues.head()
+
+
+# In[17]:
+
+
+sns.set({'figure.figsize': (18, 10)})
+fig, axarr = plt.subplots(2, 1)
+
+sns.barplot(data=ccle_gene_cancer_types, x='primary_disease',
+            y='{}_count'.format(gene),
+            ax=axarr[0])
+axarr[0].set_xticklabels(axarr[0].get_xticklabels(), rotation=90)
+axarr[0].set_xlabel('Cancer type')
+axarr[0].set_ylabel('Count')
+
+sns.barplot(data=ccle_gene_tissues, x='lineage',
+            y='{}_count'.format(gene),
+            ax=axarr[1])
+axarr[1].set_xticklabels(axarr[1].get_xticklabels(), rotation=90)
+axarr[1].set_xlabel('Tissue lineage')
+axarr[1].set_ylabel('Count')
+
+plt.suptitle(
+    'Distribution of cell lines with {} mutation across cancer types/tissues'.format(gene)
+)
+plt.tight_layout()
+
+
+# In[18]:
+
+
+sns.set({'figure.figsize': (18, 10)})
+fig, axarr = plt.subplots(2, 1)
+
+sns.barplot(data=ccle_gene_cancer_types, x='primary_disease',
+            y='{}_proportion'.format(gene),
+            ax=axarr[0])
+axarr[0].set_xticklabels(axarr[0].get_xticklabels(), rotation=90)
+axarr[0].set_xlabel('Cancer type')
+axarr[0].set_ylabel('Proportion')
+axarr[0].set_ylim(0.0, 1.0)
+
+sns.barplot(data=ccle_gene_tissues, x='lineage',
+            y='{}_proportion'.format(gene),
+            ax=axarr[1])
+axarr[1].set_xticklabels(axarr[1].get_xticklabels(), rotation=90)
+axarr[1].set_xlabel('Tissue lineage')
+axarr[1].set_ylabel('Proportion')
+axarr[1].set_ylim(0.0, 1.0)
+
+plt.suptitle(
+    'Proportion of cell lines with {} mutation across cancer types/tissues'.format(gene)
+)
 plt.tight_layout()
 
