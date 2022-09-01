@@ -90,3 +90,9 @@ tumor_purity_data = data_dir / 'TCGA_mastercalls.abs_tables_JSedit.fixed.txt'
 purity_fs_plots_dir = (
     repo_root / '07_purity_prediction' / 'fs_plots'
 )
+
+# location of CCLE data
+ccle_sample_info = data_dir / 'ccle' / 'ccle_sample_info.csv'
+ccle_expression = data_dir / 'ccle' / 'ccle_expression.csv'
+ccle_mutation = data_dir / 'ccle' / 'ccle_mutations_maf.csv'
+ccle_mutation_binary = data_dir / 'ccle' / 'ccle_mutations_binary.csv'

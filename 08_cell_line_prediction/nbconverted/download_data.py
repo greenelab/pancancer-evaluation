@@ -21,10 +21,8 @@ import pancancer_evaluation.config as cfg
 # In[2]:
 
 
-ccle_sample_info_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_sample_info.csv')
-
-if os.path.isfile(ccle_sample_info_file):
-    ccle_sample_info_df = pd.read_csv(ccle_sample_info_file, sep=',', index_col=0)
+if os.path.isfile(cfg.ccle_sample_info):
+    ccle_sample_info_df = pd.read_csv(cfg.ccle_sample_info, sep=',', index_col=0)
 else:
     print('Loading sample info from CCLE download page...', file=sys.stderr)
     # URL from CCLE public download data:
@@ -34,7 +32,7 @@ else:
         sep=',', index_col=0
     )
     os.makedirs(os.path.join(cfg.data_dir, 'ccle'), exist_ok=True)
-    ccle_sample_info_df.to_csv(ccle_sample_info_file)
+    ccle_sample_info_df.to_csv(cfg.ccle_sample_info)
 
 print(ccle_sample_info_df.shape)
 print(ccle_sample_info_df.columns)
@@ -44,10 +42,8 @@ ccle_sample_info_df.iloc[:5, :5]
 # In[3]:
 
 
-ccle_expression_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_expression.csv')
-
-if os.path.isfile(ccle_expression_file):
-    ccle_expression_df = pd.read_csv(ccle_expression_file, sep=',', index_col=0)
+if os.path.isfile(cfg.ccle_expression):
+    ccle_expression_df = pd.read_csv(cfg.ccle_expression, sep=',', index_col=0)
 else:
     print('Loading expression data from CCLE download page...', file=sys.stderr)
     # URL from CCLE public download data:
@@ -57,7 +53,9 @@ else:
         sep=',', index_col=0
     )
     os.makedirs(os.path.join(cfg.data_dir, 'ccle'), exist_ok=True)
-    ccle_expression_df.to_csv(ccle_expression_file)
+    ccle_expression_df.to_csv(cfg.ccle_expression)
+
+ccle_expression_df.index.name = 'DepMap_ID'
     
 print(ccle_expression_df.shape)
 ccle_expression_df.iloc[:5, :5]
@@ -68,10 +66,8 @@ ccle_expression_df.iloc[:5, :5]
 # In[4]:
 
 
-ccle_mutation_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_mutations_maf.csv')
-
-if os.path.isfile(ccle_mutation_file):
-    ccle_mutation_df = pd.read_csv(ccle_mutation_file, sep=',', index_col=0)
+if os.path.isfile(cfg.ccle_mutation):
+    ccle_mutation_df = pd.read_csv(cfg.ccle_mutation, sep=',', index_col=0)
 else:
     print('Loading mutation data from CCLE download page...', file=sys.stderr)
     # URL from CCLE public download data:
@@ -80,7 +76,7 @@ else:
         'https://ndownloader.figshare.com/files/34989940', sep=','
     )
     os.makedirs(os.path.join(cfg.data_dir, 'ccle'), exist_ok=True)
-    ccle_mutation_df.to_csv(ccle_mutation_file)
+    ccle_mutation_df.to_csv(cfg.ccle_mutation)
     
 print(ccle_mutation_df.shape)
 print(ccle_mutation_df.columns)
@@ -147,8 +143,7 @@ ccle_mutation_binary_df.sum(axis='index').sort_values(ascending=False).head(10)
 # In[9]:
 
 
-ccle_mutation_binary_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_mutations_binary.csv')
-ccle_mutation_binary_df.to_csv(ccle_mutation_binary_file)
+ccle_mutation_binary_df.to_csv(cfg.ccle_mutation_binary)
 
 
 # ### Visualize distribution of samples across cancer types/tissues
