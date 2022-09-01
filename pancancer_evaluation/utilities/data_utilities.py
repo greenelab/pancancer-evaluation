@@ -4,6 +4,7 @@ Functions for reading and processing input data
 """
 import os
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -135,19 +136,64 @@ def load_vogelstein():
     return genes_df
 
 
+def load_merged():
+    """Load list of cancer-relevant genes generated in mpmp repo.
+
+    This is a combination of ~500 cancer-associated genes from COSMIC CGC,
+    Vogelstein et al. and Bailey et al.
+    """
+
+    genes_df = pd.read_csv(cfg.merged_cancer_genes, sep='\t')
+
+    # some genes in cosmic set have different names in mutation data
+    genes_df.gene.replace(to_replace=cfg.gene_aliases, inplace=True)
+    return genes_df
+
+
+def load_custom_genes(gene_set):
+    """Load oncogene/TSG annotation information for custom genes.
+
+    This will load annotations from the gene sets corresponding to
+    load_functions, in that order of priority.
+    """
+    # make sure the passed-in gene set is a list
+    assert isinstance(gene_set, typing.List)
+
+    load_functions = [
+        load_merged,
+        load_vogelstein,
+        load_top_50,
+    ]
+    genes_df = None
+    for load_fn in load_functions:
+        annotated_df = load_fn()
+        if set(gene_set).issubset(set(annotated_df.gene.values)):
+            genes_df = annotated_df[annotated_df.gene.isin(gene_set)]
+            break
+
+    if genes_df is None:
+        # note that this will happen if gene_set is not a subset of exactly
+        # one of the gene sets in load_functions
+        #
+        # we could allow gene_set to be a subset of the union of all of them,
+        # but that would take a bit more work and is probably not a super
+        # common use case for us
+        raise GenesNotFoundError(
+            'Gene list was not a subset of any existing gene set'
+        )
+
+    return genes_df
+
+
 def get_classification(gene, genes_df=None):
     """Get oncogene/TSG classification from existing datasets for given gene."""
     classification = 'neither'
     if (genes_df is not None) and (gene in genes_df.gene):
         classification = genes_df[genes_df.gene == gene].classification.iloc[0]
     else:
-        genes_df = load_vogelstein()
+        genes_df = load_custom_genes(gene_set)
         if gene in genes_df.gene:
             classification = genes_df[genes_df.gene == gene].classification.iloc[0]
-        else:
-            genes_df = load_top_50()
-            if gene in genes_df.gene:
-                classification = genes_df[genes_df.gene == gene].classification.iloc[0]
     return classification
 
 

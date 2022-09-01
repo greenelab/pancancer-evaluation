@@ -23,6 +23,10 @@ from pancancer_evaluation.exceptions import (
 )
 from pancancer_evaluation.utilities.classify_utilities import run_cv_cancer_type
 import pancancer_evaluation.utilities.ccle_data_utilities as du
+from pancancer_evaluation.utilities.data_utilities import (
+    load_custom_genes,
+    get_classification
+)
 import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
@@ -105,12 +109,10 @@ if __name__ == '__main__':
                               seed=args.seed,
                               verbose=args.verbose)
 
-    print(ccle_data.rnaseq_df.shape)
-    print(ccle_data.rnaseq_df.head())
-    exit()
-
     # TODO: figure this out
-    # genes_df = tcga_data.load_gene_set(args.gene_set)
+    genes_df = load_custom_genes(args.genes)
+    print(genes_df.head())
+    exit()
 
     # we want to run mutation prediction experiments:
     # - for all combinations of use_pancancer and shuffle_labels
