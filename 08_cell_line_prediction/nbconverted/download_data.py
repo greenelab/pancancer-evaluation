@@ -2,30 +2,37 @@
 # coding: utf-8
 
 # ## Download and preprocess CCLE data
-# 
-# For now, we'll retrieve this from [the Onco-GPS paper repository](https://github.com/UCSD-CCAL/onco_gps_paper_analysis), following [the approach in this notebook](https://github.com/greenelab/pancancer/blob/master/scripts/ras_cell_line_predictions.ipynb).
 
 # In[1]:
 
 
 import os
+import sys
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import pancancer_evaluation.config as config
+import pancancer_evaluation.config as cfg
 
 
 # In[2]:
 
 
-# URLs from CCLE public download data:
-# https://depmap.org/portal/download/
-ccle_sample_info_df = pd.read_csv(
-    'https://ndownloader.figshare.com/files/35020903',
-    sep=',', index_col=0
-)
+ccle_sample_info_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_sample_info.csv')
+
+if os.path.isfile(ccle_sample_info_file):
+    ccle_sample_info_df = pd.read_csv(ccle_sample_info_file, sep=',', index_col=0)
+else:
+    print('Loading sample info from CCLE download page...', file=sys.stderr)
+    # URL from CCLE public download data:
+    # https://depmap.org/portal/download/
+    ccle_sample_info_df = pd.read_csv(
+        'https://ndownloader.figshare.com/files/35020903',
+        sep=',', index_col=0
+    )
+    os.makedirs(os.path.join(cfg.data_dir, 'ccle'), exist_ok=True)
+    ccle_sample_info_df.to_csv(ccle_sample_info_file)
 
 print(ccle_sample_info_df.shape)
 print(ccle_sample_info_df.columns)
@@ -35,11 +42,21 @@ ccle_sample_info_df.iloc[:5, :5]
 # In[3]:
 
 
-ccle_expression_df = pd.read_csv(
-    'https://ndownloader.figshare.com/files/34989919',
-    sep=',', index_col=0
-)
+ccle_expression_file = os.path.join(cfg.data_dir, 'ccle', 'ccle_expression.csv')
 
+if os.path.isfile(ccle_expression_file):
+    ccle_expression_df = pd.read_csv(ccle_expression_file, sep=',', index_col=0)
+else:
+    print('Loading expression data from CCLE download page...', file=sys.stderr)
+    # URL from CCLE public download data:
+    # https://depmap.org/portal/download/
+    ccle_expression_df = pd.read_csv(
+        'https://ndownloader.figshare.com/files/34989919',
+        sep=',', index_col=0
+    )
+    os.makedirs(os.path.join(cfg.data_dir, 'ccle'), exist_ok=True)
+    ccle_expression_df.to_csv(ccle_expression_file)
+    
 print(ccle_expression_df.shape)
 ccle_expression_df.iloc[:5, :5]
 
@@ -82,9 +99,13 @@ fig, axarr = plt.subplots(2, 1)
 
 sns.barplot(data=ccle_exp_cancer_types, x='primary_disease', y='count', ax=axarr[0])
 axarr[0].set_xticklabels(axarr[0].get_xticklabels(), rotation=90)
+axarr[0].set_xlabel('Cancer type')
+axarr[0].set_ylabel('Count')
 
 sns.barplot(data=ccle_exp_tissues, x='lineage', y='count', ax=axarr[1])
 axarr[1].set_xticklabels(axarr[1].get_xticklabels(), rotation=90)
+axarr[1].set_xlabel('Tissue lineage')
+axarr[1].set_ylabel('Count')
 
 plt.tight_layout()
 
