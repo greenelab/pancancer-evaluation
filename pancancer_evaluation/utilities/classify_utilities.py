@@ -253,7 +253,6 @@ def run_cv_cancer_type(data_model,
                 y_train_df.status = np.random.permutation(y_train_df.status.values)
                 y_test_df.status = np.random.permutation(y_test_df.status.values)
 
-        print(X_train_raw_df.shape, X_test_raw_df.shape)
         X_train_df, X_test_df = tu.preprocess_data(
             X_train_raw_df,
             X_test_raw_df,
@@ -270,10 +269,6 @@ def run_cv_cancer_type(data_model,
             use_tca=use_tca,
             tca_params=tca_params
         )
-        print(X_train_df.shape, X_test_df.shape)
-        print(X_train_df.iloc[:5, :5])
-        print(X_test_df.iloc[:5, :5])
-        exit()
 
         try:
             # also ignore warnings here, same deal as above

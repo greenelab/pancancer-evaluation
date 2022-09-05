@@ -114,6 +114,7 @@ if __name__ == '__main__':
     for shuffle_labels in [False, True]:
 
         # TODO add back single-cancer option as a baseline
+        # TODO stratify by label?
         if args.all_other_cancers:
             training_data = 'all_other_cancers'
         else:
@@ -213,18 +214,18 @@ if __name__ == '__main__':
                         log_columns,
                         [gene, cancer_type, 'N/A', shuffle_labels, 'one_class']
                     )
-    #             else:
-    #                 # only save results if no exceptions
-    #                 fu.save_results_cancer_type(gene_dir,
-    #                                             check_file,
-    #                                             results,
-    #                                             gene,
-    #                                             cancer_type,
-    #                                             shuffle_labels,
-    #                                             args.seed,
-    #                                             args.feature_selection,
-    #                                             args.num_features)
+                else:
+                    # only save results if no exceptions
+                    fu.save_results_cancer_type(gene_dir,
+                                                check_file,
+                                                results,
+                                                gene,
+                                                cancer_type,
+                                                shuffle_labels,
+                                                args.seed,
+                                                args.feature_selection,
+                                                args.num_features)
 
-    #             if cancer_type_log_df is not None:
-    #                 fu.write_log_file(cancer_type_log_df, args.log_file)
+                if cancer_type_log_df is not None:
+                    fu.write_log_file(cancer_type_log_df, args.log_file)
 
