@@ -119,8 +119,8 @@ class CCLEDataModel():
         # format sample_info_df to work with label processing
         sample_freeze_df = (self.sample_info_df
             .copy()
-            .loc[:, ['primary_disease']]
-            .rename(columns={'primary_disease': 'DISEASE'})
+            .loc[:, ['cancer_type']]
+            .rename(columns={'cancer_type': 'DISEASE'})
         )
         sample_freeze_df.index.name = 'SAMPLE_BARCODE'
         sample_freeze_df.reset_index(inplace=True)

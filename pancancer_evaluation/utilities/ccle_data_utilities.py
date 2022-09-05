@@ -30,7 +30,14 @@ def load_expression_data(verbose=False):
 def load_sample_info(verbose=False):
     if verbose:
         print('Loading CCLE sample info...', file=sys.stderr)
-    return pd.read_csv(cfg.ccle_sample_info, index_col='DepMap_ID')
+    sample_info_df = pd.read_csv(cfg.ccle_sample_info, index_col='DepMap_ID')
+    # clean up cancer type names a bit
+    # TODO: remove unknown/non-cancerous samples?
+    sample_info_df['cancer_type'] = (sample_info_df['primary_disease']
+        .str.replace(' Cancer', '')
+        .str.replace(' ', '_')
+    )
+    return sample_info_df
 
 
 def load_mutation_data(verbose=False):
@@ -40,7 +47,4 @@ def load_mutation_data(verbose=False):
 
 
 def get_cancer_types(sample_info_df):
-    return [
-        ct.replace(' Cancer', '').replace(' ', '_') for ct in
-        list(np.unique(sample_info_df.primary_disease))
-    ]
+    return list(np.unique(sample_info_df.cancer_type))
