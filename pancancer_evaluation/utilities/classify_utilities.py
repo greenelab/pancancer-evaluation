@@ -179,6 +179,7 @@ def run_cv_cancer_type(data_model,
                        num_folds,
                        training_data,
                        shuffle_labels,
+                       stratify_label=False,
                        use_coral=False,
                        coral_lambda=1.0,
                        coral_by_cancer_type=False,
@@ -199,6 +200,7 @@ def run_cv_cancer_type(data_model,
     num_folds (int): number of cross-validation folds to run
     training_data (str): 'single_cancer', 'pancancer', 'all_other_cancers'
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    stratify_label (bool): whether or not to stratify CV folds by label
 
     TODO: what class variables does data_model need to have? should document
     """
@@ -228,12 +230,15 @@ def run_cv_cancer_type(data_model,
                    num_folds=num_folds,
                    fold_no=fold_no,
                    training_data=training_data,
-                   seed=data_model.seed)
+                   seed=data_model.seed,
+                   stratify_label=stratify_label,
+                   y_df=data_model.y_df
+                )
         except ValueError:
-            raise NoTestSamplesError(
-                'No test samples found for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
-            )
+          raise NoTestSamplesError(
+              'No test samples found for cancer type: {}, '
+              'gene: {}\n'.format(cancer_type, gene)
+          )
 
         if X_train_raw_df.shape[0] == 0:
             # this might happen in pancancer only case

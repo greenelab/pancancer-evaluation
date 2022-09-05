@@ -114,7 +114,7 @@ if __name__ == '__main__':
     for shuffle_labels in [False, True]:
 
         # TODO add back single-cancer option as a baseline
-        # TODO stratify by label?
+        # TODO label filtering after intersection gene espression
         if args.all_other_cancers:
             training_data = 'all_other_cancers'
         else:
@@ -171,13 +171,17 @@ if __name__ == '__main__':
                                                            args.seed,
                                                            args.feature_selection,
                                                            args.num_features)
+                    # we're working with pretty small sample sizes for the cell
+                    # line data, so we stratify by label across CV folds here
+                    # to make sure proportions aren't too imbalanced
                     results = run_cv_cancer_type(ccle_data,
                                                  gene,
                                                  cancer_type,
                                                  sample_info_df,
                                                  args.num_folds,
                                                  training_data,
-                                                 shuffle_labels)
+                                                 shuffle_labels,
+                                                 stratify_label=True)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '

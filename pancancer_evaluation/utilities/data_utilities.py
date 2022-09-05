@@ -361,7 +361,9 @@ def split_by_cancer_type(rnaseq_df,
                          training_data='single_cancer',
                          num_folds=4,
                          fold_no=1,
-                         seed=cfg.default_seed):
+                         seed=cfg.default_seed,
+                         stratify_label=False,
+                         y_df=None):
     """Split expression data into train and test sets.
 
     The test set will contain data from a single cancer type. The train set
@@ -396,7 +398,13 @@ def split_by_cancer_type(rnaseq_df,
     cancer_type_df = rnaseq_df.loc[rnaseq_df.index.intersection(cancer_type_sample_ids), :]
 
     cancer_type_train_df, rnaseq_test_df = split_single_cancer_type(
-            cancer_type_df, num_folds, fold_no, seed)
+        cancer_type_df,
+        num_folds,
+        fold_no,
+        seed,
+        stratify_label=stratify_label,
+        y_df=y_df
+    )
 
     if training_data in ['pancancer', 'all_other_cancers']:
         pancancer_sample_ids = (
@@ -419,13 +427,29 @@ def split_by_cancer_type(rnaseq_df,
     return rnaseq_train_df, rnaseq_test_df
 
 
-def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
+def split_single_cancer_type(cancer_type_df,
+                             num_folds,
+                             fold_no,
+                             seed,
+                             stratify_label=False,
+                             y_df=None):
     """Split data for a single cancer type into train and test sets."""
-    kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
-    for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
-        if fold == fold_no:
-            train_df = cancer_type_df.iloc[train_ixs]
-            test_df = cancer_type_df.iloc[test_ixs]
+    if stratify_label:
+        stratify_labels_df = y_df.reindex(cancer_type_df.index).status
+        assert stratify_labels_df.isna().sum() == 0
+        kf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
+        for fold, (train_ixs, test_ixs) in enumerate(
+                kf.split(cancer_type_df, stratify_labels_df)
+            ):
+            if fold == fold_no:
+                train_df = cancer_type_df.iloc[train_ixs]
+                test_df = cancer_type_df.iloc[test_ixs]
+    else:
+        kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
+        for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
+            if fold == fold_no:
+                train_df = cancer_type_df.iloc[train_ixs]
+                test_df = cancer_type_df.iloc[test_ixs]
     return train_df, test_df
 
 
