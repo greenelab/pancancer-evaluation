@@ -36,6 +36,8 @@ def load_sample_info(verbose=False):
     sample_info_df['cancer_type'] = (sample_info_df['primary_disease']
         .str.replace(' Cancer', '')
         .str.replace(' ', '_')
+        .str.replace('/', '_')
+        .str.replace('-', '_')
     )
     return sample_info_df
 
