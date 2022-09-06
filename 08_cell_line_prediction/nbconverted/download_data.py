@@ -16,9 +16,23 @@ import seaborn as sns
 import pancancer_evaluation.config as cfg
 
 
+# In[2]:
+
+
+# gene to explore mutation distribution for
+gene = 'TP53'
+
+# where to save plots
+output_plots = True
+output_plots_dir = (
+    cfg.repo_root / '08_cell_line_prediction' / 'sample_dists'
+)
+output_plots_dir.mkdir(exist_ok=True)
+
+
 # ### Download cell line info and expression data
 
-# In[2]:
+# In[3]:
 
 
 if os.path.isfile(cfg.ccle_sample_info):
@@ -39,7 +53,7 @@ print(ccle_sample_info_df.columns)
 ccle_sample_info_df.iloc[:5, :5]
 
 
-# In[3]:
+# In[4]:
 
 
 if os.path.isfile(cfg.ccle_expression):
@@ -63,7 +77,7 @@ ccle_expression_df.iloc[:5, :5]
 
 # ### Download and process mutation data
 
-# In[4]:
+# In[5]:
 
 
 if os.path.isfile(cfg.ccle_mutation):
@@ -83,7 +97,7 @@ print(ccle_mutation_df.columns)
 ccle_mutation_df.iloc[:5, :5]
 
 
-# In[5]:
+# In[6]:
 
 
 # process mutations into binary matrix
@@ -112,7 +126,7 @@ sample_mutations = (ccle_mutation_df
 sample_mutations.iloc[:5, :5]
 
 
-# In[6]:
+# In[7]:
 
 
 ccle_mutation_binary_df = (sample_mutations
@@ -128,19 +142,19 @@ print(ccle_mutation_binary_df.shape)
 ccle_mutation_binary_df.iloc[:5, :5]
 
 
-# In[7]:
+# In[8]:
 
 
 ccle_mutation_binary_df.sum(axis='columns').head()
 
 
-# In[8]:
+# In[9]:
 
 
 ccle_mutation_binary_df.sum(axis='index').sort_values(ascending=False).head(10)
 
 
-# In[9]:
+# In[10]:
 
 
 ccle_mutation_binary_df.to_csv(cfg.ccle_mutation_binary)
@@ -148,7 +162,7 @@ ccle_mutation_binary_df.to_csv(cfg.ccle_mutation_binary)
 
 # ### Visualize distribution of samples across cancer types/tissues
 
-# In[10]:
+# In[11]:
 
 
 all_index = (ccle_sample_info_df.index
@@ -158,7 +172,7 @@ all_index = (ccle_sample_info_df.index
 print(all_index.shape)
 
 
-# In[11]:
+# In[12]:
 
 
 ccle_cancer_types = (ccle_sample_info_df
@@ -173,7 +187,7 @@ ccle_cancer_types = (ccle_sample_info_df
 ccle_cancer_types.head()
 
 
-# In[12]:
+# In[13]:
 
 
 ccle_tissues = (ccle_sample_info_df
@@ -188,7 +202,7 @@ ccle_tissues = (ccle_sample_info_df
 ccle_tissues.head()
 
 
-# In[13]:
+# In[14]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -207,16 +221,17 @@ axarr[1].set_ylabel('Count')
 plt.suptitle('Distribution of cell lines across cancer types/tissues')
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / 'all_samples_cancer_types_tissues_dist.png',
+                dpi=200, bbox_inches='tight')
+
 
 # ### Visualize distribution of samples with mutation in a given gene
 # 
 # This should help us with setting sensible thresholds for building classifiers, since the dataset overall is considerably smaller than TCGA.
 
-# In[14]:
+# In[15]:
 
-
-# gene to explore mutation distribution for
-gene = 'RB1'
 
 gene_index = (ccle_sample_info_df.index
     .intersection(ccle_expression_df.index)
@@ -225,7 +240,7 @@ gene_index = (ccle_sample_info_df.index
 print(gene_index.shape)
 
 
-# In[15]:
+# In[16]:
 
 
 ccle_gene_cancer_types = (ccle_sample_info_df
@@ -246,7 +261,7 @@ ccle_gene_cancer_types['{}_proportion'.format(gene)] = (
 ccle_gene_cancer_types.head()
 
 
-# In[16]:
+# In[17]:
 
 
 ccle_gene_tissues = (ccle_sample_info_df
@@ -266,7 +281,7 @@ ccle_gene_tissues['{}_proportion'.format(gene)] = (
 ccle_gene_tissues.head()
 
 
-# In[17]:
+# In[18]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -291,8 +306,12 @@ plt.suptitle(
 )
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_cancer_types_tissues_dist.png'.format(gene),
+                dpi=200, bbox_inches='tight')
 
-# In[18]:
+
+# In[19]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -319,8 +338,12 @@ plt.suptitle(
 )
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_cancer_types_tissues_proportions.png'.format(gene),
+                dpi=200, bbox_inches='tight')
 
-# In[19]:
+
+# In[20]:
 
 
 # how many cancer types would be valid for the given gene with the given cutoffs
@@ -340,7 +363,7 @@ ccle_gene_cancer_types['both_thresholds'] = (
 ccle_gene_cancer_types.head()
 
 
-# In[20]:
+# In[21]:
 
 
 print('{} cancer types included for {}: {}'.format(
