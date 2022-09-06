@@ -11,3 +11,5 @@ data/*.pkl
 **/fs_plots/*
 **/papermill_output_nbs/*
 **/results/*
+
+08_cell_line_prediction/sample_dists/*
