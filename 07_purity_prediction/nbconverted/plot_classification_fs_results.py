@@ -233,9 +233,11 @@ non_carcinomas = [
     'GBM',
     'LAML',
     'LGG',
+    'PCPG',
     'SARC',
     'SKCM',
-    'TGCT'
+    'TGCT',
+    'UVM'
 ]
 
 
