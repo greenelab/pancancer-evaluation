@@ -109,3 +109,7 @@ gene_aliases = {
     'MLL3': 'KMT2C',
     'FAM123B': 'AMER1'
 }
+
+ccle_fs_plots_dir = (
+    repo_root / '08_cell_line_prediction' / 'fs_plots'
+)
