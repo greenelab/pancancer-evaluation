@@ -3,7 +3,7 @@
 
 # ## Plot univariate correlation heatmaps for mutation prediction, across gene features
 # 
-# TODO: more explain
+# To support the idea of selecting features using cancer type specific $f$-statistics, we wanted to visualize $f$-statistics across cancer types for some genes. We are expecting to see that when we select by MAD or pan-cancer $f$-statistic we often get genes/features that are highly correlated with the label in one cancer type and not in others, but when we select by median $f$-statistic we find features that are more evenly correlated across all cancer types in the dataset, relative to the other methods.
 
 # In[1]:
 
@@ -179,8 +179,6 @@ display(X_filtered_df.shape, X_filtered_df.iloc[:5, :5])
 
 
 # ### Heatmaps
-# 
-# TODO: explain
 
 # In[9]:
 
@@ -327,3 +325,5 @@ if output_plots:
     plt.savefig(output_plots_dir / '{}_heatmaps.png'.format(gene),
                 dpi=200, bbox_inches='tight')
 
+
+# For _PTEN_ above we can definitely see the expected trend - in the left and middle heatmaps we see that most genes have low correlations/$f$-statistics in most cancer types, but in the right heatmap we can see that the $f$-statistics are more evenly distributed across cancer types (although still largely dominated by correlations in UCEC, where _PTEN_ is frequently mutated and is thought to have a strong driver effect).
