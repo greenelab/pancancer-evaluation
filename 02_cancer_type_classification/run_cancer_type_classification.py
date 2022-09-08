@@ -154,7 +154,6 @@ if __name__ == '__main__':
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
 
-        # TODO document
         if use_pancancer and args.all_other_cancers:
             training_data = 'all_other_cancers'
         elif use_pancancer:
@@ -179,15 +178,12 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir,
                                             gene,
                                             dirname=training_data)
-                # TODO should use_pancancer be False in the all_other_cancers
-                # case? this may end up introducing a (useless) dummy variable
-                # where we can't use one
                 tcga_data.process_data_for_gene(gene, classification,
                                                 gene_dir,
                                                 use_pancancer=use_pancancer)
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
-                # (or has a different alias, TODO check for this later)
+                # (or has a different alias)
                 print('Gene {} not found in mutation data, skipping'.format(gene),
                       file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(

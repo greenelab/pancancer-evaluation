@@ -141,7 +141,6 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir,
                                             gene,
                                             dirname=training_data)
-                # TODO label filtering after intersection gene espression
                 ccle_data.process_data_for_gene(
                     gene,
                     classification,
@@ -150,7 +149,7 @@ if __name__ == '__main__':
                 )
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
-                # (or has a different alias, TODO check for this later)
+                # (or has a different alias)
                 print('Gene {} not found in mutation data, skipping'.format(gene),
                       file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(

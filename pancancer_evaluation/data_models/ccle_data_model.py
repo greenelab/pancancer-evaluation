@@ -7,7 +7,6 @@ import pandas as pd
 import pancancer_evaluation.config as cfg
 from pancancer_evaluation.exceptions import NoTrainSamplesError
 import pancancer_evaluation.utilities.ccle_data_utilities as du
-# TODO: rename tcga_utilities?
 from pancancer_evaluation.utilities.tcga_utilities import (
     process_y_matrix,
     align_matrices,
@@ -104,17 +103,6 @@ class CCLEDataModel():
         # process the y matrix for the given gene or pathway
         y_mutation_df = self.mutation_df.loc[:, gene]
 
-        # include copy number gains for oncogenes
-        # and copy number loss for tumor suppressor genes (TSG)
-        # TODO: no copy number data yet
-        # include_copy = True
-        # if classification == "Oncogene":
-        #     y_copy_number_df = self.copy_gain_df.loc[:, gene]
-        # elif classification == "TSG":
-        #     y_copy_number_df = self.copy_loss_df.loc[:, gene]
-        # else:
-        #     y_copy_number_df = pd.DataFrame()
-        #     include_copy = False
 
         # format sample_info_df to work with label processing
         sample_freeze_df = (self.sample_info_df
@@ -125,12 +113,12 @@ class CCLEDataModel():
         sample_freeze_df.index.name = 'SAMPLE_BARCODE'
         sample_freeze_df.reset_index(inplace=True)
 
-        # construct labels from mutation/CNV information, and filter for
+        # construct labels from mutation information, and filter for
         # cancer types without an extreme label imbalance
         y_df = process_y_matrix(
             y_mutation=y_mutation_df,
             y_copy=None,
-            # include_copy=include_copy,
+            # currently we're not using CNV data for the cell lines
             include_copy=False,
             gene=gene,
             sample_freeze=sample_freeze_df,
