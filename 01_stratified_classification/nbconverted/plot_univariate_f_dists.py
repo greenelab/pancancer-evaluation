@@ -97,10 +97,6 @@ pancancer_data = du.load_pancancer_data(verbose=True)
 
 rnaseq_df = du.load_expression_data(verbose=True)
 
-# standardize columns of expression dataframe
-print('Standardizing columns of expression data...', file=sys.stderr)
-rnaseq_df[rnaseq_df.columns] = StandardScaler().fit_transform(rnaseq_df[rnaseq_df.columns])
-
 
 # In[7]:
 
@@ -127,7 +123,13 @@ display(y_df.shape, y_df.head())
 # In[9]:
 
 
-X_df = rnaseq_df.reindex(y_df.index)
+X_df_unscaled = rnaseq_df.reindex(y_df.index)
+
+X_df = pd.DataFrame(
+    StandardScaler().fit_transform(X_df_unscaled),
+    index=X_df_unscaled.index.copy(),
+    columns=X_df_unscaled.columns.copy()
+)
 
 # make sure we didn't introduce any NA rows
 assert X_df.isna().sum().sum() == 0
@@ -185,16 +187,16 @@ def get_f_stats_for_cancer_types(gene, X_df, y_df):
     # then calculate pan-cancer and specific-cancer f-statistics
     # (i.e. univariate correlations with labels)
     f_stats_df = {
-        'pancan': f_classif(X_df, y_df.status)[0]
+        'pancan': f_classif(X_filtered_df, y_filtered_df.status)[0]
     }
-    for cancer_type in y_df.cancer_type.unique():
-        ct_samples = y_df[y_df.cancer_type == cancer_type].index
-        X_ct_df = X_df.reindex(ct_samples)
-        y_ct_df = y_df.reindex(ct_samples)
+    for cancer_type in y_filtered_df.cancer_type.unique():
+        ct_samples = y_filtered_df[y_filtered_df.cancer_type == cancer_type].index
+        X_ct_df = X_filtered_df.reindex(ct_samples)
+        y_ct_df = y_filtered_df.reindex(ct_samples)
         
         f_stats_df[cancer_type] = f_classif(X_ct_df, y_ct_df.status)[0]
         
-    return pd.DataFrame(f_stats_df, index=X_df.columns)
+    return pd.DataFrame(f_stats_df, index=X_filtered_df.columns)
 
 
 # In[11]:
