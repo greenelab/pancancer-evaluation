@@ -32,13 +32,18 @@ def load_sample_info(verbose=False):
         print('Loading CCLE sample info...', file=sys.stderr)
     sample_info_df = pd.read_csv(cfg.ccle_sample_info, index_col='DepMap_ID')
     # clean up cancer type names a bit
-    # TODO: remove unknown/non-cancerous samples?
     sample_info_df['cancer_type'] = (sample_info_df['primary_disease']
         .str.replace(' Cancer', '')
         .str.replace(' ', '_')
         .str.replace('/', '_')
         .str.replace('-', '_')
     )
+    # remove unknown/non-cancerous samples
+    sample_info_df = sample_info_df[
+        ~(sample_info_df.cancer_type.isin([
+            'Unknown', 'Non_Cancerous'
+        ]))
+    ]
     return sample_info_df
 
 
