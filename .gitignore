@@ -10,6 +10,7 @@ data/ccle/*
 
 **/da_images/*
 **/fs_plots/*
+**/heatmaps/*
 **/papermill_output_nbs/*
 **/results/*
 
