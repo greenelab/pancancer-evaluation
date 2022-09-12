@@ -23,6 +23,7 @@ test_cancer_type_results = str(test_data_dir / 'cancer_type_results_{}_{}.tsv')
 num_features_raw = 8000
 
 # hyperparameters for classification experiments
+shuffle_by_cancer_type = True
 filter_prop = 0.05
 filter_count = 15
 folds = 3

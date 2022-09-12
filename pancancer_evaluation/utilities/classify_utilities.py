@@ -251,12 +251,23 @@ def run_cv_cancer_type(data_model,
         y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
 
         if shuffle_labels:
-            # we set a temp seed here to make sure this shuffling order
-            # is the same for each gene between data types, otherwise
-            # it might be slightly different depending on the global state
-            with temp_seed(data_model.seed):
-                y_train_df.status = np.random.permutation(y_train_df.status.values)
-                y_test_df.status = np.random.permutation(y_test_df.status.values)
+            if cfg.shuffle_by_cancer_type:
+                # in this case we want to shuffle labels independently for each cancer type
+                # (i.e. preserve the total number of mutated samples in each)
+                original_ones = y_train_df.groupby('DISEASE').sum()['status']
+                y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
+                y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
+                new_ones = y_train_df.groupby('DISEASE').sum()['status']
+                # number of mutated samples per cancer type should be the same before
+                # and after shuffling
+                assert original_ones.equals(new_ones) 
+            else:
+                # we set a temp seed here to make sure this shuffling order
+                # is the same for each gene between data types, otherwise
+                # it might be slightly different depending on the global state
+                with temp_seed(data_model.seed):
+                    y_train_df.status = np.random.permutation(y_train_df.status.values)
+                    y_test_df.status = np.random.permutation(y_test_df.status.values)
 
         X_train_df, X_test_df = tu.preprocess_data(
             X_train_raw_df,
@@ -817,6 +828,17 @@ def generate_param_grid(cv_results, fold_no=-1):
     columns.append('mean_test_score')
 
     return pd.DataFrame(np.array(results_grid).T, columns=columns)
+
+
+def shuffle_by_cancer_type(y_df, seed):
+    y_copy_df = y_df.copy()
+    with temp_seed(seed):
+        for cancer_type in y_copy_df.DISEASE.unique():
+            is_cancer_type = (y_copy_df.DISEASE == cancer_type)
+            y_copy_df.loc[is_cancer_type, 'status'] = (
+                np.random.permutation(y_copy_df.loc[is_cancer_type, 'status'].values)
+            )
+    return y_copy_df.status.values
 
 
 @contextlib.contextmanager
