@@ -31,9 +31,6 @@ import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
-    p.add_argument('--all_other_cancers', action='store_true',
-                   help='if included, omit test cancer type data from training '
-                        'set for pancancer experiments')
     p.add_argument('--genes', nargs='*', default=None,
                    help='currently this needs to be a subset of top_50')
     p.add_argument('--feature_selection',
@@ -59,6 +56,10 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--training_samples',
+                   choices=['single_cancer', 'pancancer', 'all_other_cancers'],
+                   default='single_cancer',
+                   help='set of samples to train model on')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -92,7 +93,7 @@ if __name__ == '__main__':
     log_columns = [
         'gene',
         'cancer_type',
-        'use_pancancer',
+        'training_samples',
         'shuffle_labels',
         'skip_reason'
     ]
@@ -111,21 +112,10 @@ if __name__ == '__main__':
 
     genes_df = load_custom_genes(args.genes)
 
-    # we want to run mutation prediction experiments:
-    # - for all combinations of use_pancancer and shuffle_labels
-    #   (shuffled labels acts as our lower baseline)
-    # - for all genes in the given gene set
-    # - for all cancer types in the given holdout cancer types (or all of TCGA)
-    for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
-        if use_pancancer and args.all_other_cancers:
-            training_data = 'all_other_cancers'
-        elif use_pancancer:
-            training_data = 'pancancer'
-        else:
-            training_data = 'single_cancer'
+    for shuffle_labels in (False, True):
 
-        print('use_pancancer: {}, shuffle_labels: {}'.format(
-            use_pancancer, shuffle_labels))
+        print('training_samples: {}, shuffle_labels: {}'.format(
+              args.training_samples, shuffle_labels))
 
         outer_progress = tqdm(genes_df.iterrows(),
                               total=genes_df.shape[0],
@@ -140,12 +130,12 @@ if __name__ == '__main__':
             try:
                 gene_dir = fu.make_gene_dir(args.results_dir,
                                             gene,
-                                            dirname=training_data)
+                                            dirname=args.training_samples)
                 ccle_data.process_data_for_gene(
                     gene,
                     classification,
                     gene_dir,
-                    use_pancancer=use_pancancer
+                    add_cancertype_covariate=(args.training_samples == 'pancancer')
                 )
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
@@ -154,7 +144,7 @@ if __name__ == '__main__':
                       file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(
                     log_columns,
-                    [gene, use_pancancer, True, shuffle_labels, 'gene_not_found']
+                    [gene, args.training_samples, True, shuffle_labels, 'gene_not_found']
                 )
                 fu.write_log_file(cancer_type_log_df, args.log_file)
                 continue
@@ -184,7 +174,7 @@ if __name__ == '__main__':
                                                  cancer_type,
                                                  sample_info_df,
                                                  args.num_folds,
-                                                 training_data,
+                                                 args.training_samples,
                                                  shuffle_labels,
                                                  stratify_label=True)
                 except ResultsFileExistsError:
@@ -194,7 +184,7 @@ if __name__ == '__main__':
                               file=sys.stderr)
                     cancer_type_log_df = fu.generate_log_df(
                         log_columns,
-                        [gene, cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                        [gene, cancer_type, args.training_samples, shuffle_labels, 'file_exists']
                     )
                 except NoTrainSamplesError:
                     if args.verbose:
@@ -203,7 +193,7 @@ if __name__ == '__main__':
                               file=sys.stderr)
                     cancer_type_log_df = fu.generate_log_df(
                         log_columns,
-                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
+                        [gene, cancer_type, args.training_samples, shuffle_labels, 'no_train_samples']
                     )
                 except NoTestSamplesError:
                     if args.verbose:
@@ -212,7 +202,7 @@ if __name__ == '__main__':
                               file=sys.stderr)
                     cancer_type_log_df = fu.generate_log_df(
                         log_columns,
-                        [gene, cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
+                        [gene, cancer_type, args.training_samples, shuffle_labels, 'no_test_samples']
                     )
                 except OneClassError:
                     if args.verbose:
@@ -221,7 +211,7 @@ if __name__ == '__main__':
                               file=sys.stderr)
                     cancer_type_log_df = fu.generate_log_df(
                         log_columns,
-                        [gene, cancer_type, use_pancancer, shuffle_labels, 'one_class']
+                        [gene, cancer_type, args.training_samples, shuffle_labels, 'one_class']
                     )
                 else:
                     # only save results if no exceptions

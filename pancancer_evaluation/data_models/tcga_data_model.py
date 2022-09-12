@@ -103,7 +103,7 @@ class TCGADataModel():
                               gene,
                               classification,
                               gene_dir,
-                              use_pancancer=False):
+                              add_cancertype_covariate=False):
         """
         Prepare to run cancer type experiments for a given gene.
 
@@ -116,14 +116,15 @@ class TCGADataModel():
         classification (str): 'oncogene' or 'TSG'; most likely cancer function for
                               the given gene
         gene_dir (str): directory to write output to, if None don't write output
-        use_pancancer (bool): whether or not to use pancancer data
+        add_cancertype_covariate (bool): whether or not to include cancer type
+                                         covariate in feature matrix
         """
         y_df_raw = self._generate_labels(gene, classification, gene_dir)
 
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
-            use_pancancer
+            add_cancertype_covariate
         )
         rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
 
@@ -134,7 +135,7 @@ class TCGADataModel():
     def process_purity_data(self,
                             output_dir,
                             classify=False,
-                            use_pancancer=False):
+                            add_cancertype_covariate=False):
         """
         Prepare to run tumor purity prediction experiments for a given gene.
 
@@ -142,7 +143,8 @@ class TCGADataModel():
         ---------
         output_dir (str): where to write output
         classify (bool): if True binarize and do classification, else regression
-        use_pancancer (bool): whether or not to use pancancer data
+        add_cancertype_covariate (bool): whether or not to include cancer type
+                                         covariate in feature matrix
         """
         y_df_raw = du.load_purity(self.mut_burden_df,
                                   self.sample_info_df,
@@ -152,9 +154,8 @@ class TCGADataModel():
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
-            use_pancancer
+            add_cancertype_covariate
         )
-
         rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
 
         self.X_df = rnaseq_filtered_df
@@ -362,7 +363,7 @@ class TCGADataModel():
             filtered_train_data = self._filter_data_for_gene(
                 self.rnaseq_df,
                 y_train_df_raw,
-                use_pancancer=False
+                add_cancertype_covariate=False
             )
 
         self.X_train_raw_df, self.y_train_df, self.gene_features = filtered_train_data
@@ -528,11 +529,11 @@ class TCGADataModel():
         )
         return y_df
 
-    def _filter_data_for_gene(self, rnaseq_df, y_df, use_pancancer):
+    def _filter_data_for_gene(self, rnaseq_df, y_df, add_cancertype_covariate):
         use_samples, rnaseq_df, y_df, gene_features = align_matrices(
             x_file_or_df=rnaseq_df,
             y=y_df,
-            add_cancertype_covariate=use_pancancer,
+            add_cancertype_covariate=add_cancertype_covariate,
             add_mutation_covariate=True
         )
         return rnaseq_df, y_df, gene_features
