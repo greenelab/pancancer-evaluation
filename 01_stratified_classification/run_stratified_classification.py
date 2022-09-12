@@ -149,7 +149,7 @@ if __name__ == '__main__':
                 continue
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
-                # (or has a different alias, TODO we could check for this later)
+                # (or has a different alias)
                 print('Gene {} not found in mutation data, skipping'.format(gene),
                       file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(

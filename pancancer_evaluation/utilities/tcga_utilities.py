@@ -28,6 +28,7 @@ def process_y_matrix(
     filter_count,
     filter_prop,
     output_directory,
+    include_mut_burden=True,
     hyper_filter=5,
     test=False,
 ):
@@ -45,6 +46,7 @@ def process_y_matrix(
     filter_count: the number of positives or negatives required per cancer-type
     filter_prop: the proportion of positives or negatives required per cancer-type
     output_directory: the name of the directory to store the gene summary
+    include_mut_burden: boolean if the mutation burden should be included as a feature
     hyper_filter: the number of std dev above log10 mutation burden to filter
     test: if true, don't write filtering info to disk
 
@@ -61,17 +63,24 @@ def process_y_matrix(
     y_df = pd.DataFrame(y_df)
     y_df.columns = ["status"]
 
-    y_df = (
-        y_df.merge(
-            sample_freeze, how="left", left_index=True, right_on="SAMPLE_BARCODE"
+    if include_mut_burden:
+        y_df = (
+            y_df.merge(
+                sample_freeze, how="left", left_index=True, right_on="SAMPLE_BARCODE"
+            )
+            .set_index("SAMPLE_BARCODE")
+            .merge(mutation_burden, left_index=True, right_index=True)
         )
-        .set_index("SAMPLE_BARCODE")
-        .merge(mutation_burden, left_index=True, right_index=True)
-    )
-
-    # Filter to remove hyper-mutated samples
-    burden_filter = y_df["log10_mut"] < hyper_filter * y_df["log10_mut"].std()
-    y_df = y_df.loc[burden_filter, :]
+        # Filter to remove hyper-mutated samples
+        burden_filter = y_df["log10_mut"] < hyper_filter * y_df["log10_mut"].std()
+        y_df = y_df.loc[burden_filter, :]
+    else:
+        y_df = (
+            y_df.merge(
+                sample_freeze, how="left", left_index=True, right_on="SAMPLE_BARCODE"
+            )
+            .set_index("SAMPLE_BARCODE")
+        )
 
     # Get statistics per gene and disease
     disease_counts_df = pd.DataFrame(y_df.groupby("DISEASE").sum()["status"])
@@ -135,7 +144,9 @@ def process_y_matrix_cancertype(
     return y_df, count_df
 
 
-def align_matrices(x_file_or_df, y, add_cancertype_covariate=True,
+def align_matrices(x_file_or_df,
+                   y,
+                   add_cancertype_covariate=True,
                    add_mutation_covariate=True):
     """
     Process the x matrix for the given input file and align x and y together

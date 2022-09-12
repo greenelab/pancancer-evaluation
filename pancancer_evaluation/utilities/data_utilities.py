@@ -4,6 +4,7 @@ Functions for reading and processing input data
 """
 import os
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -135,19 +136,64 @@ def load_vogelstein():
     return genes_df
 
 
+def load_merged():
+    """Load list of cancer-relevant genes generated in mpmp repo.
+
+    This is a combination of ~500 cancer-associated genes from COSMIC CGC,
+    Vogelstein et al. and Bailey et al.
+    """
+
+    genes_df = pd.read_csv(cfg.merged_cancer_genes, sep='\t')
+
+    # some genes in cosmic set have different names in mutation data
+    genes_df.gene.replace(to_replace=cfg.gene_aliases, inplace=True)
+    return genes_df
+
+
+def load_custom_genes(gene_set):
+    """Load oncogene/TSG annotation information for custom genes.
+
+    This will load annotations from the gene sets corresponding to
+    load_functions, in that order of priority.
+    """
+    # make sure the passed-in gene set is a list
+    assert isinstance(gene_set, typing.List)
+
+    load_functions = [
+        load_merged,
+        load_vogelstein,
+        load_top_50,
+    ]
+    genes_df = None
+    for load_fn in load_functions:
+        annotated_df = load_fn()
+        if set(gene_set).issubset(set(annotated_df.gene.values)):
+            genes_df = annotated_df[annotated_df.gene.isin(gene_set)]
+            break
+
+    if genes_df is None:
+        # note that this will happen if gene_set is not a subset of exactly
+        # one of the gene sets in load_functions
+        #
+        # we could allow gene_set to be a subset of the union of all of them,
+        # but that would take a bit more work and is probably not a super
+        # common use case for us
+        raise GenesNotFoundError(
+            'Gene list was not a subset of any existing gene set'
+        )
+
+    return genes_df
+
+
 def get_classification(gene, genes_df=None):
     """Get oncogene/TSG classification from existing datasets for given gene."""
     classification = 'neither'
     if (genes_df is not None) and (gene in genes_df.gene):
         classification = genes_df[genes_df.gene == gene].classification.iloc[0]
     else:
-        genes_df = load_vogelstein()
+        genes_df = load_custom_genes(gene_set)
         if gene in genes_df.gene:
             classification = genes_df[genes_df.gene == gene].classification.iloc[0]
-        else:
-            genes_df = load_top_50()
-            if gene in genes_df.gene:
-                classification = genes_df[genes_df.gene == gene].classification.iloc[0]
     return classification
 
 
@@ -315,7 +361,9 @@ def split_by_cancer_type(rnaseq_df,
                          training_data='single_cancer',
                          num_folds=4,
                          fold_no=1,
-                         seed=cfg.default_seed):
+                         seed=cfg.default_seed,
+                         stratify_label=False,
+                         y_df=None):
     """Split expression data into train and test sets.
 
     The test set will contain data from a single cancer type. The train set
@@ -350,7 +398,13 @@ def split_by_cancer_type(rnaseq_df,
     cancer_type_df = rnaseq_df.loc[rnaseq_df.index.intersection(cancer_type_sample_ids), :]
 
     cancer_type_train_df, rnaseq_test_df = split_single_cancer_type(
-            cancer_type_df, num_folds, fold_no, seed)
+        cancer_type_df,
+        num_folds,
+        fold_no,
+        seed,
+        stratify_label=stratify_label,
+        y_df=y_df
+    )
 
     if training_data in ['pancancer', 'all_other_cancers']:
         pancancer_sample_ids = (
@@ -373,13 +427,29 @@ def split_by_cancer_type(rnaseq_df,
     return rnaseq_train_df, rnaseq_test_df
 
 
-def split_single_cancer_type(cancer_type_df, num_folds, fold_no, seed):
+def split_single_cancer_type(cancer_type_df,
+                             num_folds,
+                             fold_no,
+                             seed,
+                             stratify_label=False,
+                             y_df=None):
     """Split data for a single cancer type into train and test sets."""
-    kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
-    for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
-        if fold == fold_no:
-            train_df = cancer_type_df.iloc[train_ixs]
-            test_df = cancer_type_df.iloc[test_ixs]
+    if stratify_label:
+        stratify_labels_df = y_df.reindex(cancer_type_df.index).status
+        assert stratify_labels_df.isna().sum() == 0
+        kf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=seed)
+        for fold, (train_ixs, test_ixs) in enumerate(
+                kf.split(cancer_type_df, stratify_labels_df)
+            ):
+            if fold == fold_no:
+                train_df = cancer_type_df.iloc[train_ixs]
+                test_df = cancer_type_df.iloc[test_ixs]
+    else:
+        kf = KFold(n_splits=num_folds, shuffle=True, random_state=seed)
+        for fold, (train_ixs, test_ixs) in enumerate(kf.split(cancer_type_df)):
+            if fold == fold_no:
+                train_df = cancer_type_df.iloc[train_ixs]
+                test_df = cancer_type_df.iloc[test_ixs]
     return train_df, test_df
 
 

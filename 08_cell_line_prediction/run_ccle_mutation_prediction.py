@@ -14,7 +14,7 @@ import pandas as pd
 from tqdm import tqdm
 
 import pancancer_evaluation.config as cfg
-from pancancer_evaluation.data_models.tcga_data_model import TCGADataModel
+from pancancer_evaluation.data_models.ccle_data_model import CCLEDataModel
 from pancancer_evaluation.exceptions import (
     NoTrainSamplesError,
     NoTestSamplesError,
@@ -22,7 +22,11 @@ from pancancer_evaluation.exceptions import (
     ResultsFileExistsError
 )
 from pancancer_evaluation.utilities.classify_utilities import run_cv_cancer_type
-import pancancer_evaluation.utilities.data_utilities as du
+import pancancer_evaluation.utilities.ccle_data_utilities as du
+from pancancer_evaluation.utilities.data_utilities import (
+    load_custom_genes,
+    get_classification
+)
 import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
@@ -30,31 +34,16 @@ def process_args():
     p.add_argument('--all_other_cancers', action='store_true',
                    help='if included, omit test cancer type data from training '
                         'set for pancancer experiments')
-    p.add_argument('--coral', action='store_true',
-                   help='if true, use CORAL method to align source and'
-                        'target distributions')
-    p.add_argument('--coral_by_cancer_type', action='store_true',
-                   help='if true, use CORAL method to align source and'
-                        'target distributions, per cancer type')
-    p.add_argument('--coral_lambda', type=float, default=1.0)
-    p.add_argument('--custom_genes', nargs='*', default=None,
+    p.add_argument('--genes', nargs='*', default=None,
                    help='currently this needs to be a subset of top_50')
-    p.add_argument('--debug', action='store_true',
-                   help='use subset of data for fast debugging')
     p.add_argument('--feature_selection',
                    choices=['mad', 'pancan_f_test', 'median_f_test', 'random'],
                    default='mad',
                    help='method to use for feature selection, only applied if '
                         '0 > num_features > total number of columns')
-    p.add_argument('--gene_set', type=str,
-                   choices=['top_50', 'vogelstein', 'custom'],
-                   default='top_50',
-                   help='choose which gene set to use. top_50 and vogelstein are '
-                        'predefined gene sets (see data_utilities), and custom allows '
-                        'any gene or set of genes in TCGA, specified in --custom_genes')
     p.add_argument('--holdout_cancer_types', nargs='*', default=None,
                    help='provide a list of cancer types to hold out, uses all '
-                        'cancer types in TCGA if none are provided')
+                        'cancer types in CCLE if none are provided')
     p.add_argument('--log_file', default=None,
                    help='name of file to log skipped cancer types to')
     p.add_argument('--mad_preselect', type=int, default=None,
@@ -70,42 +59,18 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--tca', action='store_true',
-                   help='if true, use TCA method to map source and target'
-                        'data into same feature space')
-    p.add_argument('--tca_kernel_type', choices=['linear', 'rbf'], default='linear')
-    p.add_argument('--tca_mu', type=float, default=0.1)
-    p.add_argument('--tca_n_components', type=int, default=100)
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
-    if args.gene_set == 'custom':
-        if args.custom_genes is None:
-            p.error('must include --custom_genes when --gene_set=\'custom\'')
-        args.gene_set = args.custom_genes
-        del args.custom_genes
-    elif (args.gene_set != 'custom' and args.custom_genes is not None):
-        p.error('must use option --gene_set=\'custom\' if custom genes are included')
-
     sample_info_df = du.load_sample_info(args.verbose)
-    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
+    ccle_cancer_types = du.get_cancer_types(sample_info_df)
     if args.holdout_cancer_types is None:
-        args.holdout_cancer_types = tcga_cancer_types
+        args.holdout_cancer_types = ccle_cancer_types
     else:
-        not_in_tcga = set(args.holdout_cancer_types) - set(tcga_cancer_types)
-        if len(not_in_tcga) > 0:
-            p.error('some cancer types not present in TCGA: {}'.format(
-                ' '.join(not_in_tcga)))
-
-    if args.tca:
-        args.tca_params = {
-            'mu': args.tca_mu,
-            'kernel_type':args.tca_kernel_type,
-            'sigma': 1.0,
-            'n_components': args.tca_n_components
-        }
-    else:
-        args.tca_params = None
+        not_in_ccle = set(args.holdout_cancer_types) - set(ccle_cancer_types)
+        if len(not_in_ccle) > 0:
+            p.error('some cancer types not present in CCLE: {}'.format(
+                ' '.join(not_in_ccle)))
 
     args.results_dir = Path(args.results_dir).resolve()
 
@@ -137,15 +102,14 @@ if __name__ == '__main__':
         log_df = pd.DataFrame(columns=log_columns)
         log_df.to_csv(args.log_file, sep='\t')
 
-    tcga_data = TCGADataModel(sample_info=sample_info_df,
+    ccle_data = CCLEDataModel(sample_info=sample_info_df,
                               feature_selection=args.feature_selection,
                               num_features=args.num_features,
                               mad_preselect=args.mad_preselect,
                               seed=args.seed,
-                              verbose=args.verbose,
-                              debug=args.debug)
+                              verbose=args.verbose)
 
-    genes_df = tcga_data.load_gene_set(args.gene_set)
+    genes_df = load_custom_genes(args.genes)
 
     # we want to run mutation prediction experiments:
     # - for all combinations of use_pancancer and shuffle_labels
@@ -153,7 +117,6 @@ if __name__ == '__main__':
     # - for all genes in the given gene set
     # - for all cancer types in the given holdout cancer types (or all of TCGA)
     for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
-
         if use_pancancer and args.all_other_cancers:
             training_data = 'all_other_cancers'
         elif use_pancancer:
@@ -178,9 +141,12 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir,
                                             gene,
                                             dirname=training_data)
-                tcga_data.process_data_for_gene(gene, classification,
-                                                gene_dir,
-                                                use_pancancer=use_pancancer)
+                ccle_data.process_data_for_gene(
+                    gene,
+                    classification,
+                    gene_dir,
+                    use_pancancer=use_pancancer
+                )
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
                 # (or has a different alias)
@@ -188,7 +154,7 @@ if __name__ == '__main__':
                       file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(
                     log_columns,
-                    [gene, 'N/A', use_pancancer, shuffle_labels, 'gene_not_found']
+                    [gene, use_pancancer, True, shuffle_labels, 'gene_not_found']
                 )
                 fu.write_log_file(cancer_type_log_df, args.log_file)
                 continue
@@ -210,26 +176,17 @@ if __name__ == '__main__':
                                                            args.seed,
                                                            args.feature_selection,
                                                            args.num_features)
-                    if args.coral_by_cancer_type:
-                        cancer_types = sample_info_df[
-                            sample_info_df.index.isin(tcga_data.X_df.index)
-                        ].cancer_type
-                    else:
-                        cancer_types = None
-
-                    results = run_cv_cancer_type(tcga_data,
+                    # we're working with pretty small sample sizes for the cell
+                    # line data, so we stratify by label across CV folds here
+                    # to make sure proportions aren't too imbalanced
+                    results = run_cv_cancer_type(ccle_data,
                                                  gene,
                                                  cancer_type,
                                                  sample_info_df,
                                                  args.num_folds,
                                                  training_data,
                                                  shuffle_labels,
-                                                 use_coral=args.coral,
-                                                 coral_lambda=args.coral_lambda,
-                                                 coral_by_cancer_type=args.coral_by_cancer_type,
-                                                 cancer_types=cancer_types,
-                                                 use_tca=args.tca,
-                                                 tca_params=args.tca_params)
+                                                 stratify_label=True)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '
