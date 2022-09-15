@@ -10,7 +10,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
@@ -485,21 +485,40 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
     and cross validation
     """
     # Setup the classifier parameters
-    clf_parameters = {
-        "classify__penalty": ["elasticnet"],
-        "classify__alpha": alphas,
-        "classify__l1_ratio": l1_ratios,
-    }
+    # clf_parameters = {
+    #     "classify__penalty": ["elasticnet"],
+    #     "classify__alpha": alphas,
+    #     "classify__l1_ratio": l1_ratios,
+    # }
 
+    # estimator = Pipeline(
+    #     steps=[
+    #         (
+    #             "classify",
+    #             SGDClassifier(
+    #                 random_state=seed,
+    #                 class_weight="balanced",
+    #                 loss="log_loss",
+    #                 max_iter=max_iter,
+    #                 tol=1e-3,
+    #             ),
+    #         )
+    #     ]
+    # )
+
+    clf_parameters = {
+        "classify__C": [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
+    }
     estimator = Pipeline(
         steps=[
             (
                 "classify",
-                SGDClassifier(
+                LogisticRegression(
                     random_state=seed,
-                    class_weight="balanced",
-                    loss="log_loss",
-                    max_iter=max_iter,
+                    class_weight='balanced',
+                    penalty='l2',
+                    solver='lbfgs',
+                    max_iter=1000,
                     tol=1e-3,
                 ),
             )
@@ -513,7 +532,6 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
         cv=n_folds,
         scoring='average_precision',
         return_train_score=True,
-        # iid=False
     )
 
     # Fit the model
