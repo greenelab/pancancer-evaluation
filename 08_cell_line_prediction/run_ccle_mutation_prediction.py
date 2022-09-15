@@ -55,6 +55,8 @@ def process_args():
                    help='number of folds of cross-validation to run')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
+    p.add_argument('--ridge', action='store_true',
+                   help='use ridge regression rather than default elastic net')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--training_samples',
                    choices=['single_cancer', 'pancancer', 'all_other_cancers'],
@@ -176,7 +178,8 @@ if __name__ == '__main__':
                                                  args.num_folds,
                                                  args.training_samples,
                                                  shuffle_labels,
-                                                 stratify_label=True)
+                                                 stratify_label=True,
+                                                 ridge=args.ridge)
                 except ResultsFileExistsError:
                     if args.verbose:
                         print('Skipping because results file exists already: '
