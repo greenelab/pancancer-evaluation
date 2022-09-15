@@ -97,6 +97,7 @@ ccle_sample_info = data_dir / 'ccle' / 'ccle_sample_info.csv'
 ccle_expression = data_dir / 'ccle' / 'ccle_expression.csv'
 ccle_mutation = data_dir / 'ccle' / 'ccle_mutations_maf.csv'
 ccle_mutation_binary = data_dir / 'ccle' / 'ccle_mutations_binary.csv'
+cell_line_drug_response = data_dir / 'ccle' / 'drug_response'
 
 # parameters for CCLE experiments
 ccle_filter_count = 5
