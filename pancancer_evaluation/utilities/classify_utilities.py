@@ -866,9 +866,9 @@ def shuffle_by_cancer_type(y_df, seed):
     y_copy_df = y_df.copy()
     with temp_seed(seed):
         for cancer_type in y_copy_df.DISEASE.unique():
-            is_cancer_type = (y_copy_df.DISEASE == cancer_type)
-            y_copy_df.loc[is_cancer_type, 'status'] = (
-                np.random.permutation(y_copy_df.loc[is_cancer_type, 'status'].values)
+            cancer_type_indices = (y_copy_df.DISEASE == cancer_type)
+            y_copy_df.loc[cancer_type_indices, 'status'] = (
+                np.random.permutation(y_copy_df.loc[cancer_type_indices, 'status'].values)
             )
     return y_copy_df.status.values
 
