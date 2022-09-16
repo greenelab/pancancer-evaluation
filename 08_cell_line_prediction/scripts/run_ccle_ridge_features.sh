@@ -39,6 +39,7 @@ for num_feats in 100 250 500 1000 5000; do
                 cmd+="--num_features $num_feats "
                 cmd+="--mad_preselect $MAD_PRESELECT "
                 cmd+="--training_samples single_cancer "
+                cmd+="--ridge "
                 cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_single_cancer.txt"
                 echo "Running: $cmd"
                 eval $cmd
@@ -51,6 +52,7 @@ for num_feats in 100 250 500 1000 5000; do
                 cmd+="--num_features $num_feats "
                 cmd+="--mad_preselect $MAD_PRESELECT "
                 cmd+="--training_samples pancancer "
+                cmd+="--ridge "
                 cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_pancancer.txt"
                 echo "Running: $cmd"
                 eval $cmd
@@ -63,6 +65,7 @@ for num_feats in 100 250 500 1000 5000; do
                 cmd+="--num_features $num_feats "
                 cmd+="--mad_preselect $MAD_PRESELECT "
                 cmd+="--training_samples all_other_cancers "
+                cmd+="--ridge "
                 cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_all_other_cancers.txt"
                 echo "Running: $cmd"
                 eval $cmd
