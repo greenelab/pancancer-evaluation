@@ -6,11 +6,12 @@ https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_u
 """
 import contextlib
 import warnings
+from functools import partial
 
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
@@ -180,6 +181,7 @@ def run_cv_cancer_type(data_model,
                        training_data,
                        shuffle_labels,
                        stratify_label=False,
+                       ridge=False,
                        use_coral=False,
                        coral_lambda=1.0,
                        coral_by_cancer_type=False,
@@ -201,6 +203,7 @@ def run_cv_cancer_type(data_model,
     training_data (str): 'single_cancer', 'pancancer', 'all_other_cancers'
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
     stratify_label (bool): whether or not to stratify CV folds by label
+    ridge (bool): use ridge regression rather than elastic net
 
     TODO: what class variables does data_model need to have? should document
     """
@@ -251,12 +254,23 @@ def run_cv_cancer_type(data_model,
         y_test_df = data_model.y_df.reindex(X_test_raw_df.index)
 
         if shuffle_labels:
-            # we set a temp seed here to make sure this shuffling order
-            # is the same for each gene between data types, otherwise
-            # it might be slightly different depending on the global state
-            with temp_seed(data_model.seed):
-                y_train_df.status = np.random.permutation(y_train_df.status.values)
-                y_test_df.status = np.random.permutation(y_test_df.status.values)
+            if cfg.shuffle_by_cancer_type:
+                # in this case we want to shuffle labels independently for each cancer type
+                # (i.e. preserve the total number of mutated samples in each)
+                original_ones = y_train_df.groupby('DISEASE').sum()['status']
+                y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
+                y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
+                new_ones = y_train_df.groupby('DISEASE').sum()['status']
+                # number of mutated samples per cancer type should be the same before
+                # and after shuffling
+                assert original_ones.equals(new_ones) 
+            else:
+                # we set a temp seed here to make sure this shuffling order
+                # is the same for each gene between data types, otherwise
+                # it might be slightly different depending on the global state
+                with temp_seed(data_model.seed):
+                    y_train_df.status = np.random.permutation(y_train_df.status.values)
+                    y_test_df.status = np.random.permutation(y_test_df.status.values)
 
         X_train_df, X_test_df = tu.preprocess_data(
             X_train_raw_df,
@@ -279,12 +293,12 @@ def run_cv_cancer_type(data_model,
             # also ignore warnings here, same deal as above
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                model_results = train_model(
+                # set the hyperparameters
+                train_model_params = apply_model_params(train_model, ridge)
+                model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,
                     y_train=y_train_df,
-                    alphas=cfg.alphas,
-                    l1_ratios=cfg.l1_ratios,
                     seed=data_model.seed,
                     n_folds=cfg.folds,
                     max_iter=cfg.max_iter
@@ -454,9 +468,18 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
     return results
 
 
-def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, max_iter=1000):
+def train_model(X_train,
+                X_test,
+                y_train,
+                seed,
+                ridge=False,
+                alphas=None,
+                l1_ratios=None,
+                c_values=None,
+                n_folds=5,
+                max_iter=1000):
     """
-    Build the logic and sklearn pipelines to train x matrix based on input y
+    Train a linear (logistic regression) classifier
 
     Arguments
     ---------
@@ -473,27 +496,48 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
     The full pipeline sklearn object and y matrix predictions for training, testing,
     and cross validation
     """
-    # Setup the classifier parameters
-    clf_parameters = {
-        "classify__penalty": ["elasticnet"],
-        "classify__alpha": alphas,
-        "classify__l1_ratio": l1_ratios,
-    }
-
-    estimator = Pipeline(
-        steps=[
-            (
-                "classify",
-                SGDClassifier(
-                    random_state=seed,
-                    class_weight="balanced",
-                    loss="log_loss",
-                    max_iter=max_iter,
-                    tol=1e-3,
-                ),
-            )
-        ]
-    )
+    if ridge:
+        assert c_values is not None
+        clf_parameters = {
+            "classify__C": [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
+        }
+        estimator = Pipeline(
+            steps=[
+                (
+                    "classify",
+                    LogisticRegression(
+                        random_state=seed,
+                        class_weight='balanced',
+                        penalty='l2',
+                        solver='lbfgs',
+                        max_iter=max_iter,
+                        tol=1e-3,
+                    ),
+                )
+            ]
+        )
+    else:
+        assert alphas is not None
+        assert l1_ratios is not None
+        clf_parameters = {
+            "classify__penalty": ["elasticnet"],
+            "classify__alpha": alphas,
+            "classify__l1_ratio": l1_ratios,
+        }
+        estimator = Pipeline(
+            steps=[
+                (
+                    "classify",
+                    SGDClassifier(
+                        random_state=seed,
+                        class_weight="balanced",
+                        loss="log_loss",
+                        max_iter=max_iter,
+                        tol=1e-3,
+                    ),
+                )
+            ]
+        )
 
     cv_pipeline = GridSearchCV(
         estimator=estimator,
@@ -502,7 +546,6 @@ def train_model(X_train, X_test, y_train, alphas, l1_ratios, seed, n_folds=5, ma
         cv=n_folds,
         scoring='average_precision',
         return_train_score=True,
-        # iid=False
     )
 
     # Fit the model
@@ -817,6 +860,33 @@ def generate_param_grid(cv_results, fold_no=-1):
     columns.append('mean_test_score')
 
     return pd.DataFrame(np.array(results_grid).T, columns=columns)
+
+
+def shuffle_by_cancer_type(y_df, seed):
+    y_copy_df = y_df.copy()
+    with temp_seed(seed):
+        for cancer_type in y_copy_df.DISEASE.unique():
+            cancer_type_indices = (y_copy_df.DISEASE == cancer_type)
+            y_copy_df.loc[cancer_type_indices, 'status'] = (
+                np.random.permutation(y_copy_df.loc[cancer_type_indices, 'status'].values)
+            )
+    return y_copy_df.status.values
+
+
+def apply_model_params(train_model, ridge=False):
+    """Pass hyperparameters to model, based on which model we want to fit."""
+    if ridge:
+        return partial(
+            train_model,
+            ridge=ridge,
+            c_values=cfg.ridge_c_values
+        )
+    else:
+        return partial(
+            train_model,
+            alphas=cfg.alphas,
+            l1_ratios=cfg.l1_ratios
+        )
 
 
 @contextlib.contextmanager

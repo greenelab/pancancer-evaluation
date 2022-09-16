@@ -55,7 +55,7 @@ class CCLEDataModel():
                               gene,
                               classification,
                               gene_dir,
-                              use_pancancer=False):
+                              add_cancertype_covariate=False):
         """
         Prepare to run cancer type experiments for a given gene.
 
@@ -68,14 +68,15 @@ class CCLEDataModel():
         classification (str): 'oncogene' or 'TSG'; most likely cancer function for
                               the given gene
         gene_dir (str): directory to write output to, if None don't write output
-        use_pancancer (bool): whether or not to use pancancer data
+        add_cancertype_covariate (bool): whether or not to include cancer type
+                                         covariate in feature matrix
         """
         y_df_raw = self._generate_labels(gene, classification, gene_dir)
 
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
-            use_pancancer
+            add_cancertype_covariate
         )
         rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
 
@@ -130,11 +131,11 @@ class CCLEDataModel():
         )
         return y_df
 
-    def _filter_data_for_gene(self, rnaseq_df, y_df, use_pancancer):
+    def _filter_data_for_gene(self, rnaseq_df, y_df, add_cancertype_covariate):
         use_samples, rnaseq_df, y_df, gene_features = align_matrices(
             x_file_or_df=rnaseq_df,
             y=y_df,
-            add_cancertype_covariate=use_pancancer,
+            add_cancertype_covariate=add_cancertype_covariate,
             add_mutation_covariate=False
         )
         return rnaseq_df, y_df, gene_features

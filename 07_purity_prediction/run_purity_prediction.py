@@ -25,9 +25,6 @@ import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
-    p.add_argument('--all_other_cancers', action='store_true',
-                   help='if included, omit test cancer type data from training '
-                        'set for pancancer experiments')
     p.add_argument('--classify', action='store_true')
     p.add_argument('--feature_selection',
                    choices=['mad', 'pancan_f_test', 'median_f_test', 'random'],
@@ -52,6 +49,10 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--training_samples',
+                   choices=['single_cancer', 'pancancer', 'all_other_cancers'],
+                   default='single_cancer',
+                   help='set of samples to train model on')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -89,7 +90,7 @@ if __name__ == '__main__':
     log_columns = [
         'gene',
         'cancer_type',
-        'use_pancancer',
+        'training_samples',
         'shuffle_labels',
         'skip_reason'
     ]
@@ -106,26 +107,18 @@ if __name__ == '__main__':
                               seed=args.seed,
                               verbose=args.verbose)
 
-    # we want to run purity prediction experiments:
-    # - for all combinations of use_pancancer and shuffle_labels
-    #   (shuffled labels acts as our lower baseline)
-    # - for all cancer types in the given holdout cancer types
-    for use_pancancer, shuffle_labels in it.product((False, True), repeat=2):
+    for shuffle_labels in (False, True):
 
-        # TODO document
-        if use_pancancer and args.all_other_cancers:
-            training_data = 'all_other_cancers'
-        elif use_pancancer:
-            training_data = 'pancancer'
-        else:
-            training_data = 'single_cancer'
-
-        print('use_pancancer: {}, shuffle_labels: {}'.format(
-            use_pancancer, shuffle_labels))
+        print('training_samples: {}, shuffle_labels: {}'.format(
+              args.training_samples, shuffle_labels))
 
         output_dir = fu.make_output_dir(args.results_dir, training_data)
 
-        tcga_data.process_purity_data(output_dir, classify=args.classify)
+        tcga_data.process_purity_data(
+            output_dir,
+            classify=args.classify,
+            add_cancertype_covariate=(args.training_samples == 'pancancer')
+        )
 
         progress = tqdm(args.holdout_cancer_types,
                         ncols=100,
@@ -151,7 +144,7 @@ if __name__ == '__main__':
                                              cancer_type,
                                              sample_info_df,
                                              args.num_folds,
-                                             training_data,
+                                             args.training_samples,
                                              shuffle_labels)
             except ResultsFileExistsError:
                 if args.verbose:
@@ -160,7 +153,7 @@ if __name__ == '__main__':
                           file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(
                     log_columns,
-                    [cancer_type, use_pancancer, shuffle_labels, 'file_exists']
+                    [cancer_type, args.training_samples, shuffle_labels, 'file_exists']
                 )
             except NoTrainSamplesError:
                 if args.verbose:
@@ -169,7 +162,7 @@ if __name__ == '__main__':
                           file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(
                     log_columns,
-                    [cancer_type, use_pancancer, shuffle_labels, 'no_train_samples']
+                    [cancer_type, args.training_samples, shuffle_labels, 'no_train_samples']
                 )
             except NoTestSamplesError:
                 if args.verbose:
@@ -178,7 +171,7 @@ if __name__ == '__main__':
                           file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(
                     log_columns,
-                    [cancer_type, use_pancancer, shuffle_labels, 'no_test_samples']
+                    [cancer_type, args.training_samples, shuffle_labels, 'no_test_samples']
                 )
             else:
                 # only save results if no exceptions

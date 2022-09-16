@@ -23,12 +23,14 @@ test_cancer_type_results = str(test_data_dir / 'cancer_type_results_{}_{}.tsv')
 num_features_raw = 8000
 
 # hyperparameters for classification experiments
+shuffle_by_cancer_type = True
 filter_prop = 0.05
 filter_count = 15
 folds = 3
 max_iter = 200
 alphas = [1e-4, 0.001, 0.01, 0.1, 1, 10]
 l1_ratios = [0.0, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
+ridge_c_values = [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
 
 # default seed for random number generator
 default_seed = 42
