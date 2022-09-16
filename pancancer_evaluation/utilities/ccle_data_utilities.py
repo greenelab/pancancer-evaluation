@@ -2,6 +2,7 @@
 Functions for reading and processing CCLE input data
 
 """
+import glob
 import os
 import sys
 from pathlib import Path
@@ -55,3 +56,13 @@ def load_mutation_data(verbose=False):
 
 def get_cancer_types(sample_info_df):
     return list(np.unique(sample_info_df.cancer_type))
+
+def get_drugs_with_response(response_dir):
+    raw_response_dir = response_dir / 'raw_response'
+    # filenames have the format 'GDSC_response.{drug_name}.tsv'
+    # TODO: what to do about EGFRi? just skip it for now
+    return [
+        os.path.basename(fname).split('.')[1] for fname in glob.glob(
+            str(raw_response_dir / 'GDSC_response.*.tsv')
+        ) if 'EGFRi' not in fname
+    ]
