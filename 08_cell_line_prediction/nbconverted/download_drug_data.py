@@ -9,9 +9,11 @@
 # In[1]:
 
 
+import glob
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -28,7 +30,7 @@ import pancancer_evaluation.config as cfg
 drug_name = 'EGFRi'
 
 # where to save plots
-output_plots = True
+output_plots = False
 output_plots_dir = (
     cfg.repo_root / '08_cell_line_prediction' / 'drug_response_dists'
 )
@@ -59,9 +61,57 @@ else:
     print('Downloaded response data from MOLI paper already exists, skipping download')
 
 
-# ### Load CCLE sample info
+# ### Merge drug response files into binary matrix
 
 # In[4]:
+
+
+drug_labels = {}
+all_index = None
+for fname in glob.glob(str(decompress_dir / 'GDSC_response.*.tsv')):
+    print(fname, file=sys.stderr)
+    # skip combined EGFRi data for now
+    # we want to look at the drugs independently
+    if 'EGFRi' in fname:
+        continue
+    drug_df = pd.read_csv(fname, sep='\t', index_col=0)
+    drug_df.index.name = 'COSMICID'
+    drug_name = os.path.basename(fname).split('.')[1]
+    if 'drug' in drug_df.columns:
+        assert drug_df.drug.unique().shape[0] == 1
+    # 0 = resistant, 1 = sensitive
+    drug_labels[drug_name] = (drug_df.response
+        .replace(to_replace='R', value='0')
+        .replace(to_replace='S', value='1')
+    )
+    # make sure everything was labeled
+    assert set(drug_labels[drug_name].unique()).issubset(set(['0', '1', np.nan]))
+    # get union of all indexes
+    if all_index is None:
+        all_index = drug_labels[drug_name].index
+    else:
+        all_index = all_index.union(drug_labels[drug_name].index)
+        
+# reindex all response series with union of indexes
+drug_labels = {
+    n: s.reindex(all_index) for n, s in drug_labels.items()
+}
+# convert to matrix
+drugs_df = pd.DataFrame(drug_labels, index=all_index)
+
+print(drugs_df.shape)
+drugs_df.head()
+
+
+# In[5]:
+
+
+drugs_df.to_csv(cfg.cell_line_drug_response_matrix, sep='\t')
+
+
+# ### Load CCLE sample info
+
+# In[6]:
 
 
 ccle_sample_info_df = pd.read_csv(cfg.ccle_sample_info, sep=',', index_col=0)
@@ -69,20 +119,20 @@ ccle_expression_samples_df = pd.read_csv(cfg.ccle_expression, sep=',',
                                          index_col=0, usecols=[0])
 
 
-# In[5]:
+# In[7]:
 
 
 print(ccle_sample_info_df.columns)
 ccle_sample_info_df.iloc[:5, :5]
 
 
-# In[6]:
+# In[8]:
 
 
 ccle_expression_samples_df.head()
 
 
-# In[7]:
+# In[9]:
 
 
 ccle_samples = ccle_expression_samples_df.index.intersection(ccle_sample_info_df.index)
@@ -97,7 +147,7 @@ print(ccle_samples.shape,ccle_to_cosmic_id.shape)
 ccle_to_cosmic_id[:5]
 
 
-# In[8]:
+# In[10]:
 
 
 ccle_cancer_types = (ccle_sample_info_df
@@ -114,7 +164,7 @@ ccle_cancer_types.head()
 
 # ### Check distribution of labeled samples across cancer types
 
-# In[9]:
+# In[11]:
 
 
 drug_response_df = pd.read_csv(
@@ -125,7 +175,7 @@ print(drug_response_df.shape)
 drug_response_df.head()
 
 
-# In[10]:
+# In[12]:
 
 
 ccle_drug_label_overlap = (
@@ -137,7 +187,7 @@ print(len(ccle_drug_label_overlap))
 print(list(ccle_drug_label_overlap)[:5])
 
 
-# In[11]:
+# In[13]:
 
 
 ccle_label_cancer_types = (ccle_sample_info_df
@@ -158,7 +208,7 @@ ccle_label_cancer_types['labeled_proportion'] = (
 ccle_label_cancer_types.head()
 
 
-# In[12]:
+# In[14]:
 
 
 sns.set({'figure.figsize': (18, 10)})

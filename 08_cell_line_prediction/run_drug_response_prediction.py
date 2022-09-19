@@ -88,7 +88,6 @@ def process_args():
     if args.log_file is None:
         args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
 
-    print(args.drugs)
     return args, sample_info_df
 
 
@@ -96,4 +95,33 @@ if __name__ == '__main__':
 
     # process command line arguments
     args, sample_info_df = process_args()
+
+    # create results dir if it doesn't exist
+    args.results_dir.mkdir(parents=True, exist_ok=True)
+
+    # create empty log file if it doesn't exist
+    log_columns = [
+        'gene',
+        'cancer_type',
+        'training_samples',
+        'shuffle_labels',
+        'skip_reason'
+    ]
+    if args.log_file.exists() and args.log_file.is_file():
+        log_df = pd.read_csv(args.log_file, sep='\t')
+    else:
+        log_df = pd.DataFrame(columns=log_columns)
+        log_df.to_csv(args.log_file, sep='\t')
+
+    ccle_data = CCLEDataModel(sample_info=sample_info_df,
+                              labels='drug',
+                              feature_selection=args.feature_selection,
+                              num_features=args.num_features,
+                              mad_preselect=args.mad_preselect,
+                              seed=args.seed,
+                              verbose=args.verbose)
+    print(ccle_data.rnaseq_df.shape, ccle_data.drugs_df.shape)
+    print(ccle_data.rnaseq_df.iloc[:5, :5])
+    print(ccle_data.drugs_df.head())
+    exit()
 

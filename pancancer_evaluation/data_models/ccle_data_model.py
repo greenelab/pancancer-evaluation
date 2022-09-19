@@ -23,6 +23,7 @@ class CCLEDataModel():
 
     def __init__(self,
                  sample_info=None,
+                 labels='mutation',
                  seed=cfg.default_seed,
                  feature_selection='mad',
                  num_features=-1,
@@ -33,6 +34,7 @@ class CCLEDataModel():
 
         Arguments
         ---------
+        labels (str): label set to load, 'mutation' or 'drug'
         seed (int): seed for random number generator
         feature_selection (str): method for feature selection
         num_features (int): how many features to select
@@ -49,7 +51,7 @@ class CCLEDataModel():
         self.verbose = verbose
 
         # load and store data in memory
-        self._load_data(sample_info=sample_info)
+        self._load_data(labels=labels, sample_info=sample_info)
 
     def process_data_for_gene(self,
                               gene,
@@ -71,7 +73,7 @@ class CCLEDataModel():
         add_cancertype_covariate (bool): whether or not to include cancer type
                                          covariate in feature matrix
         """
-        y_df_raw = self._generate_labels(gene, classification, gene_dir)
+        y_df_raw = self._generate_gene_labels(gene, classification, gene_dir)
 
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
@@ -84,7 +86,7 @@ class CCLEDataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
-    def _load_data(self, sample_info=None):
+    def _load_data(self, labels='mutation', sample_info=None):
         """Load and store relevant data.
 
         This data does not vary based on the gene/cancer type being considered
@@ -98,12 +100,16 @@ class CCLEDataModel():
         else:
             self.sample_info_df = sample_info
 
-        self.mutation_df = du.load_mutation_data(verbose=self.verbose)
+        if labels == 'mutation':
+            self.mutation_df = du.load_mutation_data(verbose=self.verbose)
+        elif labels == 'drug':
+            self.drugs_df = du.load_drug_response_data(verbose=self.verbose)
+        else:
+            raise NotImplementedError('labels {} not implemented'.format(labels))
 
-    def _generate_labels(self, gene, classification, gene_dir):
+    def _generate_gene_labels(self, gene, classification, gene_dir):
         # process the y matrix for the given gene or pathway
         y_mutation_df = self.mutation_df.loc[:, gene]
-
 
         # format sample_info_df to work with label processing
         sample_freeze_df = (self.sample_info_df
