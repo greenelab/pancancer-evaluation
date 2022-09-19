@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     # create empty log file if it doesn't exist
     log_columns = [
-        'gene',
+        'drug',
         'cancer_type',
         'training_samples',
         'shuffle_labels',
@@ -120,8 +120,44 @@ if __name__ == '__main__':
                               mad_preselect=args.mad_preselect,
                               seed=args.seed,
                               verbose=args.verbose)
-    print(ccle_data.rnaseq_df.shape, ccle_data.drugs_df.shape)
-    print(ccle_data.rnaseq_df.iloc[:5, :5])
-    print(ccle_data.drugs_df.head())
-    exit()
+
+    for shuffle_labels in (False, True):
+
+        print('training_samples: {}, shuffle_labels: {}'.format(
+              args.training_samples, shuffle_labels))
+
+        outer_progress = tqdm(args.drugs,
+                              total=len(args.drugs),
+                              ncols=100,
+                              file=sys.stdout)
+
+        for drug in outer_progress:
+            outer_progress.set_description('drug: {}'.format(drug))
+            try:
+                drug_dir = fu.make_gene_dir(args.results_dir,
+                                            drug,
+                                            dirname=args.training_samples)
+                # only add a cancer type covariate if we're training using pan-cancer data
+                is_pancancer = (args.training_samples == 'pancancer')
+                ccle_data.process_data_for_drug(
+                    drug,
+                    drug_dir,
+                    add_cancertype_covariate=is_pancancer
+                )
+            except KeyError:
+                # this might happen if the given drug isn't in the dataset
+                print('Drug {} not found in mutation data, skipping'.format(drug),
+                      file=sys.stderr)
+                cancer_type_log_df = fu.generate_log_df(
+                    log_columns,
+                    [drug, args.training_samples, True, shuffle_labels, 'drug_not_found']
+                )
+                fu.write_log_file(cancer_type_log_df, args.log_file)
+                continue
+
+            print(ccle_data.X_df.shape, ccle_data.y_df.shape)
+            print(ccle_data.X_df.iloc[:5, :5])
+            print(ccle_data.y_df.head())
+            print(ccle_data.y_df.DISEASE.unique())
+            exit()
 
