@@ -133,11 +133,13 @@ if __name__ == '__main__':
                 gene_dir = fu.make_gene_dir(args.results_dir,
                                             gene,
                                             dirname=args.training_samples)
+                # only add a cancer type covariate if we're training using pan-cancer data
+                is_pancancer = (args.training_samples == 'pancancer')
                 ccle_data.process_data_for_gene(
                     gene,
                     classification,
                     gene_dir,
-                    add_cancertype_covariate=(args.training_samples == 'pancancer')
+                    add_cancertype_covariate=is_pancancer
                 )
             except KeyError:
                 # this might happen if the given gene isn't in the mutation data
