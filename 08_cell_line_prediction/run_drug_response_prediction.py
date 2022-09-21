@@ -59,6 +59,9 @@ def process_args():
                    choices=['single_cancer', 'pancancer', 'all_other_cancers'],
                    default='single_cancer',
                    help='set of samples to train model on')
+    p.add_argument('--use_all_cancer_types', action='store_true',
+                   help='train on all cancer types, default is to filter '
+                        'cancer types by proportion mutated')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -139,10 +142,12 @@ if __name__ == '__main__':
                                             dirname=args.training_samples)
                 # only add a cancer type covariate if we're training using pan-cancer data
                 is_pancancer = (args.training_samples == 'pancancer')
+                filter_train = (not args.use_all_cancer_types)
                 ccle_data.process_data_for_drug(
                     drug,
                     drug_dir,
-                    add_cancertype_covariate=is_pancancer
+                    add_cancertype_covariate=is_pancancer,
+                    filter_train=filter_train
                 )
             except KeyError:
                 # this might happen if the given drug isn't in the dataset
@@ -155,9 +160,83 @@ if __name__ == '__main__':
                 fu.write_log_file(cancer_type_log_df, args.log_file)
                 continue
 
-            print(ccle_data.X_df.shape, ccle_data.y_df.shape)
-            print(ccle_data.X_df.iloc[:5, :5])
-            print(ccle_data.y_df.head())
-            print(ccle_data.y_df.DISEASE.unique())
-            exit()
+            inner_progress = tqdm(args.holdout_cancer_types,
+                                  ncols=100,
+                                  file=sys.stdout)
+
+            for cancer_type in inner_progress:
+
+                inner_progress.set_description('cancer type: {}'.format(cancer_type))
+                cancer_type_log_df = None
+
+                try:
+                    check_file = fu.check_cancer_type_file(drug_dir,
+                                                           drug,
+                                                           cancer_type,
+                                                           shuffle_labels,
+                                                           args.seed,
+                                                           args.feature_selection,
+                                                           args.num_features)
+                    # we're working with pretty small sample sizes for the cell
+                    # line data, so we stratify by label across CV folds here
+                    # to make sure proportions aren't too imbalanced
+                    results = run_cv_cancer_type(ccle_data,
+                                                 drug,
+                                                 cancer_type,
+                                                 sample_info_df,
+                                                 args.num_folds,
+                                                 args.training_samples,
+                                                 shuffle_labels,
+                                                 stratify_label=True,
+                                                 ridge=args.ridge)
+                except ResultsFileExistsError:
+                    if args.verbose:
+                        print('Skipping because results file exists already: '
+                              'drug {}, cancer type {}'.format(drug, cancer_type),
+                              file=sys.stderr)
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [drug, cancer_type, args.training_samples, shuffle_labels, 'file_exists']
+                    )
+                except NoTrainSamplesError:
+                    if args.verbose:
+                        print('Skipping due to no train samples: drug {}, '
+                              'cancer type {}'.format(drug, cancer_type),
+                              file=sys.stderr)
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [drug, cancer_type, args.training_samples, shuffle_labels, 'no_train_samples']
+                    )
+                except NoTestSamplesError:
+                    if args.verbose:
+                        print('Skipping due to no test samples: drug {}, '
+                              'cancer type {}'.format(drug, cancer_type),
+                              file=sys.stderr)
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [drug, cancer_type, args.training_samples, shuffle_labels, 'no_test_samples']
+                    )
+                except OneClassError:
+                    if args.verbose:
+                        print('Skipping due to one holdout class: drug {}, '
+                              'cancer type {}'.format(drug, cancer_type),
+                              file=sys.stderr)
+                    cancer_type_log_df = fu.generate_log_df(
+                        log_columns,
+                        [drug, cancer_type, args.training_samples, shuffle_labels, 'one_class']
+                    )
+                else:
+                    # only save results if no exceptions
+                    fu.save_results_cancer_type(drug_dir,
+                                                check_file,
+                                                results,
+                                                drug,
+                                                cancer_type,
+                                                shuffle_labels,
+                                                args.seed,
+                                                args.feature_selection,
+                                                args.num_features)
+
+                if cancer_type_log_df is not None:
+                    fu.write_log_file(cancer_type_log_df, args.log_file)
 

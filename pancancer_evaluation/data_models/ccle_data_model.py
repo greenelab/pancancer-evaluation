@@ -90,7 +90,8 @@ class CCLEDataModel():
     def process_data_for_drug(self,
                               drug,
                               drug_dir,
-                              add_cancertype_covariate=False):
+                              add_cancertype_covariate=False,
+                              filter_train=True):
         """
         Prepare to run cancer type response prediction experiments for a given drug.
 
@@ -104,7 +105,8 @@ class CCLEDataModel():
         add_cancertype_covariate (bool): whether or not to include cancer type
                                          covariate in feature matrix
         """
-        y_df_raw = self._generate_drug_labels(drug, drug_dir)
+        y_df_raw = self._generate_drug_labels(drug, drug_dir,
+                                              filter_train=filter_train)
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
@@ -167,7 +169,7 @@ class CCLEDataModel():
         )
         return y_df
 
-    def _generate_drug_labels(self, drug, drug_dir):
+    def _generate_drug_labels(self, drug, drug_dir, filter_train=True):
         # get the label vector for the given drug
         y_drug_df = self.drugs_df.loc[:, [drug]]
 
@@ -189,17 +191,19 @@ class CCLEDataModel():
           .set_index("SAMPLE_BARCODE")
           .rename(columns={drug: 'status', 'cancer_type': 'DISEASE'})
         )
-        print(y_drug_df.head())
 
         # filter for cancer types without an extreme label imbalance
         # TODO: intersect with X_df first?
-        return filter_cancer_types(
-            y_drug_df,
-            drug,
-            filter_count=cfg.ccle_filter_count,
-            filter_prop=cfg.ccle_filter_prop,
-            output_directory=drug_dir
-        )
+        if filter_train:
+            return filter_cancer_types(
+                y_drug_df,
+                drug,
+                filter_count=cfg.ccle_filter_count,
+                filter_prop=cfg.ccle_filter_prop,
+                output_directory=drug_dir
+            )
+        else:
+            return y_drug_df
 
     def _filter_data_for_gene(self, rnaseq_df, y_df, add_cancertype_covariate):
         use_samples, rnaseq_df, y_df, gene_features = align_matrices(

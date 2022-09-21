@@ -174,7 +174,7 @@ def evaluate_cross_cancer(data_model,
 
 
 def run_cv_cancer_type(data_model,
-                       gene,
+                       identifier,
                        cancer_type,
                        sample_info,
                        num_folds,
@@ -196,7 +196,7 @@ def run_cv_cancer_type(data_model,
     Arguments
     ---------
     data_model (TCGADataModel): class containing preprocessed train/test data
-    gene (str): gene to run experiments for
+    identifier (str): identifier to run experiments for
     cancer_type (str): cancer type in TCGA to hold out
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
@@ -240,14 +240,14 @@ def run_cv_cancer_type(data_model,
         except ValueError:
           raise NoTestSamplesError(
               'No test samples found for cancer type: {}, '
-              'gene: {}\n'.format(cancer_type, gene)
+              'identifier: {}\n'.format(cancer_type, identifier)
           )
 
         if X_train_raw_df.shape[0] == 0:
             # this might happen in pancancer only case
             raise NoTrainSamplesError(
                 'No train samples found for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
+                'identifier: {}\n'.format(cancer_type, identifier)
             )
 
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
@@ -310,7 +310,7 @@ def run_cv_cancer_type(data_model,
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
+                'identifier: {}\n'.format(cancer_type, identifier)
             )
 
         # get coefficients
@@ -320,7 +320,7 @@ def run_cv_cancer_type(data_model,
             signal=signal,
             seed=data_model.seed
         )
-        coef_df = coef_df.assign(gene=gene)
+        coef_df = coef_df.assign(identifier=identifier)
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
@@ -329,13 +329,13 @@ def run_cv_cancer_type(data_model,
                 warnings.simplefilter("ignore")
                 metric_df, gene_auc_df, gene_aupr_df = get_metrics(
                     y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                    y_pred_test_df, gene, cancer_type, signal,
+                    y_pred_test_df, identifier, cancer_type, signal,
                     data_model.seed, fold_no
                 )
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
+                'identifier: {}\n'.format(cancer_type, identifier)
             )
 
         results['gene_metrics'].append(metric_df)
