@@ -265,7 +265,10 @@ def make_gene_dir(results_dir,
     """Create a directory for the given gene."""
     if add_cancer:
         dirname = 'add_cancer'
-    gene_dir = Path(results_dir, dirname, gene).resolve()
+    if dirname is None:
+        gene_dir = Path(results_dir, gene).resolve()
+    else:
+        gene_dir = Path(results_dir, dirname, gene).resolve()
     gene_dir.mkdir(parents=True, exist_ok=True)
     return gene_dir
 

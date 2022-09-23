@@ -329,10 +329,16 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
     # generate id for stratification
     # this is a concatenation of cancer type and sample/tumor type, since we want
     # to stratify by both
-    sample_info_df = sample_info_df.assign(
-        id_for_stratification = sample_info_df.cancer_type.str.cat(
-                                                sample_info_df.sample_type)
-    )
+    try:
+        sample_info_df = sample_info_df.assign(
+            id_for_stratification = sample_info_df.cancer_type.str.cat(
+                                                    sample_info_df.sample_type)
+        )
+    except AttributeError:
+        sample_info_df = sample_info_df.assign(
+            id_for_stratification = sample_info_df.cancer_type
+        )
+
     # recode stratification id if they are singletons or near-singletons,
     # since these won't work with StratifiedKFold
     stratify_counts = sample_info_df.id_for_stratification.value_counts().to_dict()
