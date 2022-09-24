@@ -518,7 +518,7 @@ class TCGADataModel():
             y_mutation=y_mutation_df,
             y_copy=y_copy_number_df,
             include_copy=include_copy,
-            gene=gene,
+            identifier=gene,
             sample_freeze=self.sample_freeze_df,
             mutation_burden=self.mut_burden_df,
             filter_count=cfg.filter_count,
