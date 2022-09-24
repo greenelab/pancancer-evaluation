@@ -335,6 +335,8 @@ def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
                                                     sample_info_df.sample_type)
         )
     except AttributeError:
+        # if there are no sample_types (i.e. subtypes) just use the cancer type
+        # as the stratification variable
         sample_info_df = sample_info_df.assign(
             id_for_stratification = sample_info_df.cancer_type
         )

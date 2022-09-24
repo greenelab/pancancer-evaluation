@@ -67,7 +67,7 @@ def get_cancer_types(sample_info_df):
 def get_drugs_with_response(response_dir):
     raw_response_dir = response_dir / 'raw_response'
     # filenames have the format 'GDSC_response.{drug_name}.tsv'
-    # TODO: what to do about EGFRi? just skip it for now
+    # just skip EGFRi combined data for now, TODO may handle this case later
     return [
         os.path.basename(fname).split('.')[1] for fname in glob.glob(
             str(raw_response_dir / 'GDSC_response.*.tsv')
