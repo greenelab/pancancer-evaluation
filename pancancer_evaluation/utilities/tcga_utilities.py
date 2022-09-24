@@ -104,8 +104,8 @@ def filter_cancer_types(y_df,
     )
 
     # Filter diseases with low counts or proportions for classification balance
-    filter_disease_df = (disease_counts_df >= filter_count) & (
-        disease_proportion_df >= filter_prop
+    filter_disease_df = (disease_counts_df > filter_count) & (
+        disease_proportion_df > filter_prop
     )
     filter_disease_df.columns = ["disease_included"]
 

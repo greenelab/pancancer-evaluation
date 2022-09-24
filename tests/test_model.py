@@ -32,7 +32,7 @@ def test_stratified_prediction(data_model, gene_info):
     metrics_df = pd.concat(results['gene_metrics'])
     results_file = cfg.test_stratified_results.format(gene)
     old_results = np.loadtxt(results_file)
-    assert np.allclose(metrics_df['auroc'].values, old_results, atol=1e-05)
+    assert np.allclose(metrics_df['auroc'].values, old_results)
 
 
 @pytest.mark.parametrize("gene_info", cfg.cancer_type_gene_info)
@@ -48,5 +48,5 @@ def test_cancer_type_prediction(data_model, gene_info):
     metrics_df = pd.concat(results['gene_metrics'])
     results_file = cfg.test_cancer_type_results.format(gene, cancer_type)
     old_results = np.loadtxt(results_file)
-    assert np.allclose(metrics_df['auroc'].values, old_results, atol=1e-05)
+    assert np.allclose(metrics_df['auroc'].values, old_results)
 
