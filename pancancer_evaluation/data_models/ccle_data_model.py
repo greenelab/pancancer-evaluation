@@ -135,7 +135,9 @@ class CCLEDataModel():
         if labels == 'mutation':
             self.mutation_df = du.load_mutation_data(verbose=self.verbose)
         elif labels == 'drug':
-            self.drugs_df = du.load_drug_response_data(verbose=self.verbose)
+            self.drugs_df, self.egfri_df = (
+                du.load_drug_response_data(verbose=self.verbose)
+            )
         else:
             raise NotImplementedError('labels {} not implemented'.format(labels))
 
@@ -171,7 +173,10 @@ class CCLEDataModel():
 
     def _generate_drug_labels(self, drug, drug_dir, filter_train=True):
         # get the label vector for the given drug
-        y_drug_df = self.drugs_df.loc[:, [drug]]
+        if drug == 'EGFRi':
+            y_drug_df = self.egfri_df
+        else:
+            y_drug_df = self.drugs_df.loc[:, [drug]]
 
         # format sample_info_df to work with label processing
         sample_freeze_df = (self.sample_info_df

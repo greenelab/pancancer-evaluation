@@ -57,7 +57,11 @@ def load_mutation_data(verbose=False):
 def load_drug_response_data(verbose=False):
     if verbose:
         print('Loading CCLE binary drug response data...', file=sys.stderr)
-    return pd.read_csv(cfg.cell_line_drug_response_matrix, sep='\t', index_col='COSMICID')
+    drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix, 
+                           sep='\t', index_col='COSMICID')
+    egfri_df = pd.read_csv(cfg.cell_line_drug_response_egfri, 
+                           sep='\t', index_col='COSMICID')
+    return drugs_df, egfri_df
 
 
 def get_cancer_types(sample_info_df):
@@ -67,9 +71,8 @@ def get_cancer_types(sample_info_df):
 def get_drugs_with_response(response_dir):
     raw_response_dir = response_dir / 'raw_response'
     # filenames have the format 'GDSC_response.{drug_name}.tsv'
-    # just skip EGFRi combined data for now, TODO may handle this case later
     return [
         os.path.basename(fname).split('.')[1] for fname in glob.glob(
             str(raw_response_dir / 'GDSC_response.*.tsv')
-        ) if 'EGFRi' not in fname
+        )
     ]

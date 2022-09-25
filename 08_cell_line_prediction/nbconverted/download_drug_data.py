@@ -155,16 +155,18 @@ for drug in drug_df.drug.unique():
     if all_egfri_df is None:
         all_egfri_df = (drug_specific_df
           .loc[:, ['response']]
+          .rename(columns={'response': 'EGFRi'})
         )
     else:
-        all_egfri_df['response'] += (
+        all_egfri_df['EGFRi'] += (
             drug_specific_df.response
         )
         
-all_egfri_df['response'] = all_egfri_df.response.astype(bool).astype(int)
+all_egfri_df.index.name = 'COSMICID'
+all_egfri_df['EGFRi'] = all_egfri_df.EGFRi.astype(bool).astype(int)
         
 print(all_egfri_df.shape) 
-print(all_egfri_df.response.value_counts())
+print(all_egfri_df.EGFRi.value_counts())
 all_egfri_df.head()
 
 
