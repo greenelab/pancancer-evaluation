@@ -70,7 +70,7 @@ drug_labels = {}
 all_index = None
 for fname in glob.glob(str(decompress_dir / 'GDSC_response.*.tsv')):
     print(fname, file=sys.stderr)
-    # skip combined EGFRi data for now
+    # skip combined EGFRi data for now, we'll deal with it next
     # we want to look at the drugs independently
     if 'EGFRi' in fname:
         continue
@@ -109,9 +109,74 @@ drugs_df.head()
 drugs_df.to_csv(cfg.cell_line_drug_response_matrix, sep='\t')
 
 
+# In[6]:
+
+
+# deal with EGFRi data here
+fname = str(decompress_dir / 'GDSC_response.EGFRi.tsv')
+drug_df = pd.read_csv(fname, sep='\t', index_col=0)
+drug_df.head()
+
+
+# In[7]:
+
+
+# get the list of samples that are assayed for at least one EGFR inhibitor
+all_index = None
+for drug in drug_df.drug.unique():
+    drug_specific_df = drug_df[drug_df.drug == drug]
+    if all_index is None:
+        all_index = drug_specific_df.index
+    else:
+        all_index = all_index.union(drug_specific_df.index)
+    print(drug, drug_specific_df.shape)
+    
+print(all_index.shape)
+
+
+# In[8]:
+
+
+# here we want to get the union of EGFRi-sensitive cell lines
+# in other words, if a cell line is sensitive to any of the EGFR
+# inhibitors, we mark it as sensitive, otherwise resistant
+all_egfri_df = None
+for drug in drug_df.drug.unique():
+    drug_specific_df = (drug_df[drug_df.drug == drug]
+      .reindex(all_index)
+      .fillna(0)
+    )  
+    # 0 = resistant, 1 = sensitive
+    drug_specific_df['response'] = (drug_specific_df.response
+        .replace(to_replace='R', value='0')
+        .replace(to_replace='S', value='1')
+        .astype(int)
+    )
+    if all_egfri_df is None:
+        all_egfri_df = (drug_specific_df
+          .loc[:, ['response']]
+        )
+    else:
+        all_egfri_df['response'] += (
+            drug_specific_df.response
+        )
+        
+all_egfri_df['response'] = all_egfri_df.response.astype(bool).astype(int)
+        
+print(all_egfri_df.shape) 
+print(all_egfri_df.response.value_counts())
+all_egfri_df.head()
+
+
+# In[9]:
+
+
+all_egfri_df.to_csv(cfg.cell_line_drug_response_egfri, sep='\t')
+
+
 # ### Load CCLE sample info
 
-# In[6]:
+# In[10]:
 
 
 ccle_sample_info_df = pd.read_csv(cfg.ccle_sample_info, sep=',', index_col=0)
@@ -119,20 +184,20 @@ ccle_expression_samples_df = pd.read_csv(cfg.ccle_expression, sep=',',
                                          index_col=0, usecols=[0])
 
 
-# In[7]:
+# In[11]:
 
 
 print(ccle_sample_info_df.columns)
 ccle_sample_info_df.iloc[:5, :5]
 
 
-# In[8]:
+# In[12]:
 
 
 ccle_expression_samples_df.head()
 
 
-# In[9]:
+# In[13]:
 
 
 ccle_samples = ccle_expression_samples_df.index.intersection(ccle_sample_info_df.index)
@@ -147,7 +212,7 @@ print(ccle_samples.shape,ccle_to_cosmic_id.shape)
 ccle_to_cosmic_id[:5]
 
 
-# In[10]:
+# In[14]:
 
 
 ccle_cancer_types = (ccle_sample_info_df
@@ -164,7 +229,7 @@ ccle_cancer_types.head()
 
 # ### Check distribution of labeled samples across cancer types
 
-# In[11]:
+# In[15]:
 
 
 drug_response_df = pd.read_csv(
@@ -175,7 +240,7 @@ print(drug_response_df.shape)
 drug_response_df.head()
 
 
-# In[12]:
+# In[16]:
 
 
 ccle_drug_label_overlap = (
@@ -187,7 +252,7 @@ print(len(ccle_drug_label_overlap))
 print(list(ccle_drug_label_overlap)[:5])
 
 
-# In[13]:
+# In[17]:
 
 
 ccle_label_cancer_types = (ccle_sample_info_df
@@ -208,7 +273,7 @@ ccle_label_cancer_types['labeled_proportion'] = (
 ccle_label_cancer_types.head()
 
 
-# In[14]:
+# In[18]:
 
 
 sns.set({'figure.figsize': (18, 10)})

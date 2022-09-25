@@ -101,6 +101,7 @@ ccle_mutation = data_dir / 'ccle' / 'ccle_mutations_maf.csv'
 ccle_mutation_binary = data_dir / 'ccle' / 'ccle_mutations_binary.csv'
 cell_line_drug_response = data_dir / 'ccle' / 'drug_response'
 cell_line_drug_response_matrix = data_dir / 'ccle' / 'ccle_drug_response_binary.tsv'
+cell_line_drug_response_egfri = data_dir / 'ccle' / 'ccle_drug_response_egfri.tsv'
 
 # parameters for CCLE experiments
 ccle_filter_count = 5
