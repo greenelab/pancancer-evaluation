@@ -32,6 +32,7 @@ get_ipython().run_line_magic('autoreload', '2')
 # (with varying feature_selection parameters)
 
 results_dir = os.path.join('results', 'drug_response_stratified')
+# results_dir = os.path.join('results', 'drug_response_stratified_all_cancers')
 
 n_dims = [100, 250, 500, 1000, 5000]
 
@@ -77,7 +78,7 @@ results_df.head()
 sns.set({'figure.figsize': (18, 9)})
 sns.set_context('notebook')
 
-fig, axarr = plt.subplots(2, 3)
+fig, axarr = plt.subplots(3, 3)
 
 n_dims = 1000
 fs_method_order = [
@@ -108,6 +109,30 @@ plt.tight_layout()
 # In[5]:
 
 
+sns.set({'figure.figsize': (18, 9)})
+sns.set_context('notebook')
+
+fig, axarr = plt.subplots(3, 3)
+
+results_df.sort_values(by=['drug', 'fs_method'], inplace=True)
+for ix, drug in enumerate(results_df.drug.unique()):
+    ax = axarr[ix // 3, ix % 3]
+    plot_df = results_df[(results_df.drug == drug) &
+                         (results_df.signal == 'signal') &
+                         (results_df.data_type == 'test')].copy()
+    plot_df.loc[:, 'fs_method'] = plot_df.fs_method.str.split('.', 1, expand=True)[0]
+    sns.pointplot(data=plot_df, x='n_dims', y=metric,
+                  hue='fs_method', hue_order=fs_method_order, ax=ax)
+    ax.set_title(drug)
+    ax.set_xlabel('Number of features selected')
+    ax.set_ylim(0, 1)
+
+plt.tight_layout()
+
+
+# In[6]:
+
+
 # get difference between true and shuffled models, split by
 # feature selection method
 def compare_from_experiment(experiment_df):
@@ -128,7 +153,7 @@ print(compare_df.shape)
 compare_df.head()
 
 
-# In[6]:
+# In[7]:
 
 
 compare_df[['fs_method', 'n_dims']] = compare_df.fs_method.str.split('.', 1, expand=True)
@@ -139,13 +164,13 @@ print(compare_df.n_dims.unique())
 compare_df.head()
 
 
-# In[7]:
+# In[8]:
 
 
 sns.set({'figure.figsize': (18, 9)})
 sns.set_context('notebook')
 
-fig, axarr = plt.subplots(2, 3)
+fig, axarr = plt.subplots(3, 3)
 
 fs_method_order = [
     'mad',
@@ -157,7 +182,7 @@ fs_method_order = [
 for ix, drug in enumerate(compare_df.identifier.unique()):
     ax = axarr[ix // 3, ix % 3]
     plot_df = compare_df[compare_df.identifier == drug]
-    sns.pointplot(data=plot_df, x='n_dims', y='delta_aupr',
+    sns.pointplot(data=plot_df, x='n_dims', y=delta_metric,
                   hue='fs_method', hue_order=fs_method_order, ax=ax)
     ax.set_title(drug)
     ax.set_xlabel('Number of features selected')
