@@ -40,7 +40,7 @@ for num_feats in 100 250 500 1000 5000; do
 
             cmd="python 08_cell_line_prediction/run_drug_response_stratified.py "
             cmd+="--drugs EGFRi "
-            cmd+="--results_dir $RESULTS_DIR_ALL_CANCERS "
+            cmd+="--results_dir $RESULTS_ALL_CANCERS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "
             cmd+="--num_features $num_feats "
