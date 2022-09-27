@@ -55,6 +55,10 @@ def process_args():
     p.add_argument('--ridge', action='store_true',
                    help='use ridge regression rather than default elastic net')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--stratify_by', default='cancer_type',
+                   choices=['cancer_type', 'liquid_or_solid'],
+                   help='note that setting stratify_by to "liquid_or_solid" will '
+                        'override the holdout_cancer_types argument')
     p.add_argument('--training_samples',
                    choices=['single_cancer', 'pancancer', 'all_other_cancers'],
                    default='single_cancer',
@@ -65,9 +69,14 @@ def process_args():
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
-    sample_info_df = du.load_sample_info(args.verbose)
+    sample_info_df = du.load_sample_info(args.verbose, stratify_by=args.stratify_by)
     ccle_cancer_types = du.get_cancer_types(sample_info_df)
-    if args.holdout_cancer_types is None:
+
+    # if we want to stratify by liquid/solid, then those have to be the
+    # held-out cancer types
+    if args.stratify_by == 'liquid_or_solid':
+        args.holdout_cancer_types = ['liquid', 'solid']
+    elif args.holdout_cancer_types is None:
         args.holdout_cancer_types = ccle_cancer_types
     else:
         not_in_ccle = set(args.holdout_cancer_types) - set(ccle_cancer_types)
@@ -78,8 +87,6 @@ def process_args():
     drugs_with_response = du.get_drugs_with_response(cfg.cell_line_drug_response)
     if args.drugs is None:
         args.drugs = drugs_with_response
-    elif 'EGFRi' in args.drugs:
-        raise NotImplementedError('need to figure out EGFRi training')
     else:
         not_in_drugs = set(args.drugs) - set(drugs_with_response)
         if len(not_in_drugs) > 0:
@@ -140,8 +147,12 @@ if __name__ == '__main__':
                 drug_dir = fu.make_gene_dir(args.results_dir,
                                             drug,
                                             dirname=args.training_samples)
-                # only add a cancer type covariate if we're training using pan-cancer data
-                is_pancancer = (args.training_samples == 'pancancer')
+                if args.stratify_by == 'liquid_or_solid':
+                    is_pancancer = (args.training_samples != 'all_other_cancers')
+                else:
+                    # only add a cancer type covariate if we're training
+                    # using pan-cancer data
+                    is_pancancer = (args.training_samples == 'pancancer')
                 filter_train = (not args.use_all_cancer_types)
                 ccle_data.process_data_for_drug(
                     drug,

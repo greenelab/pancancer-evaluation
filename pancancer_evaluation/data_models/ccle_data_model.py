@@ -181,7 +181,7 @@ class CCLEDataModel():
         # format sample_info_df to work with label processing
         sample_freeze_df = (self.sample_info_df
             .copy()
-            .loc[:, ['COSMICID', 'cancer_type']]
+            .loc[:, ['COSMICID', 'cancer_type', 'stratify_by']]
         )
         sample_freeze_df.index.name = 'SAMPLE_BARCODE'
         sample_freeze_df.reset_index(inplace=True)

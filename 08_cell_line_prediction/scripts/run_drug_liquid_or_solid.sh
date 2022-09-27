@@ -3,8 +3,8 @@
 # Run feature selection experiments for prediction of mutation status, with
 # all cancer types held out (either partially or completely)
 
-RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_all
-ERRORS_DIR=./drug_response_binary_all_errors
+RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_liquid_or_solid
+ERRORS_DIR=./drug_response_binary_liquid_or_solid_errors
 
 # number of features to "preselect" to
 # -1 == no preselection
@@ -19,7 +19,7 @@ fs_methods=(
   "random"
 )
 
-drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel"
+drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel EGFRi"
 
 for num_feats in 100 250 500 1000 5000; do
 
@@ -36,6 +36,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--feature_selection $fs_method "
             cmd+="--num_features $num_feats "
             cmd+="--mad_preselect $MAD_PRESELECT "
+            cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples single_cancer "
             cmd+="--ridge "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_single_cancer.txt"
@@ -49,6 +50,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--feature_selection $fs_method "
             cmd+="--num_features $num_feats "
             cmd+="--mad_preselect $MAD_PRESELECT "
+            cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples pancancer "
             cmd+="--ridge "
             cmd+="--use_all_cancer_types "
@@ -63,6 +65,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--feature_selection $fs_method "
             cmd+="--num_features $num_feats "
             cmd+="--mad_preselect $MAD_PRESELECT "
+            cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples all_other_cancers "
             cmd+="--ridge "
             cmd+="--use_all_cancer_types "
