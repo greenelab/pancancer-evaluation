@@ -27,7 +27,7 @@ import pancancer_evaluation.config as cfg
 # drug to visualize sample proportions for
 # valid drugs: 5-Fluorouracil, Afatinib, Bortezomib, Cetuximab, Cisplatin, Docetaxel,
 # EGFRi, Erlotinib, Gefitinib, Gemcitabine, Lapatinib, Paclitaxel, Tamoxifen
-drug_to_plot = 'Paclitaxel'
+drug_to_plot = 'EGFRi'
 
 # where to save plots
 output_plots = False
@@ -234,9 +234,21 @@ ccle_cancer_types.head()
 # In[15]:
 
 
-drug_response_df = pd.read_csv(
-    decompress_dir / 'GDSC_response.{}.tsv'.format(drug_to_plot), sep='\t'
-)
+if drug_to_plot == 'EGFRi':
+    drug_response_df = (all_egfri_df
+        .reset_index()
+        .rename(columns={'COSMICID': 'sample_name', 'EGFRi': 'response'})
+    )
+    drug_response_df['response'] = (drug_response_df.response
+        .replace(to_replace='0', value='R')
+        .replace(to_replace='1', value='S')
+        .astype(str)
+    )
+    drug_response_df['drug'] = 'EGFRi'
+else:
+    drug_response_df = pd.read_csv(
+        decompress_dir / 'GDSC_response.{}.tsv'.format(drug_to_plot), sep='\t'
+    )
 
 print(drug_response_df.shape)
 drug_response_df.head()
@@ -417,7 +429,7 @@ ccle_sensitive_cancer_types['liquid_or_solid'] = (
 ccle_sensitive_cancer_types[ccle_sensitive_cancer_types.liquid_or_solid == 'liquid'].head()
 
 
-# In[34]:
+# In[25]:
 
 
 ccle_sensitive_liquid_solid = (ccle_sensitive_cancer_types
@@ -437,7 +449,7 @@ ccle_sensitive_liquid_solid = (ccle_sensitive_liquid_solid
 ccle_sensitive_liquid_solid.head()
 
 
-# In[38]:
+# In[26]:
 
 
 sns.set({'figure.figsize': (11, 6)})
@@ -450,10 +462,4 @@ plt.title('Number of {} sensitive and resistant liquid/solid cancer-derived cell
 if output_plots:
     plt.savefig(output_plots_dir / '{}_liquid_solid_dist.png'.format(drug_to_plot),
                 dpi=200, bbox_inches='tight')
-
-
-# In[ ]:
-
-
-
 
