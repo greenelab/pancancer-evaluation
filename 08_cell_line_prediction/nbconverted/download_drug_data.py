@@ -308,3 +308,102 @@ if output_plots:
     plt.savefig(output_plots_dir / '{}_dist.png'.format(drug_name),
                 dpi=200, bbox_inches='tight')
 
+
+# ### Check distribution of sensitive/resistant samples across cancer types
+
+# In[79]:
+
+
+drug_response_df['response'] = (drug_response_df.response
+    .replace(to_replace='R', value='0')
+    .replace(to_replace='S', value='1')
+    .astype(int)
+)
+print(drug_response_df.shape)
+drug_response_df.head()
+
+
+# In[80]:
+
+
+drug_cancer_types = (ccle_sample_info_df
+    .loc[:, ['COSMICID', 'primary_disease']]
+    .dropna()
+)
+drug_cancer_types['COSMICID'] = drug_cancer_types.COSMICID.astype(int)
+
+print(drug_cancer_types.shape)
+drug_cancer_types.head()
+
+
+# In[81]:
+
+
+ccle_sensitive_cancer_types = (drug_response_df
+    .merge(drug_cancer_types, left_on='sample_name', right_on='COSMICID')
+    .loc[:, ['sample_name', 'response', 'COSMICID', 'drug', 'primary_disease']]
+    .groupby('primary_disease')
+    .sum()
+    .reset_index()
+    .iloc[:, [0, 2]]
+    .rename(columns={'response': 'sensitive_count'})
+)
+
+print(ccle_sensitive_cancer_types.shape)
+ccle_sensitive_cancer_types.head()
+
+
+# In[82]:
+
+
+ccle_sensitive_cancer_types = (ccle_sensitive_cancer_types
+    .merge(ccle_label_cancer_types, how='right', on='primary_disease')
+    .fillna(value=0)
+)
+ccle_sensitive_cancer_types['sensitive_proportion'] = (
+    ccle_sensitive_cancer_types['sensitive_count'] / ccle_sensitive_cancer_types['labeled_count']
+)
+
+print(ccle_sensitive_cancer_types.shape)
+ccle_sensitive_cancer_types.head()
+
+
+# In[84]:
+
+
+sns.set({'figure.figsize': (18, 10)})
+fig, axarr = plt.subplots(2, 1)
+
+sns.barplot(data=ccle_sensitive_cancer_types, x='primary_disease',
+            y='sensitive_count', ax=axarr[0])
+axarr[0].set_xticklabels(axarr[0].get_xticklabels(), rotation=90)
+axarr[0].set_xlabel('')
+axarr[0].set_ylabel('Count')
+axarr[0].set_title(
+    'Number of {} sensitive cell lines across cancer types/tissues'.format(
+        drug_name)
+)
+
+sns.barplot(data=ccle_sensitive_cancer_types[~ccle_sensitive_cancer_types.sensitive_proportion.isna()],
+            x='primary_disease', y='sensitive_proportion', ax=axarr[1])
+axarr[1].set_xticklabels(axarr[1].get_xticklabels(), rotation=90)
+axarr[1].set_xlabel('Cancer type')
+axarr[1].set_ylabel('Proportion')
+axarr[1].set_ylim(0.0, 1.0)
+axarr[1].set_title(
+    'Proportion of {} sensitive to {} resistant labeled cell lines across cancer types/tissues'.format(
+        drug_name, drug_name)
+)
+
+plt.tight_layout()
+
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_sensitive_dist.png'.format(drug_name),
+                dpi=200, bbox_inches='tight')
+
+
+# In[ ]:
+
+
+
+
