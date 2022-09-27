@@ -27,10 +27,10 @@ import pancancer_evaluation.config as cfg
 # drug to visualize sample proportions for
 # valid drugs: 5-Fluorouracil, Afatinib, Bortezomib, Cetuximab, Cisplatin, Docetaxel,
 # EGFRi, Erlotinib, Gefitinib, Gemcitabine, Lapatinib, Paclitaxel, Tamoxifen
-drug_to_plot = 'EGFRi'
+drug_to_plot = 'Trametinib_2'
 
 # where to save plots
-output_plots = False
+output_plots = True
 output_plots_dir = (
     cfg.repo_root / '08_cell_line_prediction' / 'drug_response_dists'
 )
@@ -231,7 +231,7 @@ ccle_cancer_types.head()
 
 # ### Check distribution of labeled samples across cancer types
 
-# In[15]:
+# In[28]:
 
 
 if drug_to_plot == 'EGFRi':
@@ -249,12 +249,18 @@ else:
     drug_response_df = pd.read_csv(
         decompress_dir / 'GDSC_response.{}.tsv'.format(drug_to_plot), sep='\t'
     )
+    if 'Trametinib' in drug_to_plot:
+        drug_response_df = (drug_response_df
+            .rename(columns={'cell_line': 'sample_name'})
+            .dropna(subset=['response'])
+        )
+        drug_response_df['drug'] = 'Trametinib'
 
 print(drug_response_df.shape)
 drug_response_df.head()
 
 
-# In[16]:
+# In[29]:
 
 
 ccle_drug_label_overlap = (
@@ -266,7 +272,7 @@ print(len(ccle_drug_label_overlap))
 print(list(ccle_drug_label_overlap)[:5])
 
 
-# In[17]:
+# In[30]:
 
 
 ccle_label_cancer_types = (ccle_sample_info_df
@@ -287,7 +293,7 @@ ccle_label_cancer_types['labeled_proportion'] = (
 ccle_label_cancer_types.head()
 
 
-# In[18]:
+# In[31]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -323,7 +329,7 @@ if output_plots:
 
 # ### Check distribution of sensitive/resistant samples across cancer types
 
-# In[19]:
+# In[32]:
 
 
 drug_response_df['response'] = (drug_response_df.response
@@ -335,7 +341,7 @@ print(drug_response_df.shape)
 drug_response_df.head()
 
 
-# In[20]:
+# In[33]:
 
 
 drug_cancer_types = (ccle_sample_info_df
@@ -348,7 +354,7 @@ print(drug_cancer_types.shape)
 drug_cancer_types.head()
 
 
-# In[21]:
+# In[34]:
 
 
 ccle_sensitive_cancer_types = (drug_response_df
@@ -366,7 +372,7 @@ print(ccle_sensitive_cancer_types.shape)
 ccle_sensitive_cancer_types.head()
 
 
-# In[22]:
+# In[35]:
 
 
 ccle_sensitive_cancer_types = (ccle_sensitive_cancer_types
@@ -381,7 +387,7 @@ print(ccle_sensitive_cancer_types.shape)
 ccle_sensitive_cancer_types.head()
 
 
-# In[23]:
+# In[36]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -415,7 +421,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[24]:
+# In[37]:
 
 
 cancer_type_to_annotation = {
@@ -429,7 +435,7 @@ ccle_sensitive_cancer_types['liquid_or_solid'] = (
 ccle_sensitive_cancer_types[ccle_sensitive_cancer_types.liquid_or_solid == 'liquid'].head()
 
 
-# In[25]:
+# In[38]:
 
 
 ccle_sensitive_liquid_solid = (ccle_sensitive_cancer_types
@@ -449,7 +455,7 @@ ccle_sensitive_liquid_solid = (ccle_sensitive_liquid_solid
 ccle_sensitive_liquid_solid.head()
 
 
-# In[26]:
+# In[39]:
 
 
 sns.set({'figure.figsize': (11, 6)})
