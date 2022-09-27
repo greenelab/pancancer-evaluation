@@ -91,7 +91,8 @@ class CCLEDataModel():
                               drug,
                               drug_dir,
                               add_cancertype_covariate=False,
-                              filter_train=True):
+                              filter_train=True,
+                              drop_liquid=False):
         """
         Prepare to run cancer type response prediction experiments for a given drug.
 
@@ -106,7 +107,8 @@ class CCLEDataModel():
                                          covariate in feature matrix
         """
         y_df_raw = self._generate_drug_labels(drug, drug_dir,
-                                              filter_train=filter_train)
+                                              filter_train=filter_train,
+                                              drop_liquid=drop_liquid)
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
@@ -171,7 +173,11 @@ class CCLEDataModel():
         )
         return y_df
 
-    def _generate_drug_labels(self, drug, drug_dir, filter_train=True):
+    def _generate_drug_labels(self,
+                              drug,
+                              drug_dir,
+                              filter_train=True,
+                              drop_liquid=False):
         # get the label vector for the given drug
         if drug == 'EGFRi':
             y_drug_df = self.egfri_df
@@ -196,6 +202,10 @@ class CCLEDataModel():
           .set_index("SAMPLE_BARCODE")
           .rename(columns={drug: 'status', 'cancer_type': 'DISEASE'})
         )
+
+        # drop liquid samples from dataset, if necessary
+        if drop_liquid:
+            y_drug_df = du.drop_liquid_samples(y_drug_df, sample_freeze_df)
 
         # filter for cancer types without an extreme label imbalance
         # TODO: intersect with X_df first?

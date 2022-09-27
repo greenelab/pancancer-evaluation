@@ -67,6 +67,21 @@ def load_sample_info(verbose=False, stratify_by='cancer_type'):
         )
 
 
+def drop_liquid_samples(drug_df, sample_info_df):
+    cancer_type_to_annotation = {
+        ct: ('liquid' if ct in cfg.ccle_liquid_cancer_types else 'solid')
+          for ct in sample_info_df.cancer_type.unique()
+    }
+    drug_df['liquid_or_solid'] = (
+        drug_df.DISEASE.replace(cancer_type_to_annotation)
+    )
+    return (
+        drug_df[drug_df.liquid_or_solid == 'solid']
+          .drop(columns=['liquid_or_solid'])
+          .copy()
+    )
+
+
 def load_mutation_data(verbose=False):
     if verbose:
         print('Loading CCLE mutation data...', file=sys.stderr)

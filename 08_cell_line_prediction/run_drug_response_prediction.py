@@ -30,6 +30,8 @@ def process_args():
     p.add_argument('--drugs', nargs='*', default=None,
                    help='this needs to be a subset of the drugs for which '
                         'response data exists, None = all of them')
+    p.add_argument('--drop_liquid', action='store_true',
+                   help='drop liquid cancer samples from dataset')
     p.add_argument('--feature_selection',
                    choices=['mad', 'pancan_f_test', 'median_f_test', 'random'],
                    default='mad',
@@ -75,6 +77,8 @@ def process_args():
     # if we want to stratify by liquid/solid, then those have to be the
     # held-out cancer types
     if args.stratify_by == 'liquid_or_solid':
+        if args.drop_liquid:
+            p.error('cannot drop liquid samples and stratify by solid/liquid')
         args.holdout_cancer_types = ['liquid', 'solid']
     elif args.holdout_cancer_types is None:
         args.holdout_cancer_types = ccle_cancer_types
@@ -158,7 +162,8 @@ if __name__ == '__main__':
                     drug,
                     drug_dir,
                     add_cancertype_covariate=is_pancancer,
-                    filter_train=filter_train
+                    filter_train=filter_train,
+                    drop_liquid=args.drop_liquid
                 )
             except KeyError:
                 # this might happen if the given drug isn't in the dataset
