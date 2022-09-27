@@ -27,7 +27,7 @@ import pancancer_evaluation.config as cfg
 # drug to visualize sample proportions for
 # valid drugs: 5-Fluorouracil, Afatinib, Bortezomib, Cetuximab, Cisplatin, Docetaxel,
 # EGFRi, Erlotinib, Gefitinib, Gemcitabine, Lapatinib, Paclitaxel, Tamoxifen
-drug_name = 'EGFRi'
+drug_to_plot = 'Paclitaxel'
 
 # where to save plots
 output_plots = False
@@ -235,7 +235,7 @@ ccle_cancer_types.head()
 
 
 drug_response_df = pd.read_csv(
-    decompress_dir / 'GDSC_response.{}.tsv'.format(drug_name), sep='\t'
+    decompress_dir / 'GDSC_response.{}.tsv'.format(drug_to_plot), sep='\t'
 )
 
 print(drug_response_df.shape)
@@ -288,7 +288,7 @@ axarr[0].set_xlabel('')
 axarr[0].set_ylabel('Count')
 axarr[0].set_title(
     'Number of {} resistant/sensitive labeled cell lines across cancer types/tissues'.format(
-        drug_name)
+        drug_to_plot)
 )
 
 sns.barplot(data=ccle_label_cancer_types, x='primary_disease',
@@ -299,19 +299,19 @@ axarr[1].set_ylabel('Proportion')
 axarr[1].set_ylim(0.0, 1.0)
 axarr[1].set_title(
     'Proportion of {} resistant/sensitive labeled cell lines across cancer types/tissues'.format(
-        drug_name)
+        drug_to_plot)
 )
 
 plt.tight_layout()
 
 if output_plots:
-    plt.savefig(output_plots_dir / '{}_dist.png'.format(drug_name),
+    plt.savefig(output_plots_dir / '{}_dist.png'.format(drug_to_plot),
                 dpi=200, bbox_inches='tight')
 
 
 # ### Check distribution of sensitive/resistant samples across cancer types
 
-# In[79]:
+# In[19]:
 
 
 drug_response_df['response'] = (drug_response_df.response
@@ -323,7 +323,7 @@ print(drug_response_df.shape)
 drug_response_df.head()
 
 
-# In[80]:
+# In[20]:
 
 
 drug_cancer_types = (ccle_sample_info_df
@@ -336,12 +336,13 @@ print(drug_cancer_types.shape)
 drug_cancer_types.head()
 
 
-# In[81]:
+# In[21]:
 
 
 ccle_sensitive_cancer_types = (drug_response_df
     .merge(drug_cancer_types, left_on='sample_name', right_on='COSMICID')
     .loc[:, ['sample_name', 'response', 'COSMICID', 'drug', 'primary_disease']]
+    .query('sample_name in @ccle_drug_label_overlap')
     .groupby('primary_disease')
     .sum()
     .reset_index()
@@ -353,7 +354,7 @@ print(ccle_sensitive_cancer_types.shape)
 ccle_sensitive_cancer_types.head()
 
 
-# In[82]:
+# In[22]:
 
 
 ccle_sensitive_cancer_types = (ccle_sensitive_cancer_types
@@ -368,7 +369,7 @@ print(ccle_sensitive_cancer_types.shape)
 ccle_sensitive_cancer_types.head()
 
 
-# In[84]:
+# In[23]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -381,7 +382,7 @@ axarr[0].set_xlabel('')
 axarr[0].set_ylabel('Count')
 axarr[0].set_title(
     'Number of {} sensitive cell lines across cancer types/tissues'.format(
-        drug_name)
+        drug_to_plot)
 )
 
 sns.barplot(data=ccle_sensitive_cancer_types[~ccle_sensitive_cancer_types.sensitive_proportion.isna()],
@@ -392,13 +393,62 @@ axarr[1].set_ylabel('Proportion')
 axarr[1].set_ylim(0.0, 1.0)
 axarr[1].set_title(
     'Proportion of {} sensitive to {} resistant labeled cell lines across cancer types/tissues'.format(
-        drug_name, drug_name)
+        drug_to_plot, drug_to_plot)
 )
 
 plt.tight_layout()
 
 if output_plots:
-    plt.savefig(output_plots_dir / '{}_sensitive_dist.png'.format(drug_name),
+    plt.savefig(output_plots_dir / '{}_sensitive_dist.png'.format(drug_to_plot),
+                dpi=200, bbox_inches='tight')
+
+
+# In[24]:
+
+
+cancer_type_to_annotation = {
+    ct: ('liquid' if ct in cfg.ccle_liquid_cancer_types else 'solid')                                                                           
+      for ct in ccle_sensitive_cancer_types.primary_disease.unique()                                                                                             
+}
+
+ccle_sensitive_cancer_types['liquid_or_solid'] = (
+    ccle_sensitive_cancer_types.primary_disease.replace(cancer_type_to_annotation)
+)
+ccle_sensitive_cancer_types[ccle_sensitive_cancer_types.liquid_or_solid == 'liquid'].head()
+
+
+# In[34]:
+
+
+ccle_sensitive_liquid_solid = (ccle_sensitive_cancer_types
+    .groupby('liquid_or_solid')
+    .sum()
+    .loc[:, ['sensitive_count', 'labeled_count']]
+)
+ccle_sensitive_liquid_solid['resistant_count'] = (
+     ccle_sensitive_liquid_solid['labeled_count'] - ccle_sensitive_liquid_solid['sensitive_count']
+)
+
+ccle_sensitive_liquid_solid = (ccle_sensitive_liquid_solid
+    .reset_index()
+    .drop(columns=['labeled_count'])
+    .melt(id_vars=['liquid_or_solid'], var_name='sensitive', value_name='count')
+)
+ccle_sensitive_liquid_solid.head()
+
+
+# In[38]:
+
+
+sns.set({'figure.figsize': (11, 6)})
+
+sns.barplot(data=ccle_sensitive_liquid_solid.reset_index(), x='liquid_or_solid', y='count', hue='sensitive')
+plt.xlabel('Liquid or solid cancers')
+plt.ylabel('Count')
+plt.title('Number of {} sensitive and resistant liquid/solid cancer-derived cell lines'.format(drug_to_plot))
+
+if output_plots:
+    plt.savefig(output_plots_dir / '{}_liquid_solid_dist.png'.format(drug_to_plot),
                 dpi=200, bbox_inches='tight')
 
 
