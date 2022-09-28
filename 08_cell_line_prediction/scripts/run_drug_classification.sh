@@ -3,8 +3,8 @@
 # Run feature selection experiments for prediction of mutation status, with
 # all cancer types held out (either partially or completely)
 
-RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_all
-ERRORS_DIR=./drug_response_binary_all_errors
+RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_drop_liquid
+ERRORS_DIR=./drug_response_binary_drop_liquid_errors
 
 # number of features to "preselect" to
 # -1 == no preselection
@@ -19,7 +19,7 @@ fs_methods=(
   "random"
 )
 
-drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel"
+drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel Tamoxifen Trametinib_2"
 
 for num_feats in 100 250 500 1000 5000; do
 
@@ -31,6 +31,7 @@ for num_feats in 100 250 500 1000 5000; do
             # for each feature selection method to be compared
             cmd="python 08_cell_line_prediction/run_drug_response_prediction.py "
             cmd+="--drugs $drugs "
+            cmd+="--drop_liquid "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "
@@ -38,12 +39,14 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--training_samples single_cancer "
             cmd+="--ridge "
+            cmd+="--use_all_cancer_types "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_single_cancer.txt"
             echo "Running: $cmd"
             eval $cmd
 
             cmd="python 08_cell_line_prediction/run_drug_response_prediction.py "
             cmd+="--drugs $drugs "
+            cmd+="--drop_liquid "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "
@@ -58,6 +61,7 @@ for num_feats in 100 250 500 1000 5000; do
 
             cmd="python 08_cell_line_prediction/run_drug_response_prediction.py "
             cmd+="--drugs $drugs "
+            cmd+="--drop_liquid "
             cmd+="--results_dir $RESULTS_DIR "
             cmd+="--seed $seed "
             cmd+="--feature_selection $fs_method "

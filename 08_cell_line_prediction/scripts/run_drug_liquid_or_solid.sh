@@ -19,7 +19,7 @@ fs_methods=(
   "random"
 )
 
-drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel EGFRi"
+drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel EGFRi Tamoxifen Trametinib_2"
 
 for num_feats in 100 250 500 1000 5000; do
 
