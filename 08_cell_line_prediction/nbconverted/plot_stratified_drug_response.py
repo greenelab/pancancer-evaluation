@@ -165,5 +165,3 @@ for ix, drug in enumerate(compare_df.identifier.unique()):
 
 plt.tight_layout()
 
-
-# blah blah
