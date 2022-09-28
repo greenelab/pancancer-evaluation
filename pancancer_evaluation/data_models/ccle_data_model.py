@@ -208,7 +208,6 @@ class CCLEDataModel():
             y_drug_df = du.drop_liquid_samples(y_drug_df, sample_freeze_df)
 
         # filter for cancer types without an extreme label imbalance
-        # TODO: intersect with X_df first?
         if filter_train:
             return filter_cancer_types(
                 y_drug_df,

@@ -62,6 +62,8 @@ else:
 
 
 # ### Merge drug response files into binary matrix
+# 
+# Note that cell line/drug combinations with `NaN` values weren't assayed, and cell line/drug combinations with `0` values were assayed and were resistant/non-responders. We'll filter out the `NaN` cell lines in our classification pipeline.
 
 # In[4]:
 
