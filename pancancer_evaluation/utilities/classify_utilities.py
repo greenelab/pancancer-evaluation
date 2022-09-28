@@ -174,7 +174,7 @@ def evaluate_cross_cancer(data_model,
 
 
 def run_cv_cancer_type(data_model,
-                       gene,
+                       identifier,
                        cancer_type,
                        sample_info,
                        num_folds,
@@ -196,7 +196,7 @@ def run_cv_cancer_type(data_model,
     Arguments
     ---------
     data_model (TCGADataModel): class containing preprocessed train/test data
-    gene (str): gene to run experiments for
+    identifier (str): identifier to run experiments for
     cancer_type (str): cancer type in TCGA to hold out
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
@@ -240,14 +240,14 @@ def run_cv_cancer_type(data_model,
         except ValueError:
           raise NoTestSamplesError(
               'No test samples found for cancer type: {}, '
-              'gene: {}\n'.format(cancer_type, gene)
+              'identifier: {}\n'.format(cancer_type, identifier)
           )
 
         if X_train_raw_df.shape[0] == 0:
             # this might happen in pancancer only case
             raise NoTrainSamplesError(
                 'No train samples found for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
+                'identifier: {}\n'.format(cancer_type, identifier)
             )
 
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
@@ -310,7 +310,7 @@ def run_cv_cancer_type(data_model,
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
+                'identifier: {}\n'.format(cancer_type, identifier)
             )
 
         # get coefficients
@@ -320,7 +320,7 @@ def run_cv_cancer_type(data_model,
             signal=signal,
             seed=data_model.seed
         )
-        coef_df = coef_df.assign(gene=gene)
+        coef_df = coef_df.assign(identifier=identifier)
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
@@ -329,13 +329,13 @@ def run_cv_cancer_type(data_model,
                 warnings.simplefilter("ignore")
                 metric_df, gene_auc_df, gene_aupr_df = get_metrics(
                     y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                    y_pred_test_df, gene, cancer_type, signal,
+                    y_pred_test_df, identifier, cancer_type, signal,
                     data_model.seed, fold_no
                 )
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
-                'gene: {}\n'.format(cancer_type, gene)
+                'identifier: {}\n'.format(cancer_type, identifier)
             )
 
         results['gene_metrics'].append(metric_df)
@@ -346,19 +346,25 @@ def run_cv_cancer_type(data_model,
     return results
 
 
-def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
+def run_cv_stratified(data_model,
+                      identifier,
+                      sample_info,
+                      num_folds,
+                      shuffle_labels,
+                      ridge=False):
     """
-    Run stratified cross-validation experiments for a given gene, then
+    Run stratified cross-validation experiments for a given identifier, then
     write the results to files in the results directory. If the relevant
     files already exist, skip this experiment.
 
     Arguments
     ---------
     data_model (TCGADataModel): class containing preprocessed train/test data
-    gene (str): gene to run experiments for
+    identifier (str): identifier to run experiments for
     sample_info (pd.DataFrame): dataframe with TCGA sample information
     num_folds (int): number of cross-validation folds to run
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    ridge (bool): use ridge regression rather than elastic net
 
     TODO: what class variables does data_model need to have? should document
     """
@@ -386,7 +392,7 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
                    fold_no=fold_no, seed=data_model.seed)
         except ValueError:
             raise NoTestSamplesError(
-                'No test samples found for gene: {}\n'.format(gene)
+                'No test samples found for identifier: {}\n'.format(identifier)
             )
 
         y_train_df = data_model.y_df.reindex(X_train_raw_df.index)
@@ -396,9 +402,20 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
             # we set a temp seed here to make sure this shuffling order
             # is the same for each gene between data types, otherwise
             # it might be slightly different depending on the global state
-            with temp_seed(data_model.seed):
-                y_train_df.status = np.random.permutation(y_train_df.status.values)
-                y_test_df.status = np.random.permutation(y_test_df.status.values)
+            if cfg.shuffle_by_cancer_type:
+                # in this case we want to shuffle labels independently for each cancer type
+                # (i.e. preserve the total number of mutated samples in each)
+                original_ones = y_train_df.groupby('DISEASE').sum()['status']
+                y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
+                y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
+                new_ones = y_train_df.groupby('DISEASE').sum()['status']
+                # number of mutated samples per cancer type should be the same before
+                # and after shuffling
+                assert original_ones.equals(new_ones) 
+            else:
+                with temp_seed(data_model.seed):
+                    y_train_df.status = np.random.permutation(y_train_df.status.values)
+                    y_test_df.status = np.random.permutation(y_test_df.status.values)
 
         X_train_df, X_test_df = tu.preprocess_data(
             X_train_raw_df,
@@ -415,12 +432,12 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
             # also ignore warnings here, same deal as above
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                model_results = train_model(
+                # set the hyperparameters
+                train_model_params = apply_model_params(train_model, ridge)
+                model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,
                     y_train=y_train_df,
-                    alphas=cfg.alphas,
-                    l1_ratios=cfg.l1_ratios,
                     seed=data_model.seed,
                     n_folds=cfg.folds,
                     max_iter=cfg.max_iter
@@ -431,7 +448,8 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
                  y_cv_df) = model_results
         except ValueError:
             raise OneClassError(
-                'Only one class present in test set for gene: {}\n'.format(gene)
+                'Only one class present in test set for identifier: {}\n'.format(
+                    identifier)
             )
 
         # TODO: separate below into another function (one returns raw results)
@@ -443,7 +461,7 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
             signal=signal,
             seed=data_model.seed
         )
-        coef_df = coef_df.assign(gene=gene)
+        coef_df = coef_df.assign(identifier=identifier)
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
@@ -452,12 +470,13 @@ def run_cv_stratified(data_model, gene, sample_info, num_folds, shuffle_labels):
                 warnings.simplefilter("ignore")
                 metric_df, gene_auc_df, gene_aupr_df = get_metrics(
                     y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                    y_pred_test_df, gene, 'N/A', signal, data_model.seed,
+                    y_pred_test_df, identifier, 'N/A', signal, data_model.seed,
                     fold_no
                 )
         except ValueError:
             raise OneClassError(
-                'Only one class present in test set for gene: {}\n'.format(gene)
+                'Only one class present in test set for identifier: {}\n'.format(
+                    identifier)
             )
 
         results['gene_metrics'].append(metric_df)

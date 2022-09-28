@@ -22,7 +22,7 @@ def process_y_matrix(
     y_mutation,
     y_copy,
     include_copy,
-    gene,
+    identifier,
     sample_freeze,
     mutation_burden,
     filter_count,
@@ -40,12 +40,12 @@ def process_y_matrix(
     y_mutation: Pandas DataFrame of mutation status
     y_copy: Pandas DataFrame of copy number status
     include_copy: boolean if the copy number data should be included in status calc
-    gene: string indicating gene of interest (used for writing proportion file)
+    identifier: string indicating identifier of interest (used for writing proportion file)
     sample_freeze: pandas dataframe storing which samples to use
     mutation_burden: pandas dataframe storing log10 mutation counts
     filter_count: the number of positives or negatives required per cancer-type
     filter_prop: the proportion of positives or negatives required per cancer-type
-    output_directory: the name of the directory to store the gene summary
+    output_directory: the name of the directory to store the summary
     include_mut_burden: boolean if the mutation burden should be included as a feature
     hyper_filter: the number of std dev above log10 mutation burden to filter
     test: if true, don't write filtering info to disk
@@ -82,7 +82,22 @@ def process_y_matrix(
             .set_index("SAMPLE_BARCODE")
         )
 
-    # Get statistics per gene and disease
+    return filter_cancer_types(y_df,
+                               identifier,
+                               filter_count,
+                               filter_prop,
+                               output_directory=output_directory,
+                               test=test)
+
+
+def filter_cancer_types(y_df,
+                        identifier,
+                        filter_count,
+                        filter_prop,
+                        output_directory=None,
+                        test=False):
+
+    # Get statistics per identifier and disease
     disease_counts_df = pd.DataFrame(y_df.groupby("DISEASE").sum()["status"])
     disease_proportion_df = disease_counts_df.divide(
         y_df["DISEASE"].value_counts(sort=False).sort_index(), axis=0
@@ -102,7 +117,7 @@ def process_y_matrix(
     ).merge(filter_disease_df, left_index=True, right_index=True)
 
     if (not test) and (output_directory is not None):
-        filter_file = "{}_filtered_cancertypes.tsv".format(gene)
+        filter_file = "{}_filtered_cancertypes.tsv".format(identifier)
         filter_file = os.path.join(output_directory, filter_file)
         disease_stats_df.to_csv(filter_file, sep="\t")
 

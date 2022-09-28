@@ -2,6 +2,7 @@
 Functions for reading and processing CCLE input data
 
 """
+import glob
 import os
 import sys
 from pathlib import Path
@@ -53,5 +54,22 @@ def load_mutation_data(verbose=False):
     return pd.read_csv(cfg.ccle_mutation_binary, index_col='DepMap_ID')
 
 
+def load_drug_response_data(verbose=False):
+    if verbose:
+        print('Loading CCLE binary drug response data...', file=sys.stderr)
+    return pd.read_csv(cfg.cell_line_drug_response_matrix, sep='\t', index_col='COSMICID')
+
+
 def get_cancer_types(sample_info_df):
     return list(np.unique(sample_info_df.cancer_type))
+
+
+def get_drugs_with_response(response_dir):
+    raw_response_dir = response_dir / 'raw_response'
+    # filenames have the format 'GDSC_response.{drug_name}.tsv'
+    # just skip EGFRi combined data for now, TODO may handle this case later
+    return [
+        os.path.basename(fname).split('.')[1] for fname in glob.glob(
+            str(raw_response_dir / 'GDSC_response.*.tsv')
+        ) if 'EGFRi' not in fname
+    ]

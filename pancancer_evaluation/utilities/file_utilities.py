@@ -50,54 +50,54 @@ def save_results_stratified(gene_dir,
     )
 
 
-def save_results_cancer_type(gene_dir,
+def save_results_cancer_type(results_dir,
                              check_file,
                              results,
-                             gene,
+                             identifier,
                              cancer_type,
                              shuffle_labels,
                              seed,
                              feature_selection,
                              num_features):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    gene_auc_df = pd.concat(results['gene_auc'])
-    gene_aupr_df = pd.concat(results['gene_aupr'])
-    gene_coef_df = pd.concat(results['gene_coef'])
-    gene_metrics_df = pd.concat(results['gene_metrics'])
+    auc_df = pd.concat(results['gene_auc'])
+    aupr_df = pd.concat(results['gene_aupr'])
+    coef_df = pd.concat(results['gene_coef'])
+    metrics_df = pd.concat(results['gene_metrics'])
 
-    gene_coef_df.to_csv(
+    coef_df.to_csv(
         check_file, sep="\t", index=False, compression="gzip",
         float_format="%.5g"
     )
 
     # NOTE: these filenames follow the following convention:
-    #       any experiment identified by a gene and a cancer type has
-    #       the identifier {gene}_{cancer_type}, in this order
+    #       any experiment identified by an identifier and a cancer type has
+    #       the format {identifier}_{cancer_type}, in this order
 
     output_file = Path(
-        gene_dir, "{}_{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
-            gene, cancer_type, signal, feature_selection, seed, num_features
+        results_dir, "{}_{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection, seed, num_features
         )
     ).resolve()
-    gene_auc_df.to_csv(
+    auc_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
     output_file = Path(
-        gene_dir, "{}_{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
-            gene, cancer_type, signal, feature_selection, seed, num_features
+        results_dir, "{}_{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection, seed, num_features
         )
     ).resolve()
-    gene_aupr_df.to_csv(
+    aupr_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
     output_file = Path(
-        gene_dir, "{}_{}_{}_{}_s{}_n{}_classify_metrics.tsv.gz".format(
-            gene, cancer_type, signal, feature_selection, seed, num_features
+        results_dir, "{}_{}_{}_{}_s{}_n{}_classify_metrics.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection, seed, num_features
         )
     ).resolve()
-    gene_metrics_df.to_csv(
+    metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
@@ -265,7 +265,10 @@ def make_gene_dir(results_dir,
     """Create a directory for the given gene."""
     if add_cancer:
         dirname = 'add_cancer'
-    gene_dir = Path(results_dir, dirname, gene).resolve()
+    if dirname is None:
+        gene_dir = Path(results_dir, gene).resolve()
+    else:
+        gene_dir = Path(results_dir, dirname, gene).resolve()
     gene_dir.mkdir(parents=True, exist_ok=True)
     return gene_dir
 
@@ -294,24 +297,24 @@ def check_gene_file(gene_dir,
     return check_file
 
 
-def check_cancer_type_file(gene_dir,
-                           gene,
+def check_cancer_type_file(results_dir,
+                           identifier,
                            cancer_type,
                            shuffle_labels,
                            seed,
                            feature_selection,
                            num_features):
     # NOTE: these filenames follow the following convention:
-    #       any experiment identified by a gene and a cancer type has
-    #       the identifier {gene}_{cancer_type}, in this order
+    #       any experiment identified by an identifier and a cancer type has
+    #       the format {identifier}_{cancer_type}, in this order
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(
-        gene_dir, "{}_{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
-            gene, cancer_type, signal, feature_selection, seed, num_features
+        results_dir, "{}_{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection, seed, num_features
         )).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
-            'Results file already exists for gene: {}\n'.format(gene)
+            'Results file already exists for identifier: {}\n'.format(identifier)
         )
     return check_file
 

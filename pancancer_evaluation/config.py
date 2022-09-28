@@ -27,7 +27,8 @@ shuffle_by_cancer_type = True
 filter_prop = 0.05
 filter_count = 15
 folds = 3
-max_iter = 200
+# max_iter = 200
+max_iter = 500
 alphas = [1e-4, 0.001, 0.01, 0.1, 1, 10]
 l1_ratios = [0.0, 0.05, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
 ridge_c_values = [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
@@ -98,6 +99,8 @@ ccle_sample_info = data_dir / 'ccle' / 'ccle_sample_info.csv'
 ccle_expression = data_dir / 'ccle' / 'ccle_expression.csv'
 ccle_mutation = data_dir / 'ccle' / 'ccle_mutations_maf.csv'
 ccle_mutation_binary = data_dir / 'ccle' / 'ccle_mutations_binary.csv'
+cell_line_drug_response = data_dir / 'ccle' / 'drug_response'
+cell_line_drug_response_matrix = data_dir / 'ccle' / 'ccle_drug_response_binary.tsv'
 
 # parameters for CCLE experiments
 ccle_filter_count = 5

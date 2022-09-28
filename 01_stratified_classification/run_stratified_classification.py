@@ -132,9 +132,10 @@ if __name__ == '__main__':
                                                 args.seed,
                                                 args.feature_selection,
                                                 args.num_features)
-                tcga_data.process_data_for_gene(gene, classification,
+                tcga_data.process_data_for_gene(gene,
+                                                classification,
                                                 gene_dir,
-                                                use_pancancer=True)
+                                                add_cancertype_covariate=True)
             except ResultsFileExistsError:
                 # this happens if cross-validation for this gene has already been
                 # run (i.e. the results file already exists)

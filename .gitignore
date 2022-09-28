@@ -14,4 +14,5 @@ data/ccle/*
 **/papermill_output_nbs/*
 **/results/*
 
+08_cell_line_prediction/drug_response_dists/*
 08_cell_line_prediction/sample_dists/*
