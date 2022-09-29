@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Run feature selection experiments for prediction of mutation status, with
-# stratified train/test sets
+# Run feature selection experiments for prediction of drug response (sensitive
+# or resistant), with stratified train/test sets
 
 RESULTS_DIR=./08_cell_line_prediction/results/drug_response_stratified
 ERRORS_DIR=./drug_response_stratified_errors

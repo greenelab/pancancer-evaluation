@@ -30,13 +30,15 @@ get_ipython().run_line_magic('autoreload', '2')
 # 08_cell_line_classification/run_drug_response_prediction.py
 # (with varying feature_selection parameters)
 
-# single_cancer_dir = os.path.join('results', 'drug_response_binary', 'single_cancer')
-# pancancer_dir = os.path.join('results', 'drug_response_binary_all', 'pancancer')
-# pancancer_only_dir = os.path.join('results', 'drug_response_binary_all', 'all_other_cancers')
-
-single_cancer_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'single_cancer')
-pancancer_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'pancancer')
-pancancer_only_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'all_other_cancers')
+stratify_by = 'liquid_or_solid'
+if stratify_by == 'cancer_type':
+    single_cancer_dir = os.path.join('results', 'drug_response_binary', 'single_cancer')
+    pancancer_dir = os.path.join('results', 'drug_response_binary_all', 'pancancer')
+    pancancer_only_dir = os.path.join('results', 'drug_response_binary_all', 'all_other_cancers')
+elif stratify_by == 'liquid_or_solid':
+    single_cancer_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'single_cancer')
+    pancancer_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'pancancer')
+    pancancer_only_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'all_other_cancers')
 
 n_dims = [100, 250, 500, 1000, 5000]
 
@@ -48,7 +50,7 @@ fs_methods = [
 ]
 
 # drug to plot results for
-drug = 'Paclitaxel'
+drug = 'Cisplatin'
 
 # metric to plot results for
 metric = 'aupr'
@@ -255,7 +257,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[ ]:
+# In[12]:
 
 
 sns.set({'figure.figsize': (16, 12)})
@@ -302,10 +304,4 @@ plt.tight_layout()
 if output_plots:
     plt.savefig(output_plots_dir / '{}_response_classify_by_cancer_type.png'.format(drug),
                 dpi=200, bbox_inches='tight')
-
-
-# In[ ]:
-
-
-
 

@@ -32,7 +32,6 @@ get_ipython().run_line_magic('autoreload', '2')
 # (with varying feature_selection parameters)
 
 results_dir = os.path.join('results', 'drug_response_stratified')
-# results_dir = os.path.join('results', 'drug_response_stratified_all_cancers')
 
 n_dims = [100, 250, 500, 1000, 5000]
 

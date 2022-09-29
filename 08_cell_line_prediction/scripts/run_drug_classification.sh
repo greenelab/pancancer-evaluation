@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Run feature selection experiments for prediction of mutation status, with
-# all cancer types held out (either partially or completely)
+# Run feature selection experiments for prediction of drug response (sensitive
+# or resistant), with all cancer types held out (either partially or completely)
 
 RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_drop_liquid
 ERRORS_DIR=./drug_response_binary_drop_liquid_errors
