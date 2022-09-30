@@ -34,6 +34,9 @@ def process_args():
                    default='mad',
                    help='method to use for feature selection, only applied if '
                         '0 > num_features > total number of columns')
+    p.add_argument('--labels', choices=['classify', 'regress'], default='classify',
+                   help='use binary labels (classify) or continuous labels '
+                        '(regress), default is binary/classification')
     p.add_argument('--log_file', default=None,
                    help='name of file to log skipped cancer types to')
     p.add_argument('--mad_preselect', type=int, default=None,
@@ -149,6 +152,7 @@ if __name__ == '__main__':
                                             sample_info_df,
                                             args.num_folds,
                                             shuffle_labels,
+                                            predictor=args.labels,
                                             ridge=args.ridge)
             except NoTestSamplesError:
                 if args.verbose:

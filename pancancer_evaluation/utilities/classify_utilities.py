@@ -380,6 +380,7 @@ def run_cv_stratified(data_model,
                       sample_info,
                       num_folds,
                       shuffle_labels,
+                      predictor='classify',
                       ridge=False):
     """
     Run stratified cross-validation experiments for a given identifier, then
@@ -459,10 +460,14 @@ def run_cv_stratified(data_model,
 
         try:
             # also ignore warnings here, same deal as above
+            train_model = {
+                'classify': clf.train_classifier,
+                'regress': reg.train_regressor,
+            }[predictor]
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
-                train_model_params = apply_model_params(clf.train_classifier, ridge)
+                train_model_params = apply_model_params(train_model, ridge)
                 model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,

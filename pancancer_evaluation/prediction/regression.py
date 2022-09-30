@@ -15,9 +15,9 @@ from sklearn.model_selection import (
 def train_regressor(X_train,
                     X_test,
                     y_train,
-                    alphas,
-                    l1_ratios,
                     seed,
+                    alphas=None,
+                    l1_ratios=None,
                     n_folds=4,
                     max_iter=1000):
     """
