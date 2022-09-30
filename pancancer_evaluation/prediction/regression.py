@@ -17,8 +17,10 @@ def train_regressor(X_train,
                     X_test,
                     y_train,
                     seed,
+                    ridge=False,
                     alphas=None,
                     l1_ratios=None,
+                    c_values=None,
                     n_folds=4,
                     max_iter=1000):
     """
@@ -40,46 +42,47 @@ def train_regressor(X_train,
     testing, and cross validation
     """
     # Setup the regression parameters
-    reg_parameters = {
-        "regress__alpha": alphas,
-        "regress__l1_ratio": l1_ratios,
-    }
+    if ridge:
+        assert c_values is not None
+        cv_pipeline = RidgeCV(
+            # TODO put in config.py
+            alphas=[1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000],
+            cv=n_folds,
+            scoring="neg_mean_squared_error",
+        )
+    else:
+        # ElasticNet seems to be less sensitive to initialization/parameter choice
+        # than SGDRegressor, but could scale poorly to really large datasets
+        reg_parameters = {
+            "classify__alpha": alphas,
+            "classify__l1_ratio": l1_ratios
+        }
+        estimator = Pipeline(
+            steps=[
+                (
+                    "regress",
+                    ElasticNet(
+                        random_state=seed,
+                    )
+                )
+            ]
+        )
 
-
-    # ElasticNet seems to be less sensitive to initialization/parameter choice
-    # than SGDRegressor, but could scale poorly to really large datasets
-    # estimator = Pipeline(
-    #     steps=[
-    #         (
-    #             "regress",
-    #             ElasticNet(
-    #                 random_state=seed,
-    #             )
-    #         )
-    #     ]
-    # )
-
-    # cv_pipeline = GridSearchCV(
-    #     estimator=estimator,
-    #     param_grid=reg_parameters,
-    #     n_jobs=-1,
-    #     cv=n_folds,
-    #     scoring="neg_mean_squared_error",
-    #     return_train_score=True,
-    # )
-    cv_pipeline = RidgeCV(
-        alphas=[1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100],
-        cv=n_folds,
-        scoring="neg_mean_squared_error",
-    )
+        cv_pipeline = GridSearchCV(
+            estimator=estimator,
+            param_grid=reg_parameters,
+            n_jobs=-1,
+            cv=n_folds,
+            scoring="neg_mean_squared_error",
+            return_train_score=True,
+        )
 
     # Fit the model
     cv_pipeline.fit(X=X_train, y=y_train.status)
 
     # Obtain cross validation results
     y_cv = cross_val_predict(
-        # cv_pipeline.best_estimator_,
-        cv_pipeline,
+        (cv_pipeline if ridge else cv_pipeline.best_estimator_),
         X=X_train,
         y=y_train.status,
         cv=n_folds,
