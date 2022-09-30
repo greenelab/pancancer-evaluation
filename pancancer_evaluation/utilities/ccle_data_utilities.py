@@ -88,13 +88,22 @@ def load_mutation_data(verbose=False):
     return pd.read_csv(cfg.ccle_mutation_binary, index_col='DepMap_ID')
 
 
-def load_drug_response_data(verbose=False):
-    if verbose:
-        print('Loading CCLE binary drug response data...', file=sys.stderr)
-    drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix, 
-                           sep='\t', index_col='COSMICID')
-    egfri_df = pd.read_csv(cfg.cell_line_drug_response_egfri, 
-                           sep='\t', index_col='COSMICID')
+def load_drug_response_data(verbose=False, labels='classify'):
+    if labels == 'classify':
+        if verbose:
+            print('Loading CCLE binary drug response data...', file=sys.stderr)
+        drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix_binary,
+                               sep='\t', index_col='COSMICID')
+        egfri_df = pd.read_csv(cfg.cell_line_drug_response_egfri_binary,
+                               sep='\t', index_col='COSMICID')
+    elif labels == 'regress':
+        if verbose:
+            print('Loading CCLE drug response data...', file=sys.stderr)
+        drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix,
+                               sep='\t', index_col='COSMICID')
+        # merging EGFRi IC50 values doesn't make sense,
+        # so just return an empty dataframe
+        egfri_df = pd.DataFrame()
     return drugs_df, egfri_df
 
 
