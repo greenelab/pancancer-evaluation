@@ -71,10 +71,6 @@ def process_args():
     if args.log_file is None:
         args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
 
-    # TODO: remove when regression implemented
-    if not args.classify:
-        p.error('regression not yet implemented, must use --classify flag')
-
     return args, sample_info_df
 
 
@@ -82,6 +78,7 @@ if __name__ == '__main__':
 
     # process command line arguments
     args, sample_info_df = process_args()
+    predictor = 'classify' if args.classify else 'regress'
 
     # create results dir if it doesn't exist
     args.results_dir.mkdir(parents=True, exist_ok=True)
@@ -135,7 +132,8 @@ if __name__ == '__main__':
                                                   shuffle_labels,
                                                   args.seed,
                                                   args.feature_selection,
-                                                  args.num_features)
+                                                  args.num_features,
+                                                  predictor=predictor)
                 # TODO:
                 # feature selection for continuous labels
                 # prediction for continuous labels
@@ -145,7 +143,8 @@ if __name__ == '__main__':
                                              sample_info_df,
                                              args.num_folds,
                                              args.training_samples,
-                                             shuffle_labels)
+                                             shuffle_labels,
+                                             predictor=predictor)
             except ResultsFileExistsError:
                 if args.verbose:
                     print('Skipping because results file exists already: '
@@ -183,7 +182,8 @@ if __name__ == '__main__':
                                             shuffle_labels,
                                             args.seed,
                                             args.feature_selection,
-                                            args.num_features)
+                                            args.num_features,
+                                            predictor=predictor)
 
             if cancer_type_log_df is not None:
                 fu.write_log_file(cancer_type_log_df, args.log_file)

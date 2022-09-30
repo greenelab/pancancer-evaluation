@@ -10,7 +10,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-from sklearn.feature_selection import f_classif
+from sklearn.feature_selection import f_classif, f_regression
 
 import pancancer_evaluation.config as cfg
 
@@ -115,12 +115,15 @@ def subset_by_feature_weights(X_train_df,
                               feature_selection_method,
                               gene_features,
                               y_df,
-                              num_features):
+                              num_features,
+                              predictor='classify'):
 
     gene_feature_names = X_train_df.columns.values[gene_features]
     non_gene_features = X_train_df.columns.values[~gene_features]
     feature_df = _get_cancer_type_f_statistics(
-        X_train_df.reindex(gene_feature_names, axis='columns'), y_df
+        X_train_df.reindex(gene_feature_names, axis='columns'),
+        y_df,
+        predictor=predictor
     )
     weights_df = _generate_feature_weights(feature_df, feature_selection_method)
 
@@ -141,11 +144,23 @@ def subset_by_feature_weights(X_train_df,
     return X_train_df, X_test_df, gene_features
 
 
-def _get_cancer_type_f_statistics(X_train_df, y_df):
+def _get_cancer_type_f_statistics(X_train_df, y_df, predictor='classify'):
     # first get pan-cancer f-statistic for each gene
-    f_stats_df = {
-        'pancan': f_classif(X_train_df, y_df.reindex(X_train_df.index).status)[0]
-    }
+    if predictor == 'classify':
+        f_stats_df = {
+            'pancan': f_classif(
+                X_train_df,
+                y_df.reindex(X_train_df.index).status
+            )[0]
+        }
+    elif predictor == 'regress':
+        f_stats_df = {
+            'pancan': f_regression(
+                X_train_df,
+                y_df.reindex(X_train_df.index).status
+            )[0]
+        }
+
     for cancer_type in y_df.DISEASE.unique():
         X_ct_samples = (
             y_df[y_df.DISEASE == cancer_type].index
@@ -153,7 +168,10 @@ def _get_cancer_type_f_statistics(X_train_df, y_df):
         )
         X_ct_df = X_train_df.reindex(X_ct_samples)
         y_ct_df = y_df.reindex(X_ct_samples)
-        f_stats_df[cancer_type] = f_classif(X_ct_df, y_ct_df.status)[0]
+        if predictor == 'classify':
+            f_stats_df[cancer_type] = f_classif(X_ct_df, y_ct_df.status)[0]
+        elif predictor == 'regress':
+            f_stats_df[cancer_type] = f_regression(X_ct_df, y_ct_df.status)[0]
         
     # return genes x cancer types dataframe
     return pd.DataFrame(f_stats_df, index=X_train_df.columns)
