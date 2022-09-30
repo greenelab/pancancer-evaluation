@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Feature selection results for drug response binary classification
-# 
-# TODO: more explain
+# ## Analysis of drug response binary classification with held-out cancer types
 
 # In[1]:
 
@@ -30,6 +28,10 @@ get_ipython().run_line_magic('autoreload', '2')
 # 08_cell_line_classification/run_drug_response_prediction.py
 # (with varying feature_selection parameters)
 
+# we ran two types of experiments, one where we hold out each individual
+# cancer type in CCLE and one where we pool liquid cancers and solid cancers
+# and hold them out together
+# here, we can choose which experiment we want to look at the results of
 stratify_by = 'liquid_or_solid'
 if stratify_by == 'cancer_type':
     single_cancer_dir = os.path.join('results', 'drug_response_binary', 'single_cancer')
@@ -40,8 +42,10 @@ elif stratify_by == 'liquid_or_solid':
     pancancer_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'pancancer')
     pancancer_only_dir = os.path.join('results', 'drug_response_binary_liquid_or_solid', 'all_other_cancers')
 
+# feature selection dimensions tested
 n_dims = [100, 250, 500, 1000, 5000]
 
+# feature selection methods tested
 fs_methods = [
     'mad',
     'pancan_f_test',
