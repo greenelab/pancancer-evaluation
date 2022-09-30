@@ -4,6 +4,7 @@ Functions for training regression models on TCGA data.
 """
 import numpy as np
 import pandas as pd
+from scipy.stats import pearsonr, spearmanr
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import RidgeCV
 from sklearn.metrics import mean_squared_error, r2_score
@@ -133,8 +134,12 @@ def get_metrics(y_train_df,
 def get_continuous_metrics(y_true, y_pred):
     mse = mean_squared_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
+    pearson = pearsonr(y_true, y_pred)[0]
+    spearman = spearmanr(y_true, y_pred)[0]
     return {'mse': mse,
             'rmse': np.sqrt(mse),
-            'r2': r2}
+            'r2': r2,
+            'pearson': pearson,
+            'spearman': spearman}
 
 
