@@ -91,7 +91,8 @@ class CCLEDataModel():
                               drug,
                               drug_dir,
                               add_cancertype_covariate=False,
-                              filter_train=True):
+                              filter_train=True,
+                              drop_liquid=False):
         """
         Prepare to run cancer type response prediction experiments for a given drug.
 
@@ -106,7 +107,8 @@ class CCLEDataModel():
                                          covariate in feature matrix
         """
         y_df_raw = self._generate_drug_labels(drug, drug_dir,
-                                              filter_train=filter_train)
+                                              filter_train=filter_train,
+                                              drop_liquid=drop_liquid)
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
@@ -135,7 +137,9 @@ class CCLEDataModel():
         if labels == 'mutation':
             self.mutation_df = du.load_mutation_data(verbose=self.verbose)
         elif labels == 'drug':
-            self.drugs_df = du.load_drug_response_data(verbose=self.verbose)
+            self.drugs_df, self.egfri_df = (
+                du.load_drug_response_data(verbose=self.verbose)
+            )
         else:
             raise NotImplementedError('labels {} not implemented'.format(labels))
 
@@ -169,14 +173,21 @@ class CCLEDataModel():
         )
         return y_df
 
-    def _generate_drug_labels(self, drug, drug_dir, filter_train=True):
+    def _generate_drug_labels(self,
+                              drug,
+                              drug_dir,
+                              filter_train=True,
+                              drop_liquid=False):
         # get the label vector for the given drug
-        y_drug_df = self.drugs_df.loc[:, [drug]]
+        if drug == 'EGFRi':
+            y_drug_df = self.egfri_df
+        else:
+            y_drug_df = self.drugs_df.loc[:, [drug]]
 
         # format sample_info_df to work with label processing
         sample_freeze_df = (self.sample_info_df
             .copy()
-            .loc[:, ['COSMICID', 'cancer_type']]
+            .loc[:, ['COSMICID', 'cancer_type', 'stratify_by']]
         )
         sample_freeze_df.index.name = 'SAMPLE_BARCODE'
         sample_freeze_df.reset_index(inplace=True)
@@ -191,6 +202,10 @@ class CCLEDataModel():
           .set_index("SAMPLE_BARCODE")
           .rename(columns={drug: 'status', 'cancer_type': 'DISEASE'})
         )
+
+        # drop liquid samples from dataset, if necessary
+        if drop_liquid:
+            y_drug_df = du.drop_liquid_samples(y_drug_df, sample_freeze_df)
 
         # filter for cancer types without an extreme label imbalance
         if filter_train:

@@ -399,8 +399,16 @@ def split_by_cancer_type(rnaseq_df,
     rnaseq_train_df (pd.DataFrame): samples x genes train data
     rnaseq_test_df (pd.DataFrame): samples x genes test data
     """
+    # the "stratify_by" column enables stratification by a custom factor/
+    # categorical variable
+    # if it is not provided, stratify by cancer type by default
+    if 'stratify_by' in sample_info_df.columns:
+        stratify_by = 'stratify_by'
+    else:
+        stratify_by = 'cancer_type'
+
     cancer_type_sample_ids = (
-        sample_info_df.loc[sample_info_df.cancer_type == holdout_cancer_type]
+        sample_info_df.loc[sample_info_df[stratify_by] == holdout_cancer_type]
         .index
     )
     cancer_type_df = rnaseq_df.loc[rnaseq_df.index.intersection(cancer_type_sample_ids), :]
@@ -416,8 +424,9 @@ def split_by_cancer_type(rnaseq_df,
 
     if training_data in ['pancancer', 'all_other_cancers']:
         pancancer_sample_ids = (
-            sample_info_df.loc[~(sample_info_df.cancer_type == holdout_cancer_type)]
-            .index
+            sample_info_df.loc[
+                ~(sample_info_df[stratify_by] == holdout_cancer_type)
+            ].index
         )
         pancancer_df = rnaseq_df.loc[rnaseq_df.index.intersection(pancancer_sample_ids), :]
 

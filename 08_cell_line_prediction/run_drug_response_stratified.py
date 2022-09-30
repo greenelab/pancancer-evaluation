@@ -61,8 +61,6 @@ def process_args():
     drugs_with_response = du.get_drugs_with_response(cfg.cell_line_drug_response)
     if args.drugs is None:
         args.drugs = drugs_with_response
-    elif 'EGFRi' in args.drugs:
-        raise NotImplementedError('need to figure out EGFRi training')
     else:
         not_in_drugs = set(args.drugs) - set(drugs_with_response)
         if len(not_in_drugs) > 0:

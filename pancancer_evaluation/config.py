@@ -101,10 +101,19 @@ ccle_mutation = data_dir / 'ccle' / 'ccle_mutations_maf.csv'
 ccle_mutation_binary = data_dir / 'ccle' / 'ccle_mutations_binary.csv'
 cell_line_drug_response = data_dir / 'ccle' / 'drug_response'
 cell_line_drug_response_matrix = data_dir / 'ccle' / 'ccle_drug_response_binary.tsv'
+cell_line_drug_response_egfri = data_dir / 'ccle' / 'ccle_drug_response_egfri.tsv'
 
 # parameters for CCLE experiments
 ccle_filter_count = 5
 ccle_filter_prop = 0.1
+
+# enumerate liquid cancer types in CCLE, we sometimes use
+# these to stratify train/test sets
+ccle_liquid_cancer_types = [
+    'Leukemia',
+    'Lymphoma',
+    'Myeloma'
+]
 
 # location of "merged" gene set from mpmp repo
 merged_cancer_genes = data_dir / 'merged_with_annotations.tsv'

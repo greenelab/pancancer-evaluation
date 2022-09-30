@@ -13,12 +13,16 @@ papermill_output_dir="./papermill_output_nbs"
 mkdir -p ${papermill_output_dir}
 
 drugs=(
-  "Cetuximab"
-  "Cisplatin"
-  "Docetaxel"
-  "EGFRi"
-  "Gemcitabine"
-  "Paclitaxel"
+ "Cetuximab"
+ "Cisplatin"
+ "Docetaxel"
+ "EGFRi"
+ "Gemcitabine"
+ "Paclitaxel"
+ "Bortezomib"
+ "Tamoxifen"
+ "Trametinib_2"
+ "5-Fluorouracil"
 )
 
 for drug in "${drugs[@]}"; do
@@ -26,7 +30,7 @@ for drug in "${drugs[@]}"; do
     cmd="papermill download_drug_data.ipynb "
     cmd+="${papermill_output_dir}/download_drug_data_${drug}.run.ipynb "
     cmd+="-k ${kernel_name} "
-    cmd+="-p drug_name ${drug}"
+    cmd+="-p drug_to_plot ${drug}"
     echo "Running: $cmd"
     eval $cmd
 
