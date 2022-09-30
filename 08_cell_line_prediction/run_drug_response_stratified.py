@@ -140,9 +140,6 @@ if __name__ == '__main__':
                     add_cancertype_covariate=True,
                     filter_train=filter_train
                 )
-                print(ccle_data.X_df.iloc[:5, :5])
-                print(ccle_data.y_df.head())
-                exit()
             except KeyError:
                 # this might happen if the given drug isn't in the dataset
                 print('Drug {} not found in mutation data, skipping'.format(drug),
@@ -160,7 +157,7 @@ if __name__ == '__main__':
                                             sample_info_df,
                                             args.num_folds,
                                             shuffle_labels,
-                                            predictor=args.labels,
+                                            predictor=args.predictor,
                                             ridge=args.ridge)
             except NoTestSamplesError:
                 if args.verbose:
@@ -187,7 +184,8 @@ if __name__ == '__main__':
                                            shuffle_labels,
                                            args.seed,
                                            args.feature_selection,
-                                           args.num_features)
+                                           args.num_features,
+                                           predictor=args.predictor)
 
             if cancer_type_log_df is not None:
                 fu.write_log_file(cancer_type_log_df, args.log_file)

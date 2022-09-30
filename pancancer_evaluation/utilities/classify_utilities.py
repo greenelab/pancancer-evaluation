@@ -271,9 +271,11 @@ def run_cv_cancer_type(data_model,
                 y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
                 y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
                 new_ones = y_train_df.groupby('DISEASE').sum()['status']
-                # number of mutated samples per cancer type should be the same before
-                # and after shuffling
-                assert original_ones.equals(new_ones) 
+                # label distribution per cancer type should be the same before
+                # and after shuffling (or approximately the same in the case of
+                # continuous labels)
+                assert (original_ones.equals(new_ones) or
+                        np.all(np.isclose(original_ones.values, new_ones.values)))
             else:
                 # we set a temp seed here to make sure this shuffling order
                 # is the same for each gene between data types, otherwise
@@ -439,9 +441,11 @@ def run_cv_stratified(data_model,
                 y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
                 y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
                 new_ones = y_train_df.groupby('DISEASE').sum()['status']
-                # number of mutated samples per cancer type should be the same before
-                # and after shuffling
-                assert original_ones.equals(new_ones) 
+                # label distribution per cancer type should be the same before
+                # and after shuffling (or approximately the same in the case of
+                # continuous labels)
+                assert (original_ones.equals(new_ones) or
+                        np.all(np.isclose(original_ones.values, new_ones.values)))
             else:
                 with temp_seed(data_model.seed):
                     y_train_df.status = np.random.permutation(y_train_df.status.values)
@@ -497,24 +501,37 @@ def run_cv_stratified(data_model,
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
-            # also ignore warnings here, same deal as above
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
-                    y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                    y_pred_test_df, identifier, 'N/A', signal,
-                    data_model.seed, fold_no
+            if predictor == 'classify':
+                # also ignore warnings here, same deal as above
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
+                        y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                        y_pred_test_df, identifier, 'N/A', signal,
+                        data_model.seed, fold_no
+                    )
+                results['gene_metrics'].append(metric_df)
+                results['gene_auc'].append(gene_auc_df)
+                results['gene_aupr'].append(gene_aupr_df)
+                results['gene_coef'].append(coef_df)
+            elif predictor == 'regress':
+                metric_df = reg.get_metrics(
+                    y_train_df,
+                    y_test_df,
+                    y_cv_df,
+                    y_pred_train_df,
+                    y_pred_test_df,
+                    identifier='N/A',
+                    signal=signal,
+                    seed=data_model.seed,
+                    fold_no=fold_no
                 )
+                results['gene_metrics'].append(metric_df)
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for identifier: {}\n'.format(
                     identifier)
             )
-
-        results['gene_metrics'].append(metric_df)
-        results['gene_auc'].append(gene_auc_df)
-        results['gene_aupr'].append(gene_aupr_df)
-        results['gene_coef'].append(coef_df)
 
     return results
 

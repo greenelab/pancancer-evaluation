@@ -16,36 +16,40 @@ def save_results_stratified(gene_dir,
                             shuffle_labels,
                             seed,
                             feature_selection,
-                            num_features):
+                            num_features,
+                            predictor='classify'):
 
     signal = 'shuffled' if shuffle_labels else 'signal'
-    gene_auc_df = pd.concat(results['gene_auc'])
-    gene_aupr_df = pd.concat(results['gene_aupr'])
-    gene_coef_df = pd.concat(results['gene_coef'])
-    gene_metrics_df = pd.concat(results['gene_metrics'])
 
-    gene_coef_df.to_csv(
-        check_file, sep="\t", index=False, compression="gzip",
-        float_format="%.5g"
-    )
+    metrics_df = pd.concat(results['gene_metrics'])
 
-    output_file = Path(
-        gene_dir, "{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
-            gene, signal, feature_selection, seed, num_features)).resolve()
-    gene_auc_df.to_csv(
-        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
-    )
+    if predictor == 'classify':
+        auc_df = pd.concat(results['gene_auc'])
+        aupr_df = pd.concat(results['gene_aupr'])
+        coef_df = pd.concat(results['gene_coef'])
 
-    output_file = Path(
-        gene_dir, "{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
-            gene, signal, feature_selection, seed, num_features)).resolve()
-    gene_aupr_df.to_csv(
-        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
-    )
+        coef_df.to_csv(
+            check_file, sep="\t", index=False, compression="gzip",
+            float_format="%.5g"
+        )
 
-    output_file = Path(gene_dir, "{}_{}_{}_s{}_n{}_classify_metrics.tsv.gz".format(
-        gene, signal, feature_selection, seed, num_features)).resolve()
-    gene_metrics_df.to_csv(
+        output_file = Path(
+            gene_dir, "{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
+                gene, signal, feature_selection, seed, num_features)).resolve()
+        auc_df.to_csv(
+            output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+        )
+
+        output_file = Path(
+            gene_dir, "{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
+                gene, signal, feature_selection, seed, num_features)).resolve()
+        aupr_df.to_csv(
+            output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+        )
+
+    output_file = Path(gene_dir, "{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
+        gene, signal, feature_selection, seed, num_features, predictor)).resolve()
+    metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
