@@ -7,7 +7,7 @@ https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_u
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import (
     roc_auc_score,
     roc_curve,

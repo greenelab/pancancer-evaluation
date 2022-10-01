@@ -10,16 +10,6 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.metrics import (
-    roc_auc_score,
-    roc_curve,
-    precision_recall_curve,
-    average_precision_score
-)
-from sklearn.model_selection import cross_val_predict
-from sklearn.model_selection import GridSearchCV
 
 import pancancer_evaluation.config as cfg
 import pancancer_evaluation.prediction.classification as clf

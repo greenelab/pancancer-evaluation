@@ -352,6 +352,8 @@ def select_features(X_train_df,
                     predictor='classify',
                     verbose=False):
     """Select a subset of features."""
+    assert (mad_preselect is None or mad_preselect > 0,
+            'mad_preselect must be greater than 0 if included')
     if mad_preselect is not None:
         # sometimes we want to pre-select some number of features by MAD
         # before doing other feature selection, if so do it here

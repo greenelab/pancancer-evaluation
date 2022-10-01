@@ -8,7 +8,7 @@ ERRORS_DIR=./drug_response_stratified_errors
 
 # number of features to "preselect" to
 # -1 == no preselection
-MAD_PRESELECT=-1
+MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 

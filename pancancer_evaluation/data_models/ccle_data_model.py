@@ -213,7 +213,7 @@ class CCLEDataModel():
           .rename(columns={drug: 'status', 'cancer_type': 'DISEASE'})
         )
         if predictor == 'classify':
-            y_drug_df = y_drug_df.astype({drug: int})
+            y_drug_df = y_drug_df.astype({'status': int})
 
         # drop liquid samples from dataset, if necessary
         if drop_liquid:

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr, spearmanr
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import ElasticNet, RidgeCV
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import (
     cross_val_predict,
