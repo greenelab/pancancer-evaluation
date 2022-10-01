@@ -68,7 +68,10 @@ def load_prediction_results_cc(results_dir, experiment_descriptor):
     return results_df
 
 
-def load_prediction_results_fs(results_dir, fs_methods):
+def load_prediction_results_fs(results_dir,
+                               fs_methods,
+                               classify=True,
+                               identifier_from_fname=False):
     """Load results of feature selection experiments.
 
     Arguments
@@ -76,6 +79,8 @@ def load_prediction_results_fs(results_dir, fs_methods):
     results_dir (str): directory to look in for results, subdirectories should
                        be experiments for individual genes
     fs_methods (list): list of possible feature selection methods
+    classify (bool): whether to load classification or regression results
+    identifier_from_fname (bool): get identifier from filename
 
     Returns
     -------
@@ -86,7 +91,12 @@ def load_prediction_results_fs(results_dir, fs_methods):
         gene_dir = os.path.join(results_dir, gene_name)
         if not os.path.isdir(gene_dir): continue
         for results_file in os.listdir(gene_dir):
-            if 'classify' not in results_file: continue
+            # classification results have format 'classify_metrics.tsv.gz'
+            if classify:
+                if not ('classify_metrics' in results_file): continue
+            # regression results have format 'regress_metrics.tsv.gz'
+            else:
+                if not ('regress_metrics' in results_file): continue
             if results_file[0] == '.': continue
             full_results_file = os.path.join(gene_dir, results_file)
             n_dims = int(results_file.split('_')[-3].replace('n', ''))
@@ -97,6 +107,9 @@ def load_prediction_results_fs(results_dir, fs_methods):
             gene_results_df = pd.read_csv(full_results_file, sep='\t')
             gene_results_df['fs_method'] = fs_method
             gene_results_df['n_dims'] = n_dims
+            if identifier_from_fname:
+                identifier = results_file.split('_')[0]
+                gene_results_df['identifier'] = identifier
             results_df = pd.concat((results_df, gene_results_df))
     return results_df
 
