@@ -449,7 +449,8 @@ def run_cv_stratified(data_model,
             feature_selection=data_model.feature_selection,
             num_features=data_model.num_features,
             mad_preselect=data_model.mad_preselect,
-            seed=data_model.seed
+            seed=data_model.seed,
+            predictor=predictor
         )
 
         try:
