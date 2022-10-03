@@ -2,6 +2,8 @@
 # coding: utf-8
 
 # ## Analysis of stratified drug response regression
+# 
+# In these experiments train and test sets are stratified by cancer type. We're trying to predict continuous $\log($IC50$)$ values here, as opposed to the classification experiments where we were trying to predict resistant or sensitive status for each cell line.
 
 # In[1]:
 
@@ -22,7 +24,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 
 
-# ### Load results and look at overall performance
+# ### Load results from files
 
 # In[2]:
 
@@ -70,6 +72,12 @@ print(results_df.n_dims.unique())
 results_df.head()
 
 
+# ### Signal vs. shuffled performance
+# 
+# In these plots we'll take a single dimensionality and compare the model with true labels to the model with shuffled/permuted labels, to get an idea of how well the permuted model is performing.
+# 
+# We'll do this for 3 performance metrics: RMSE, $R^2$, and Spearman correlation.
+
 # In[4]:
 
 
@@ -78,7 +86,7 @@ sns.set_context('notebook')
 
 fig, axarr = plt.subplots(3, 3)
 
-n_dims = 1000
+n_dims = 100
 fs_method_order = [
     'mad',
     'pancan_f_test',
@@ -154,6 +162,10 @@ for ix, drug in enumerate(results_df.drug.unique()):
 plt.tight_layout()
 
 
+# ### True labels model performance across dimensions
+# 
+# In these plots we'll plot just the models with the true labels, across multiple feature selection dimensions.
+
 # In[7]:
 
 
@@ -202,6 +214,10 @@ for ix, drug in enumerate(results_df.drug.unique()):
 plt.tight_layout()
 
 
+# ### Performance across dimensions after correcting for shuffled baseline
+# 
+# In these plots we'll take the difference between signal and shuffled and plot that. This gives an idea of how much signal our -omics-based models are capturing above a model that just uses average drug response per cancer type.
+
 # In[9]:
 
 
@@ -236,7 +252,7 @@ print(compare_df.n_dims.unique())
 compare_df.head()
 
 
-# In[13]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (18, 9)})
