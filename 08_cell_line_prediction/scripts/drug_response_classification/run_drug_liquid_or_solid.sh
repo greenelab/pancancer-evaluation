@@ -3,7 +3,8 @@
 # Run feature selection experiments for prediction of drug response (sensitive
 # or resistant), with either liquid or solid cancers held out
 
-RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_liquid_or_solid
+# RESULTS_DIR=./08_cell_line_prediction/results/drug_response_binary_liquid_or_solid
+RESULTS_DIR=./08_cell_line_prediction/results/drug_response_regression_liquid_or_solid
 ERRORS_DIR=./drug_response_binary_liquid_or_solid_errors
 
 # number of features to "preselect" to
@@ -38,6 +39,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples single_cancer "
+            cmd+="--predictor regress "
             cmd+="--ridge "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_single_cancer.txt"
             echo "Running: $cmd"
@@ -52,6 +54,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples pancancer "
+            cmd+="--predictor regress "
             cmd+="--ridge "
             cmd+="--use_all_cancer_types "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_pancancer.txt"
@@ -67,6 +70,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples all_other_cancers "
+            cmd+="--predictor regress "
             cmd+="--ridge "
             cmd+="--use_all_cancer_types "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_all_other_cancers.txt"
