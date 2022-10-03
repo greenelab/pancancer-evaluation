@@ -210,7 +210,8 @@ def run_cv_cancer_type(data_model,
         }
     elif predictor == 'regress':
         results = {
-            'gene_metrics': []
+            'gene_metrics': [],
+            'gene_coef': []
         }
 
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -358,6 +359,7 @@ def run_cv_cancer_type(data_model,
                     fold_no=fold_no
                 )
                 results['gene_metrics'].append(metric_df)
+                results['gene_coef'].append(coef_df)
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
@@ -390,12 +392,19 @@ def run_cv_stratified(data_model,
 
     TODO: what class variables does data_model need to have? should document
     """
-    results = {
-        'gene_metrics': [],
-        'gene_auc': [],
-        'gene_aupr': [],
-        'gene_coef': []
-    }
+    if predictor == 'classify':
+        results = {
+            'gene_metrics': [],
+            'gene_auc': [],
+            'gene_aupr': [],
+            'gene_coef': []
+        }
+    elif predictor == 'regress':
+        results = {
+            'gene_metrics': [],
+            'gene_coef': []
+        }
+
     signal = 'shuffled' if shuffle_labels else 'signal'
 
     for fold_no in range(num_folds):
@@ -486,7 +495,8 @@ def run_cv_stratified(data_model,
             cv_pipeline=cv_pipeline,
             feature_names=X_train_df.columns,
             signal=signal,
-            seed=data_model.seed
+            seed=data_model.seed,
+            name=predictor
         )
         coef_df = coef_df.assign(identifier=identifier)
         coef_df = coef_df.assign(fold=fold_no)
@@ -518,6 +528,7 @@ def run_cv_stratified(data_model,
                     fold_no=fold_no
                 )
                 results['gene_metrics'].append(metric_df)
+                results['gene_coef'].append(coef_df)
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for identifier: {}\n'.format(
@@ -549,15 +560,18 @@ def extract_coefficients(cv_pipeline,
     except AttributeError:
         final_classifier = cv_pipeline
 
-    coef_df = pd.DataFrame.from_dict(
-        {"feature": feature_names, "weight": final_classifier.coef_[0]}
-    )
+    if name == 'classify':
+        weight = final_classifier.coef_[0]
+    elif name == 'regress':
+        weight = final_classifier.coef_
 
     coef_df = (
-        coef_df.assign(abs=coef_df["weight"].abs())
-        .sort_values("abs", ascending=False)
-        .reset_index(drop=True)
-        .assign(signal=signal, seed=seed)
+        pd.DataFrame.from_dict({"feature": feature_names,
+                                "weight": weight})
+          .assign(abs=lambda df: df.weight.abs())
+          .sort_values("abs", ascending=False)
+          .reset_index(drop=True)
+          .assign(signal=signal, seed=seed)
     )
 
     return coef_df

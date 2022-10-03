@@ -52,6 +52,9 @@ def process_args():
                         'features having highest mean absolute deviation')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
+    p.add_argument('--predictor', choices=['classify', 'regress'], default='classify',
+                   help='use binary labels (classify) or continuous labels '
+                        '(regress), default is binary/classification')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--ridge', action='store_true',
@@ -129,6 +132,7 @@ if __name__ == '__main__':
 
     ccle_data = CCLEDataModel(sample_info=sample_info_df,
                               labels='drug',
+                              predictor=args.predictor,
                               feature_selection=args.feature_selection,
                               num_features=args.num_features,
                               mad_preselect=args.mad_preselect,
@@ -157,10 +161,16 @@ if __name__ == '__main__':
                     # only add a cancer type covariate if we're training
                     # using pan-cancer data
                     is_pancancer = (args.training_samples == 'pancancer')
-                filter_train = (not args.use_all_cancer_types)
+                # sample filtering step assumes binary labels, so don't use it
+                # for regression, or if use_all_cancer_types is passed
+                filter_train = (
+                    (not args.use_all_cancer_types) and
+                    (args.predictor == 'classify')
+                )
                 ccle_data.process_data_for_drug(
                     drug,
                     drug_dir,
+                    predictor=args.predictor,
                     add_cancertype_covariate=is_pancancer,
                     filter_train=filter_train,
                     drop_liquid=args.drop_liquid
@@ -192,10 +202,12 @@ if __name__ == '__main__':
                                                            shuffle_labels,
                                                            args.seed,
                                                            args.feature_selection,
-                                                           args.num_features)
+                                                           args.num_features,
+                                                           predictor=args.predictor)
                     # we're working with pretty small sample sizes for the cell
-                    # line data, so we stratify by label across CV folds here
-                    # to make sure proportions aren't too imbalanced
+                    # line data, so for classification we stratify by label across
+                    # CV folds here to make sure proportions aren't too imbalanced
+                    stratify_label = (args.predictor == 'classify')
                     results = run_cv_cancer_type(ccle_data,
                                                  drug,
                                                  cancer_type,
@@ -203,7 +215,8 @@ if __name__ == '__main__':
                                                  args.num_folds,
                                                  args.training_samples,
                                                  shuffle_labels,
-                                                 stratify_label=True,
+                                                 predictor=args.predictor,
+                                                 stratify_label=stratify_label,
                                                  ridge=args.ridge)
                 except ResultsFileExistsError:
                     if args.verbose:
@@ -251,7 +264,8 @@ if __name__ == '__main__':
                                                 shuffle_labels,
                                                 args.seed,
                                                 args.feature_selection,
-                                                args.num_features)
+                                                args.num_features,
+                                                predictor=args.predictor)
 
                 if cancer_type_log_df is not None:
                     fu.write_log_file(cancer_type_log_df, args.log_file)

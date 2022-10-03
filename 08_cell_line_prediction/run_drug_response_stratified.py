@@ -128,7 +128,10 @@ if __name__ == '__main__':
                                                 shuffle_labels,
                                                 args.seed,
                                                 args.feature_selection,
-                                                args.num_features)
+                                                args.num_features,
+                                                predictor=args.predictor)
+                # sample filtering step assumes binary labels, so don't use it
+                # for regression, or if use_all_cancer_types is passed
                 filter_train = (
                     (not args.use_all_cancer_types) and
                     (args.predictor == 'classify')
