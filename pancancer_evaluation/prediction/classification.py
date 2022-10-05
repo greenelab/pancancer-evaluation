@@ -177,21 +177,21 @@ def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
         "data_type",
         "fold"
     ]
-    train_metrics_, train_roc_df, train_pr_df = summarize_results(
+    train_metrics, train_roc_df, train_pr_df = summarize_results(
         y_train_results, gene, cancer_type, signal,
         seed, "train", fold_no
     )
-    test_metrics_, test_roc_df, test_pr_df = summarize_results(
+    test_metrics, test_roc_df, test_pr_df = summarize_results(
         y_test_results, gene, cancer_type, signal,
         seed, "test", fold_no
     )
-    cv_metrics_, cv_roc_df, cv_pr_df = summarize_results(
+    cv_metrics, cv_roc_df, cv_pr_df = summarize_results(
         y_cv_results, gene, cancer_type, signal,
         seed, "cv", fold_no
     )
 
     # compile summary metrics
-    metrics_ = [train_metrics_, test_metrics_, cv_metrics_]
+    metrics_ = [train_metrics, test_metrics, cv_metrics]
     metric_df = pd.DataFrame(metrics_, columns=metric_cols)
     gene_auc_df = pd.concat([train_roc_df, test_roc_df, cv_roc_df])
     gene_aupr_df = pd.concat([train_pr_df, test_pr_df, cv_pr_df])
@@ -235,21 +235,21 @@ def get_metrics_cc(y_train_df, y_test_df, y_cv_df, y_pred_train,
             "seed",
             "data_type"
         ]
-    train_metrics_, train_roc_df, train_pr_df = summarize_results_cc(
+    train_metrics, train_roc_df, train_pr_df = summarize_results_cc(
         y_train_results, train_identifier, test_identifier,
         signal, seed, "train"
     )
-    test_metrics_, test_roc_df, test_pr_df = summarize_results_cc(
+    test_metrics, test_roc_df, test_pr_df = summarize_results_cc(
         y_test_results, train_identifier, test_identifier,
         signal, seed, "test"
     )
-    cv_metrics_, cv_roc_df, cv_pr_df = summarize_results_cc(
+    cv_metrics, cv_roc_df, cv_pr_df = summarize_results_cc(
         y_cv_results, train_identifier, test_identifier,
         signal, seed, "cv"
     )
 
     # compile summary metrics
-    metrics_ = [train_metrics_, test_metrics_, cv_metrics_]
+    metrics_ = [train_metrics, test_metrics, cv_metrics]
     metric_df = pd.DataFrame(metrics_, columns=metric_cols)
     gene_auc_df = pd.concat([train_roc_df, test_roc_df, cv_roc_df])
     gene_aupr_df = pd.concat([train_pr_df, test_pr_df, cv_pr_df])
@@ -281,12 +281,12 @@ def summarize_results(results, gene, holdout_cancer_type, signal, seed,
         fold_no,
     ]
 
-    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
+    metrics_out = [results["auroc"], results["aupr"]] + results_append_list
 
-    roc_df_ = results["roc_df"]
-    pr_df_ = results["pr_df"]
+    roc_df = results["roc_df"]
+    pr_df = results["pr_df"]
 
-    roc_df_ = roc_df_.assign(
+    roc_df = roc_df.assign(
         predictor=gene,
         cancer_type=holdout_cancer_type,
         signal=signal,
@@ -295,7 +295,7 @@ def summarize_results(results, gene, holdout_cancer_type, signal, seed,
         fold_no=fold_no,
     )
 
-    pr_df_ = pr_df_.assign(
+    pr_df = pr_df.assign(
         predictor=gene,
         cancer_type=holdout_cancer_type,
         signal=signal,
@@ -304,7 +304,7 @@ def summarize_results(results, gene, holdout_cancer_type, signal, seed,
         fold_no=fold_no,
     )
 
-    return metrics_out_, roc_df_, pr_df_
+    return metrics_out, roc_df, pr_df
 
 
 def summarize_results_cc(results, train_identifier, test_identifier, signal,
@@ -330,12 +330,12 @@ def summarize_results_cc(results, train_identifier, test_identifier, signal,
         data_type,
     ]
 
-    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
+    metrics_out = [results["auroc"], results["aupr"]] + results_append_list
 
-    roc_df_ = results["roc_df"]
-    pr_df_ = results["pr_df"]
+    roc_df = results["roc_df"]
+    pr_df = results["pr_df"]
 
-    roc_df_ = roc_df_.assign(
+    roc_df = roc_df.assign(
         train_identifier=train_identifier,
         test_identifier=test_identifier,
         signal=signal,
@@ -343,7 +343,7 @@ def summarize_results_cc(results, train_identifier, test_identifier, signal,
         data_type=data_type,
     )
 
-    pr_df_ = pr_df_.assign(
+    pr_df = pr_df.assign(
         train_identifier=train_identifier,
         test_identifier=test_identifier,
         signal=signal,
@@ -351,5 +351,5 @@ def summarize_results_cc(results, train_identifier, test_identifier, signal,
         data_type=data_type,
     )
 
-    return metrics_out_, roc_df_, pr_df_
+    return metrics_out, roc_df, pr_df
 
