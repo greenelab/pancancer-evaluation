@@ -59,13 +59,18 @@ drug = 'Cetuximab'
 
 # metric to plot results for
 # for regression this is one of 'rmse', 'r2', 'pearson', 'spearman'
-metric = 'spearman'
-delta_metric = 'delta_{}'.format(metric)
-use_delta_metric = False
+metric = 'r2'
+use_delta_metric = True
 
 # location to save plots to
-output_plots = False
-output_plots_dir = cfg.ccle_fs_plots_dir / 'drug_response_regression'
+output_plots = True
+output_plots_dir = cfg.ccle_fs_plots_dir / 'drug_response_regression_{}'.format(stratify_by)
+
+
+# In[2]:
+
+
+delta_metric = 'delta_{}'.format(metric)
 
 
 # ### Load results
@@ -177,9 +182,19 @@ if use_delta_metric:
     metric = delta_metric
 else:
     # just use metric for true models and ignore shuffled baseline
-    single_cancer_compare_df = single_cancer_df
-    pancancer_compare_df = pancancer_df
-    pancancer_only_compare_df = pancancer_only_df
+    # filter to unshuffled results on test datasets only
+    single_cancer_compare_df = (single_cancer_df[
+        (single_cancer_df.signal == 'signal') &
+        (single_cancer_df.data_type == 'test')
+    ].copy())
+    pancancer_compare_df = (pancancer_df[
+        (pancancer_df.signal == 'signal') &
+        (pancancer_df.data_type == 'test')
+    ].copy())
+    pancancer_only_compare_df = (pancancer_only_df[
+        (pancancer_only_df.signal == 'signal') &
+        (pancancer_only_df.data_type == 'test')
+    ].copy())
 
 print(single_cancer_compare_df.shape,
       pancancer_compare_df.shape,
@@ -271,7 +286,7 @@ print(plot_df.holdout_cancer_type.unique(), file=sys.stderr)
 
 if output_plots:
     output_plots_dir.mkdir(exist_ok=True)
-    plt.savefig(output_plots_dir / '{}_response_classify_summary.png'.format(drug),
+    plt.savefig(output_plots_dir / '{}_{}_response_classify_summary.png'.format(drug, metric),
                 dpi=200, bbox_inches='tight')
 
 
@@ -320,6 +335,6 @@ plt.suptitle('{}, {} features, by test cancer type'.format(drug, max_n_dims), y=
 plt.tight_layout()
 
 if output_plots:
-    plt.savefig(output_plots_dir / '{}_response_classify_by_cancer_type.png'.format(drug),
+    plt.savefig(output_plots_dir / '{}_{}_response_classify_by_cancer_type.png'.format(drug, metric),
                 dpi=200, bbox_inches='tight')
 
