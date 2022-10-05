@@ -8,7 +8,7 @@ ERRORS_DIR=./drug_response_binary_liquid_or_solid_errors
 
 # number of features to "preselect" to
 # -1 == no preselection
-MAD_PRESELECT=-1
+MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 
@@ -38,6 +38,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples single_cancer "
+            cmd+="--predictor regress "
             cmd+="--ridge "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_single_cancer.txt"
             echo "Running: $cmd"
@@ -52,6 +53,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples pancancer "
+            cmd+="--predictor regress "
             cmd+="--ridge "
             cmd+="--use_all_cancer_types "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_pancancer.txt"
@@ -67,6 +69,7 @@ for num_feats in 100 250 500 1000 5000; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--stratify_by liquid_or_solid "
             cmd+="--training_samples all_other_cancers "
+            cmd+="--predictor regress "
             cmd+="--ridge "
             cmd+="--use_all_cancer_types "
             cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}_all_other_cancers.txt"

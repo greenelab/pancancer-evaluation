@@ -1,5 +1,5 @@
 """
-Functions for classifying mutation presence/absence based on gene expression data.
+Utilities for classifying things, mostly for data splitting etc.
 
 Many of these functions are adapted from:
 https://github.com/greenelab/BioBombe/blob/master/9.tcga-classify/scripts/tcga_util.py
@@ -10,18 +10,10 @@ from functools import partial
 
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.metrics import (
-    roc_auc_score,
-    roc_curve,
-    precision_recall_curve,
-    average_precision_score
-)
-from sklearn.model_selection import cross_val_predict
-from sklearn.model_selection import GridSearchCV
 
 import pancancer_evaluation.config as cfg
+import pancancer_evaluation.prediction.classification as clf
+import pancancer_evaluation.prediction.regression as reg
 import pancancer_evaluation.utilities.data_utilities as du
 import pancancer_evaluation.utilities.tcga_utilities as tu
 from pancancer_evaluation.exceptions import (
@@ -73,7 +65,7 @@ def train_cross_cancer(data_model,
         # bunch of warning spam.
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            model_results = train_model(
+            model_results = clf.train_classifier(
                 X_train=X_train_df,
                 X_test=X_test_df,
                 y_train=y_train_df,
@@ -149,7 +141,7 @@ def evaluate_cross_cancer(data_model,
         # also ignore warnings here, same deal as above
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            metric_df, gene_auc_df, gene_aupr_df = get_metrics_cc(
+            metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics_cc(
                 y_train_df, y_test_df, y_cv_df, y_pred_train_df,
                 y_pred_test_df, train_gene_or_identifier, test_identifier,
                 signal, data_model.seed, train_pancancer=train_pancancer
@@ -180,6 +172,7 @@ def run_cv_cancer_type(data_model,
                        num_folds,
                        training_data,
                        shuffle_labels,
+                       predictor='classify',
                        stratify_label=False,
                        ridge=False,
                        use_coral=False,
@@ -202,17 +195,24 @@ def run_cv_cancer_type(data_model,
     num_folds (int): number of cross-validation folds to run
     training_data (str): 'single_cancer', 'pancancer', 'all_other_cancers'
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    predictor (bool): whether to do classification or regression
     stratify_label (bool): whether or not to stratify CV folds by label
     ridge (bool): use ridge regression rather than elastic net
 
     TODO: what class variables does data_model need to have? should document
     """
-    results = {
-        'gene_metrics': [],
-        'gene_auc': [],
-        'gene_aupr': [],
-        'gene_coef': []
-    }
+    if predictor == 'classify':
+        results = {
+            'gene_metrics': [],
+            'gene_auc': [],
+            'gene_aupr': [],
+            'gene_coef': []
+        }
+    elif predictor == 'regress':
+        results = {
+            'gene_metrics': []
+        }
+
     signal = 'shuffled' if shuffle_labels else 'signal'
 
     for fold_no in range(num_folds):
@@ -261,9 +261,11 @@ def run_cv_cancer_type(data_model,
                 y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
                 y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
                 new_ones = y_train_df.groupby('DISEASE').sum()['status']
-                # number of mutated samples per cancer type should be the same before
-                # and after shuffling
-                assert original_ones.equals(new_ones) 
+                # label distribution per cancer type should be the same before
+                # and after shuffling (or approximately the same in the case of
+                # continuous labels)
+                assert (original_ones.equals(new_ones) or
+                        np.all(np.isclose(original_ones.values, new_ones.values)))
             else:
                 # we set a temp seed here to make sure this shuffling order
                 # is the same for each gene between data types, otherwise
@@ -281,6 +283,7 @@ def run_cv_cancer_type(data_model,
             num_features=data_model.num_features,
             mad_preselect=data_model.mad_preselect,
             seed=data_model.seed,
+            predictor=predictor,
             use_coral=use_coral,
             coral_lambda=coral_lambda,
             coral_by_cancer_type=coral_by_cancer_type,
@@ -289,6 +292,10 @@ def run_cv_cancer_type(data_model,
             tca_params=tca_params
         )
 
+        train_model = {
+            'classify': clf.train_classifier,
+            'regress': reg.train_regressor,
+        }[predictor]
         try:
             # also ignore warnings here, same deal as above
             with warnings.catch_warnings():
@@ -318,30 +325,44 @@ def run_cv_cancer_type(data_model,
             cv_pipeline=cv_pipeline,
             feature_names=X_train_df.columns,
             signal=signal,
-            seed=data_model.seed
+            seed=data_model.seed,
+            name=predictor
         )
         coef_df = coef_df.assign(identifier=identifier)
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
-            # also ignore warnings here, same deal as above
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                metric_df, gene_auc_df, gene_aupr_df = get_metrics(
-                    y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                    y_pred_test_df, identifier, cancer_type, signal,
-                    data_model.seed, fold_no
+            if predictor == 'classify':
+                # also ignore warnings here, same deal as above
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
+                        y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                        y_pred_test_df, identifier, cancer_type, signal,
+                        data_model.seed, fold_no
+                    )
+                results['gene_metrics'].append(metric_df)
+                results['gene_auc'].append(gene_auc_df)
+                results['gene_aupr'].append(gene_aupr_df)
+                results['gene_coef'].append(coef_df)
+            elif predictor == 'regress':
+                metric_df = reg.get_metrics(
+                    y_train_df,
+                    y_test_df,
+                    y_cv_df,
+                    y_pred_train_df,
+                    y_pred_test_df,
+                    identifier=cancer_type, 
+                    signal=signal,
+                    seed=data_model.seed,
+                    fold_no=fold_no
                 )
+                results['gene_metrics'].append(metric_df)
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
                 'identifier: {}\n'.format(cancer_type, identifier)
             )
-
-        results['gene_metrics'].append(metric_df)
-        results['gene_auc'].append(gene_auc_df)
-        results['gene_aupr'].append(gene_aupr_df)
-        results['gene_coef'].append(coef_df)
 
     return results
 
@@ -351,6 +372,7 @@ def run_cv_stratified(data_model,
                       sample_info,
                       num_folds,
                       shuffle_labels,
+                      predictor='classify',
                       ridge=False):
     """
     Run stratified cross-validation experiments for a given identifier, then
@@ -409,9 +431,11 @@ def run_cv_stratified(data_model,
                 y_train_df.status = shuffle_by_cancer_type(y_train_df, data_model.seed)
                 y_test_df.status = shuffle_by_cancer_type(y_test_df, data_model.seed)
                 new_ones = y_train_df.groupby('DISEASE').sum()['status']
-                # number of mutated samples per cancer type should be the same before
-                # and after shuffling
-                assert original_ones.equals(new_ones) 
+                # label distribution per cancer type should be the same before
+                # and after shuffling (or approximately the same in the case of
+                # continuous labels)
+                assert (original_ones.equals(new_ones) or
+                        np.all(np.isclose(original_ones.values, new_ones.values)))
             else:
                 with temp_seed(data_model.seed):
                     y_train_df.status = np.random.permutation(y_train_df.status.values)
@@ -425,11 +449,16 @@ def run_cv_stratified(data_model,
             feature_selection=data_model.feature_selection,
             num_features=data_model.num_features,
             mad_preselect=data_model.mad_preselect,
-            seed=data_model.seed
+            seed=data_model.seed,
+            predictor=predictor
         )
 
         try:
             # also ignore warnings here, same deal as above
+            train_model = {
+                'classify': clf.train_classifier,
+                'regress': reg.train_regressor,
+            }[predictor]
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
@@ -452,8 +481,6 @@ def run_cv_stratified(data_model,
                     identifier)
             )
 
-        # TODO: separate below into another function (one returns raw results)
-
         # get coefficients
         coef_df = extract_coefficients(
             cv_pipeline=cv_pipeline,
@@ -465,128 +492,46 @@ def run_cv_stratified(data_model,
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
-            # also ignore warnings here, same deal as above
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                metric_df, gene_auc_df, gene_aupr_df = get_metrics(
-                    y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                    y_pred_test_df, identifier, 'N/A', signal, data_model.seed,
-                    fold_no
+            if predictor == 'classify':
+                # also ignore warnings here, same deal as above
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
+                        y_train_df, y_test_df, y_cv_df, y_pred_train_df,
+                        y_pred_test_df, identifier, 'N/A', signal,
+                        data_model.seed, fold_no
+                    )
+                results['gene_metrics'].append(metric_df)
+                results['gene_auc'].append(gene_auc_df)
+                results['gene_aupr'].append(gene_aupr_df)
+                results['gene_coef'].append(coef_df)
+            elif predictor == 'regress':
+                metric_df = reg.get_metrics(
+                    y_train_df,
+                    y_test_df,
+                    y_cv_df,
+                    y_pred_train_df,
+                    y_pred_test_df,
+                    identifier='N/A',
+                    signal=signal,
+                    seed=data_model.seed,
+                    fold_no=fold_no
                 )
+                results['gene_metrics'].append(metric_df)
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for identifier: {}\n'.format(
                     identifier)
             )
 
-        results['gene_metrics'].append(metric_df)
-        results['gene_auc'].append(gene_auc_df)
-        results['gene_aupr'].append(gene_aupr_df)
-        results['gene_coef'].append(coef_df)
-
     return results
 
 
-def train_model(X_train,
-                X_test,
-                y_train,
-                seed,
-                ridge=False,
-                alphas=None,
-                l1_ratios=None,
-                c_values=None,
-                n_folds=5,
-                max_iter=1000):
-    """
-    Train a linear (logistic regression) classifier
-
-    Arguments
-    ---------
-    X_train: pandas DataFrame of feature matrix for training data
-    X_test: pandas DataFrame of feature matrix for testing data
-    y_train: pandas DataFrame of processed y matrix (output from align_matrices())
-    alphas: list of alphas to perform cross validation over
-    l1_ratios: list of l1 mixing parameters to perform cross validation over
-    n_folds: int of how many folds of cross validation to perform
-    max_iter: the maximum number of iterations to test until convergence
-
-    Returns
-    ------
-    The full pipeline sklearn object and y matrix predictions for training, testing,
-    and cross validation
-    """
-    if ridge:
-        assert c_values is not None
-        clf_parameters = {
-            "classify__C": [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
-        }
-        estimator = Pipeline(
-            steps=[
-                (
-                    "classify",
-                    LogisticRegression(
-                        random_state=seed,
-                        class_weight='balanced',
-                        penalty='l2',
-                        solver='lbfgs',
-                        max_iter=max_iter,
-                        tol=1e-3,
-                    ),
-                )
-            ]
-        )
-    else:
-        assert alphas is not None
-        assert l1_ratios is not None
-        clf_parameters = {
-            "classify__penalty": ["elasticnet"],
-            "classify__alpha": alphas,
-            "classify__l1_ratio": l1_ratios,
-        }
-        estimator = Pipeline(
-            steps=[
-                (
-                    "classify",
-                    SGDClassifier(
-                        random_state=seed,
-                        class_weight="balanced",
-                        loss="log_loss",
-                        max_iter=max_iter,
-                        tol=1e-3,
-                    ),
-                )
-            ]
-        )
-
-    cv_pipeline = GridSearchCV(
-        estimator=estimator,
-        param_grid=clf_parameters,
-        n_jobs=-1,
-        cv=n_folds,
-        scoring='average_precision',
-        return_train_score=True,
-    )
-
-    # Fit the model
-    cv_pipeline.fit(X=X_train, y=y_train.status)
-
-    # Obtain cross validation results
-    y_cv = cross_val_predict(
-        cv_pipeline.best_estimator_,
-        X=X_train,
-        y=y_train.status,
-        cv=n_folds,
-        method="decision_function",
-    )
-
-    # Get all performance results
-    y_predict_train = cv_pipeline.decision_function(X_train)
-    y_predict_test = cv_pipeline.decision_function(X_test)
-
-    return cv_pipeline, y_predict_train, y_predict_test, y_cv
-
-
-def extract_coefficients(cv_pipeline, feature_names, signal, seed):
+def extract_coefficients(cv_pipeline,
+                         feature_names,
+                         signal,
+                         seed,
+                         name='classify'):
     """
     Pull out the coefficients from the trained classifiers
 
@@ -598,8 +543,11 @@ def extract_coefficients(cv_pipeline, feature_names, signal, seed):
     signal: the signal of interest
     seed: the seed used to compress the data
     """
-    final_pipeline = cv_pipeline.best_estimator_
-    final_classifier = final_pipeline.named_steps["classify"]
+    try:
+        final_pipeline = cv_pipeline.best_estimator_
+        final_classifier = final_pipeline.named_steps[name]
+    except AttributeError:
+        final_classifier = cv_pipeline
 
     coef_df = pd.DataFrame.from_dict(
         {"feature": feature_names, "weight": final_classifier.coef_[0]}
@@ -613,240 +561,6 @@ def extract_coefficients(cv_pipeline, feature_names, signal, seed):
     )
 
     return coef_df
-
-
-def get_threshold_metrics(y_true, y_pred, drop=False):
-    """
-    Retrieve true/false positive rates and auroc/aupr for class predictions
-
-    Arguments
-    ---------
-    y_true: an array of gold standard mutation status
-    y_pred: an array of predicted mutation status
-    drop: boolean if intermediate thresholds are dropped
-
-    Returns
-    -------
-    dict of AUROC, AUPR, pandas dataframes of ROC and PR data, and cancer-type
-    """
-    roc_columns = ["fpr", "tpr", "threshold"]
-    pr_columns = ["precision", "recall", "threshold"]
-
-    roc_results = roc_curve(y_true, y_pred, drop_intermediate=drop)
-    roc_items = zip(roc_columns, roc_results)
-    roc_df = pd.DataFrame.from_dict(dict(roc_items))
-
-    prec, rec, thresh = precision_recall_curve(y_true, y_pred)
-    pr_df = pd.DataFrame.from_records([prec, rec]).T
-    pr_df = pd.concat([pr_df, pd.Series(thresh)], ignore_index=True, axis=1)
-    pr_df.columns = pr_columns
-
-    auroc = roc_auc_score(y_true, y_pred, average="weighted")
-    aupr = average_precision_score(y_true, y_pred, average="weighted")
-
-    return {"auroc": auroc, "aupr": aupr, "roc_df": roc_df, "pr_df": pr_df}
-
-
-def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
-                gene, cancer_type, signal, seed, fold_no):
-
-    # get classification metric values
-    y_train_results = get_threshold_metrics(
-        y_train_df.status, y_pred_train, drop=False
-    )
-    y_test_results = get_threshold_metrics(
-        y_test_df.status, y_pred_test, drop=False
-    )
-    y_cv_results = get_threshold_metrics(
-        y_train_df.status, y_cv_df, drop=False
-    )
-
-    # summarize all results in dataframes
-    metric_cols = [
-        "auroc",
-        "aupr",
-        "gene",
-        "holdout_cancer_type",
-        "signal",
-        "seed",
-        "data_type",
-        "fold"
-    ]
-    train_metrics_, train_roc_df, train_pr_df = summarize_results(
-        y_train_results, gene, cancer_type, signal,
-        seed, "train", fold_no
-    )
-    test_metrics_, test_roc_df, test_pr_df = summarize_results(
-        y_test_results, gene, cancer_type, signal,
-        seed, "test", fold_no
-    )
-    cv_metrics_, cv_roc_df, cv_pr_df = summarize_results(
-        y_cv_results, gene, cancer_type, signal,
-        seed, "cv", fold_no
-    )
-
-    # compile summary metrics
-    metrics_ = [train_metrics_, test_metrics_, cv_metrics_]
-    metric_df = pd.DataFrame(metrics_, columns=metric_cols)
-    gene_auc_df = pd.concat([train_roc_df, test_roc_df, cv_roc_df])
-    gene_aupr_df = pd.concat([train_pr_df, test_pr_df, cv_pr_df])
-
-    return metric_df, gene_auc_df, gene_aupr_df
-
-
-def get_metrics_cc(y_train_df, y_test_df, y_cv_df, y_pred_train,
-                   y_pred_test, train_identifier, test_identifier,
-                   signal, seed, train_pancancer=False):
-
-    # get classification metric values
-    y_train_results = get_threshold_metrics(
-        y_train_df.status, y_pred_train, drop=False
-    )
-    y_test_results = get_threshold_metrics(
-        y_test_df.status, y_pred_test, drop=False
-    )
-    y_cv_results = get_threshold_metrics(
-        y_train_df.status, y_cv_df, drop=False
-    )
-
-    # summarize all results in dataframes
-    if train_pancancer:
-        metric_cols = [
-            "auroc",
-            "aupr",
-            "train_gene",
-            "test_identifier",
-            "signal",
-            "seed",
-            "data_type"
-        ]
-    else:
-        metric_cols = [
-            "auroc",
-            "aupr",
-            "train_identifier",
-            "test_identifier",
-            "signal",
-            "seed",
-            "data_type"
-        ]
-    train_metrics_, train_roc_df, train_pr_df = summarize_results_cc(
-        y_train_results, train_identifier, test_identifier,
-        signal, seed, "train"
-    )
-    test_metrics_, test_roc_df, test_pr_df = summarize_results_cc(
-        y_test_results, train_identifier, test_identifier,
-        signal, seed, "test"
-    )
-    cv_metrics_, cv_roc_df, cv_pr_df = summarize_results_cc(
-        y_cv_results, train_identifier, test_identifier,
-        signal, seed, "cv"
-    )
-
-    # compile summary metrics
-    metrics_ = [train_metrics_, test_metrics_, cv_metrics_]
-    metric_df = pd.DataFrame(metrics_, columns=metric_cols)
-    gene_auc_df = pd.concat([train_roc_df, test_roc_df, cv_roc_df])
-    gene_aupr_df = pd.concat([train_pr_df, test_pr_df, cv_pr_df])
-
-    return metric_df, gene_auc_df, gene_aupr_df
-
-
-def summarize_results(results, gene, holdout_cancer_type, signal, seed,
-                      data_type, fold_no):
-    """
-    Given an input results file, summarize and output all pertinent files
-
-    Arguments
-    ---------
-    results: a results object output from `get_threshold_metrics`
-    gene: the gene being predicted
-    holdout_cancer_type: the cancer type being used as holdout data
-    signal: the signal of interest
-    seed: the seed used to compress the data
-    data_type: the type of data (either training, testing, or cv)
-    fold_no: the fold number for the external cross-validation loop
-    """
-    results_append_list = [
-        gene,
-        holdout_cancer_type,
-        signal,
-        seed,
-        data_type,
-        fold_no,
-    ]
-
-    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
-
-    roc_df_ = results["roc_df"]
-    pr_df_ = results["pr_df"]
-
-    roc_df_ = roc_df_.assign(
-        predictor=gene,
-        cancer_type=holdout_cancer_type,
-        signal=signal,
-        seed=seed,
-        data_type=data_type,
-        fold_no=fold_no,
-    )
-
-    pr_df_ = pr_df_.assign(
-        predictor=gene,
-        cancer_type=holdout_cancer_type,
-        signal=signal,
-        seed=seed,
-        data_type=data_type,
-        fold_no=fold_no,
-    )
-
-    return metrics_out_, roc_df_, pr_df_
-
-
-def summarize_results_cc(results, train_identifier, test_identifier, signal,
-                         seed, data_type):
-    """
-    Given an input results file for cross-cancer experiments, summarize and
-    output all pertinent files
-
-    Arguments
-    ---------
-    results: a results object output from `get_threshold_metrics`
-    train_identifier: the gene/cancer type used for training
-    train_identifier: the gene/cancer type being predicted
-    signal: the signal of interest
-    seed: the seed used to compress the data
-    data_type: the type of data (either training, testing, or cv)
-    """
-    results_append_list = [
-        train_identifier,
-        test_identifier,
-        signal,
-        seed,
-        data_type,
-    ]
-
-    metrics_out_ = [results["auroc"], results["aupr"]] + results_append_list
-
-    roc_df_ = results["roc_df"]
-    pr_df_ = results["pr_df"]
-
-    roc_df_ = roc_df_.assign(
-        train_identifier=train_identifier,
-        test_identifier=test_identifier,
-        signal=signal,
-        seed=seed,
-        data_type=data_type,
-    )
-
-    pr_df_ = pr_df_.assign(
-        train_identifier=train_identifier,
-        test_identifier=test_identifier,
-        signal=signal,
-        seed=seed,
-        data_type=data_type,
-    )
-
-    return metrics_out_, roc_df_, pr_df_
 
 
 def generate_param_grid(cv_results, fold_no=-1):

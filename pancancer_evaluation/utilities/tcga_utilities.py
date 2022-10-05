@@ -220,6 +220,7 @@ def preprocess_data(X_train_raw_df,
                     num_features=-1,
                     mad_preselect=None,
                     seed=cfg.default_seed,
+                    predictor='classify',
                     use_coral=False,
                     coral_lambda=1.0,
                     coral_by_cancer_type=False,
@@ -240,7 +241,8 @@ def preprocess_data(X_train_raw_df,
             y_df,
             feature_selection,
             mad_preselect,
-            seed
+            seed,
+            predictor=predictor
         )
         X_train_df = standardize_gene_features(X_train_raw_df, gene_features_filtered)
         X_test_df = standardize_gene_features(X_test_raw_df, gene_features_filtered)
@@ -347,8 +349,11 @@ def select_features(X_train_df,
                     feature_selection_method='mad',
                     mad_preselect=None,
                     seed=cfg.default_seed,
+                    predictor='classify',
                     verbose=False):
     """Select a subset of features."""
+    assert (mad_preselect is None or mad_preselect > 0), (
+            'mad_preselect must be greater than 0 if included')
     if mad_preselect is not None:
         # sometimes we want to pre-select some number of features by MAD
         # before doing other feature selection, if so do it here
@@ -370,7 +375,8 @@ def select_features(X_train_df,
             feature_selection_method,
             gene_features,
             y_df,
-            num_features
+            num_features,
+            predictor=predictor
         )
 
 

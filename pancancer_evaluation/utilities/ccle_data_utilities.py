@@ -88,13 +88,22 @@ def load_mutation_data(verbose=False):
     return pd.read_csv(cfg.ccle_mutation_binary, index_col='DepMap_ID')
 
 
-def load_drug_response_data(verbose=False):
-    if verbose:
-        print('Loading CCLE binary drug response data...', file=sys.stderr)
-    drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix, 
-                           sep='\t', index_col='COSMICID')
-    egfri_df = pd.read_csv(cfg.cell_line_drug_response_egfri, 
-                           sep='\t', index_col='COSMICID')
+def load_drug_response_data(verbose=False, predictor='classify'):
+    if predictor == 'classify':
+        if verbose:
+            print('Loading CCLE binary drug response data...', file=sys.stderr)
+        drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix_binary,
+                               sep='\t', index_col='COSMICID')
+        egfri_df = pd.read_csv(cfg.cell_line_drug_response_egfri_binary,
+                               sep='\t', index_col='COSMICID')
+    elif predictor == 'regress':
+        if verbose:
+            print('Loading CCLE drug response data...', file=sys.stderr)
+        drugs_df = pd.read_csv(cfg.cell_line_drug_response_matrix,
+                               sep='\t', index_col='COSMICID')
+        # merging EGFRi IC50 values doesn't make sense,
+        # so just return an empty dataframe
+        egfri_df = pd.DataFrame()
     return drugs_df, egfri_df
 
 
@@ -102,11 +111,18 @@ def get_cancer_types(sample_info_df):
     return list(np.unique(sample_info_df.cancer_type))
 
 
-def get_drugs_with_response(response_dir):
+def get_drugs_with_response(response_dir, predictor='classify'):
     raw_response_dir = response_dir / 'raw_response'
     # filenames have the format 'GDSC_response.{drug_name}.tsv'
-    return [
-        os.path.basename(fname).split('.')[1] for fname in glob.glob(
-            str(raw_response_dir / 'GDSC_response.*.tsv')
-        )
-    ]
+    if predictor == 'regress':
+        return [
+            os.path.basename(fname).split('.')[1] for fname in glob.glob(
+                str(raw_response_dir / 'GDSC_response.*.tsv')
+            ) if fname != 'EGFRi'
+        ]
+    else:
+        return [
+            os.path.basename(fname).split('.')[1] for fname in glob.glob(
+                str(raw_response_dir / 'GDSC_response.*.tsv')
+            )
+        ]

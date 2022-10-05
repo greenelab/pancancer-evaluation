@@ -19,7 +19,7 @@ NUM_FEATURES_SMALL=1000
 
 # number of features to "preselect" to
 # -1 == no preselection
-MAD_PRESELECT=-1
+MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 

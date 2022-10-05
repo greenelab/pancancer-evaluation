@@ -46,6 +46,9 @@ def process_args():
                         'features having highest mean absolute deviation')
     p.add_argument('--num_folds', type=int, default=4,
                    help='number of folds of cross-validation to run')
+    p.add_argument('--predictor', choices=['classify', 'regress'], default='classify',
+                   help='use binary labels (classify) or continuous labels '
+                        '(regress), default is binary/classification')
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--ridge', action='store_true',
@@ -97,6 +100,7 @@ if __name__ == '__main__':
 
     ccle_data = CCLEDataModel(sample_info=sample_info_df,
                               labels='drug',
+                              predictor=args.predictor,
                               feature_selection=args.feature_selection,
                               num_features=args.num_features,
                               mad_preselect=args.mad_preselect,
@@ -108,9 +112,9 @@ if __name__ == '__main__':
         print('shuffle_labels: {}'.format(shuffle_labels))
 
         progress = tqdm(args.drugs,
-                              total=len(args.drugs),
-                              ncols=100,
-                              file=sys.stdout)
+                        total=len(args.drugs),
+                        ncols=100,
+                        file=sys.stdout)
 
         for drug in progress:
             cancer_type_log_df = None
@@ -125,10 +129,14 @@ if __name__ == '__main__':
                                                 args.seed,
                                                 args.feature_selection,
                                                 args.num_features)
-                filter_train = (not args.use_all_cancer_types)
+                filter_train = (
+                    (not args.use_all_cancer_types) and
+                    (args.predictor == 'classify')
+                )
                 ccle_data.process_data_for_drug(
                     drug,
                     drug_dir,
+                    predictor=args.predictor,
                     add_cancertype_covariate=True,
                     filter_train=filter_train
                 )
@@ -149,6 +157,7 @@ if __name__ == '__main__':
                                             sample_info_df,
                                             args.num_folds,
                                             shuffle_labels,
+                                            predictor=args.predictor,
                                             ridge=args.ridge)
             except NoTestSamplesError:
                 if args.verbose:
@@ -175,7 +184,8 @@ if __name__ == '__main__':
                                            shuffle_labels,
                                            args.seed,
                                            args.feature_selection,
-                                           args.num_features)
+                                           args.num_features,
+                                           predictor=args.predictor)
 
             if cancer_type_log_df is not None:
                 fu.write_log_file(cancer_type_log_df, args.log_file)

@@ -3,12 +3,12 @@
 # Run feature selection experiments for prediction of drug response (sensitive
 # or resistant), with stratified train/test sets
 
-RESULTS_DIR=./08_cell_line_prediction/results/drug_response_stratified
-ERRORS_DIR=./drug_response_stratified_errors
+RESULTS_DIR=./08_cell_line_prediction/results/drug_response_stratified_regression
+ERRORS_DIR=./drug_response_stratified_regression_errors
 
 # number of features to "preselect" to
 # -1 == no preselection
-MAD_PRESELECT=-1
+MAD_PRESELECT=8000
 
 mkdir -p $ERRORS_DIR
 
@@ -19,7 +19,7 @@ fs_methods=(
   "random"
 )
 
-drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel EGFRi Tamoxifen Trametinib_2"
+drugs="Cetuximab Cisplatin Docetaxel Erlotinib Gemcitabine Paclitaxel Tamoxifen"
 
 for num_feats in 100 250 500 1000 5000; do
 
@@ -36,6 +36,7 @@ for num_feats in 100 250 500 1000 5000; do
                 cmd+="--feature_selection $fs_method "
                 cmd+="--num_features $num_feats "
                 cmd+="--mad_preselect $MAD_PRESELECT "
+                cmd+="--predictor regress "
                 cmd+="--ridge "
                 cmd+="--use_all_cancer_types "
                 cmd+="2>$ERRORS_DIR/errors_${seed}_${fs_method}.txt"

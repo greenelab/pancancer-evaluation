@@ -25,6 +25,7 @@ class CCLEDataModel():
     def __init__(self,
                  sample_info=None,
                  labels='mutation',
+                 predictor='classify',
                  seed=cfg.default_seed,
                  feature_selection='mad',
                  num_features=-1,
@@ -52,7 +53,8 @@ class CCLEDataModel():
         self.verbose = verbose
 
         # load and store data in memory
-        self._load_data(labels=labels, sample_info=sample_info)
+        self._load_data(labels=labels, predictor=predictor,
+                        sample_info=sample_info)
 
     def process_data_for_gene(self,
                               gene,
@@ -90,6 +92,7 @@ class CCLEDataModel():
     def process_data_for_drug(self,
                               drug,
                               drug_dir,
+                              predictor='classify',
                               add_cancertype_covariate=False,
                               filter_train=True,
                               drop_liquid=False):
@@ -106,7 +109,9 @@ class CCLEDataModel():
         add_cancertype_covariate (bool): whether or not to include cancer type
                                          covariate in feature matrix
         """
-        y_df_raw = self._generate_drug_labels(drug, drug_dir,
+        y_df_raw = self._generate_drug_labels(drug,
+                                              drug_dir,
+                                              predictor=predictor,
                                               filter_train=filter_train,
                                               drop_liquid=drop_liquid)
         filtered_data = self._filter_data_for_gene(
@@ -120,7 +125,10 @@ class CCLEDataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
-    def _load_data(self, labels='mutation', sample_info=None):
+    def _load_data(self,
+                   labels='mutation',
+                   predictor='classify',
+                   sample_info=None):
         """Load and store relevant data.
 
         This data does not vary based on the gene/cancer type being considered
@@ -138,7 +146,8 @@ class CCLEDataModel():
             self.mutation_df = du.load_mutation_data(verbose=self.verbose)
         elif labels == 'drug':
             self.drugs_df, self.egfri_df = (
-                du.load_drug_response_data(verbose=self.verbose)
+                du.load_drug_response_data(verbose=self.verbose,
+                                           predictor=predictor)
             )
         else:
             raise NotImplementedError('labels {} not implemented'.format(labels))
@@ -176,6 +185,7 @@ class CCLEDataModel():
     def _generate_drug_labels(self,
                               drug,
                               drug_dir,
+                              predictor='classify',
                               filter_train=True,
                               drop_liquid=False):
         # get the label vector for the given drug
@@ -198,10 +208,12 @@ class CCLEDataModel():
           # NA can occur in label column or COSMICID column
           # in either case we want to drop those samples here
           .dropna()
-          .astype({drug: int, 'COSMICID': int})
+          .astype({'COSMICID': int})
           .set_index("SAMPLE_BARCODE")
           .rename(columns={drug: 'status', 'cancer_type': 'DISEASE'})
         )
+        if predictor == 'classify':
+            y_drug_df = y_drug_df.astype({'status': int})
 
         # drop liquid samples from dataset, if necessary
         if drop_liquid:
