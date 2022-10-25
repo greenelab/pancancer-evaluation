@@ -9,7 +9,7 @@ import pandas as pd
 
 from pancancer_evaluation.exceptions import ResultsFileExistsError
 
-def save_results_stratified(gene_dir,
+def save_results_stratified(results_dir,
                             check_file,
                             results,
                             gene,
@@ -34,20 +34,20 @@ def save_results_stratified(gene_dir,
         )
 
         output_file = Path(
-            gene_dir, "{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
+            results_dir, "{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
                 gene, signal, feature_selection, seed, num_features)).resolve()
         auc_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
 
         output_file = Path(
-            gene_dir, "{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
+            results_dir, "{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
                 gene, signal, feature_selection, seed, num_features)).resolve()
         aupr_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
 
-    output_file = Path(gene_dir, "{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
+    output_file = Path(results_dir, "{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
         gene, signal, feature_selection, seed, num_features, predictor)).resolve()
     metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
@@ -68,25 +68,20 @@ def save_results_cancer_type(results_dir,
     signal = 'shuffled' if shuffle_labels else 'signal'
 
     metrics_df = pd.concat(results['gene_metrics'])
+    coef_df = pd.concat(results['gene_coef'])
 
     if predictor == 'classify':
 
         auc_df = pd.concat(results['gene_auc'])
         aupr_df = pd.concat(results['gene_aupr'])
-        coef_df = pd.concat(results['gene_coef'])
-
-        coef_df.to_csv(
-            check_file, sep="\t", index=False, compression="gzip",
-            float_format="%.5g"
-        )
 
         # NOTE: these filenames follow the following convention:
         #       any experiment identified by a gene and a cancer type has
         #       the identifier {gene}_{cancer_type}, in this order
 
         output_file = Path(
-            gene_dir, "{}_{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
-                gene, cancer_type, signal, feature_selection, seed, num_features
+            results_dir, "{}_{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
+                identifier, cancer_type, signal, feature_selection, seed, num_features
             )
         ).resolve()
         auc_df.to_csv(
@@ -94,17 +89,23 @@ def save_results_cancer_type(results_dir,
         )
 
         output_file = Path(
-            gene_dir, "{}_{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
-                gene, cancer_type, signal, feature_selection, seed, num_features
+            results_dir, "{}_{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
+                identifier, cancer_type, signal, feature_selection, seed, num_features
             )
         ).resolve()
         aupr_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
 
+
+    coef_df.to_csv(
+        check_file, sep="\t", index=False, compression="gzip",
+        float_format="%.5g"
+    )
+
     output_file = Path(
-        gene_dir, "{}_{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
-            gene, cancer_type, signal, feature_selection,
+        results_dir, "{}_{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection,
             seed, num_features, predictor
         )
     ).resolve()
@@ -296,11 +297,12 @@ def check_gene_file(gene_dir,
                     shuffle_labels,
                     seed,
                     feature_selection,
-                    num_features):
+                    num_features,
+                    predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(
-        gene_dir, "{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
-            gene, signal, feature_selection, seed, num_features)).resolve()
+        gene_dir, "{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
+            gene, signal, feature_selection, seed, num_features, predictor)).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for gene: {}\n'.format(gene)
@@ -314,15 +316,16 @@ def check_cancer_type_file(results_dir,
                            shuffle_labels,
                            seed,
                            feature_selection,
-                           num_features):
+                           num_features,
+                           predictor='classify'):
     # NOTE: these filenames follow the following convention:
     #       any experiment identified by an identifier and a cancer type has
     #       the format {identifier}_{cancer_type}, in this order
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(
-        results_dir, "{}_{}_{}_{}_s{}_n{}_coefficients.tsv.gz".format(
-            identifier, cancer_type, signal,
-            feature_selection, seed, num_features
+        results_dir, "{}_{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection,
+            seed, num_features, predictor
         )).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(

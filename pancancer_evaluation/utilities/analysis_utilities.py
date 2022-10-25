@@ -71,7 +71,8 @@ def load_prediction_results_cc(results_dir, experiment_descriptor):
 def load_prediction_results_fs(results_dir,
                                fs_methods,
                                classify=True,
-                               identifier_from_fname=False):
+                               identifier_from_fname=False,
+                               holdout_from_fname=False):
     """Load results of feature selection experiments.
 
     Arguments
@@ -110,6 +111,9 @@ def load_prediction_results_fs(results_dir,
             if identifier_from_fname:
                 identifier = results_file.split('_')[0]
                 gene_results_df['identifier'] = identifier
+            if holdout_from_fname:
+                holdout_cancer_type = results_file.split('_')[1]
+                gene_results_df['holdout_cancer_type'] = holdout_cancer_type
             results_df = pd.concat((results_df, gene_results_df))
     return results_df
 
