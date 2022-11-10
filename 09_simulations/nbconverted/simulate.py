@@ -9,15 +9,25 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn.decomposition import PCA
+from sklearn.model_selection import KFold
 from umap import UMAP
 
+from models import (
+    train_ridge,
+    train_rf,
+    get_metrics
+)
+
 np.random.seed(42)
+
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
 
 
 # In[2]:
 
 
-n_domains = 5
+n_domains = 2
 n_per_domain = 25
 p = 10
 
@@ -109,4 +119,114 @@ axarr[1].set_title('UMAP projection of simulated data, colored by domain')
 axarr[1].set_xlabel('UMAP dimension 1')
 axarr[1].set_ylabel('UMAP dimension 2')
 axarr[1].legend()
+
+
+# In[8]:
+
+
+# split dataset into train/test
+n_splits = 4
+results = []
+results_cols = None
+
+kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
+    X_train, X_test = xs[train_ix, :], xs[test_ix, :]
+    y_train, y_test = ys[train_ix, :], ys[test_ix, :]
+    
+    fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
+    y_pred_train = fit_pipeline.predict(X_train)
+    y_pred_test = fit_pipeline.predict(X_test)
+    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    
+    metric_cols = list(metrics.keys()) + ['model', 'fold']
+    metric_vals = list(metrics.values()) + ['ridge', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+    
+    fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
+    y_pred_train = fit_pipeline.predict(X_train)
+    y_pred_test = fit_pipeline.predict(X_test)
+    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+                        
+    metric_vals = list(metrics.values()) + ['random_forest', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+    
+results_df = pd.DataFrame(results, columns=results_cols)
+results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+results_df.head()
+
+
+# In[9]:
+
+
+sns.set({'figure.figsize': (12, 6)})
+
+sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+plt.ylim(-0.1, 1.1)
+
+
+# In[10]:
+
+
+xs_fixed = np.concatenate((xs, domains[:, np.newaxis]), axis=1)
+print(xs_fixed[:5, :]) 
+
+
+# In[11]:
+
+
+# split dataset into train/test
+results = []
+results_cols = None
+
+kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
+    X_train, X_test = xs_fixed[train_ix, :], xs_fixed[test_ix, :]
+    y_train, y_test = ys[train_ix, :], ys[test_ix, :]
+    
+    fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
+    y_pred_train = fit_pipeline.predict(X_train)
+    y_pred_test = fit_pipeline.predict(X_test)
+    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    
+    metric_cols = list(metrics.keys()) + ['model', 'fold']
+    metric_vals = list(metrics.values()) + ['ridge', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+    
+    fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
+    y_pred_train = fit_pipeline.predict(X_train)
+    y_pred_test = fit_pipeline.predict(X_test)
+    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+                        
+    metric_vals = list(metrics.values()) + ['random_forest', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+    
+results_df = pd.DataFrame(results, columns=results_cols)
+results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+results_df.head()
+
+
+# In[12]:
+
+
+sns.set({'figure.figsize': (12, 6)})
+
+sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+plt.ylim(-0.1, 1.1)
 
