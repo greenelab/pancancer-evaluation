@@ -27,9 +27,10 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
-n_domains = 2
+n_domains = 5
 n_per_domain = 25
 p = 10
+noise_scale = 0.5
 
 # just have e_c and e_s be unit vectors
 # e_c = np.array([1, 0])
@@ -58,7 +59,7 @@ for i, beta_i in enumerate(betas):
     xs_i = (
         np.tile(ys_i, (1, p)) *
         np.tile((np.array([beta_i]) @ z[[i], :]), (n_per_domain, 1))
-    ) + (np.random.normal(scale=2., size=(n_per_domain, p)))
+    ) + (np.random.normal(scale=noise_scale, size=(n_per_domain, p)))
     if xs is None:
         xs = xs_i
     else:
@@ -176,14 +177,22 @@ plt.ylim(-0.1, 1.1)
 # In[10]:
 
 
-xs_fixed = np.concatenate((xs, domains[:, np.newaxis]), axis=1)
+x_covariates = pd.get_dummies(domains)
+x_covariates.head()
+
+
+# In[12]:
+
+
+xs_fixed = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_fixed[:5, :]) 
 
 
-# In[11]:
+# In[13]:
 
 
 # split dataset into train/test
+# this time with a covariate for domain membership (this should help performance)
 results = []
 results_cols = None
 
@@ -222,7 +231,7 @@ results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
 results_df.head()
 
 
-# In[12]:
+# In[14]:
 
 
 sns.set({'figure.figsize': (12, 6)})
