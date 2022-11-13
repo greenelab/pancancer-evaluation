@@ -12,6 +12,10 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold
 from umap import UMAP
 
+from csd_simulations import (
+    simulate_no_csd,
+    simulate_no_csd_same_z
+)
 from models import (
     train_ridge,
     train_rf,
@@ -28,60 +32,34 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
-n_domains = 5
+n_domains = 3
 n_per_domain = 25
-p = 20
-noise_scale = 2
+p = 10
+noise_scale = 1.2
 
-# just have e_c and e_s be unit vectors
-# e_c = np.array([1, 0])
-# e_s = np.array([0, 1])
-
-z = np.random.normal(size=(n_domains, p))
-z
+simulate_same_z = True
 
 
 # In[3]:
 
 
-betas = np.random.uniform(-1, 2, size=(n_domains,))
-betas
+if simulate_same_z:
+    xs, ys = simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale)
+else:
+    xs, ys = simulate_no_csd(n_domains, n_per_domain, p, noise_scale)
 
-
-# In[4]:
-
-
-xs = None
-ys = None
-
-for i, beta_i in enumerate(betas):
-    ys_i = np.random.choice([-1, 1], size=(n_per_domain, 1))
-    np.tile((np.array([beta_i]) @ z[[i], :]), (n_per_domain, 1))
-    xs_i = (
-        np.tile(ys_i, (1, p)) *
-        np.tile((np.array([beta_i]) @ z[[i], :]), (n_per_domain, 1))
-    ) + (np.random.normal(scale=noise_scale, size=(n_per_domain, p)))
-    if xs is None:
-        xs = xs_i
-    else:
-        xs = np.concatenate((xs, xs_i))
-    if ys is None:
-        ys = ys_i
-    else:
-        ys = np.concatenate((ys, ys_i))
-    
 print(xs.shape)
 print(xs[:5, :5])
 
 
-# In[5]:
+# In[4]:
 
 
 print(ys.shape)
 print(ys[:3, :])
 
 
-# In[6]:
+# In[5]:
 
 
 pca = PCA(n_components=2)
@@ -104,7 +82,7 @@ X_umap_df['label'] = ys.flatten()
 X_umap_df.head()
 
 
-# In[7]:
+# In[6]:
 
 
 sns.set({'figure.figsize': (18, 8)})
@@ -123,7 +101,7 @@ axarr[1].set_ylabel('UMAP dimension 2')
 axarr[1].legend()
 
 
-# In[8]:
+# In[7]:
 
 
 # split dataset into train/test
@@ -185,7 +163,7 @@ results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
 results_df.head()
 
 
-# In[9]:
+# In[8]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -194,21 +172,21 @@ sns.boxplot(data=results_df, x='model', y='value', hue='metric')
 plt.ylim(-0.1, 1.1)
 
 
-# In[10]:
+# In[9]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[11]:
+# In[10]:
 
 
 xs_fixed = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_fixed[:5, :]) 
 
 
-# In[12]:
+# In[11]:
 
 
 # split dataset into train/test
@@ -263,7 +241,7 @@ results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
 results_df.head()
 
 
-# In[13]:
+# In[12]:
 
 
 sns.set({'figure.figsize': (12, 6)})
