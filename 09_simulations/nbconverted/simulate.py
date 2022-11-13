@@ -15,6 +15,7 @@ from umap import UMAP
 from models import (
     train_ridge,
     train_rf,
+    train_mlp,
     get_metrics
 )
 
@@ -29,8 +30,8 @@ get_ipython().run_line_magic('autoreload', '2')
 
 n_domains = 5
 n_per_domain = 25
-p = 10
-noise_scale = 0.5
+p = 20
+noise_scale = 2
 
 # just have e_c and e_s be unit vectors
 # e_c = np.array([1, 0])
@@ -139,7 +140,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
     metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
-    
+ 
     metric_cols = list(metrics.keys()) + ['model', 'fold']
     metric_vals = list(metrics.values()) + ['ridge', fold]
     if results_cols is None:
@@ -147,13 +148,32 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
     else:
         assert metric_cols == results_cols
     results.append(metric_vals)
-    
+ 
     fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
     metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
-                        
+ 
     metric_vals = list(metrics.values()) + ['random_forest', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+    
+    params = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'h1_size': [100, 200, 300, 500],
+        'dropout': [0.1, 0.5, 0.75],
+        'weight_decay': [0, 0.1, 1, 10, 100]
+    }
+    
+    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, seed=42, max_iter=100)
+    y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
+    y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
+    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+                        
+    metric_vals = list(metrics.values()) + ['mlp', fold]
     if results_cols is None:
         results_cols = metric_cols
     else:
@@ -181,14 +201,14 @@ x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[12]:
+# In[11]:
 
 
 xs_fixed = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_fixed[:5, :]) 
 
 
-# In[13]:
+# In[12]:
 
 
 # split dataset into train/test
@@ -226,12 +246,24 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
         assert metric_cols == results_cols
     results.append(metric_vals)
     
+    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, seed=42, max_iter=100)
+    y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
+    y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
+    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+                        
+    metric_vals = list(metrics.values()) + ['mlp', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+    
 results_df = pd.DataFrame(results, columns=results_cols)
 results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
 results_df.head()
 
 
-# In[14]:
+# In[13]:
 
 
 sns.set({'figure.figsize': (12, 6)})
