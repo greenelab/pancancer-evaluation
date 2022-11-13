@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import ortho_group
 
 def simulate_no_csd(n_domains, n_per_domain, p, noise_scale=1.):
     xs, ys = None, None
@@ -48,7 +49,9 @@ def simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale=1.):
 
 def simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale=1.):
     xs, ys = None, None
-    z = np.random.normal(size=(k, p))
+    assert k < p, 'latent dimension must be smaller than # of features'
+    # generate orthogonal matrix and take the first k vectors as latent vars
+    z = ortho_group.rvs(p)[:k, :]
     betas = np.random.uniform(-1, 2, size=(n_domains, k))
 
     for i in range(n_domains):
@@ -56,7 +59,7 @@ def simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale=1.):
         ys_i = np.random.choice([-1, 1], size=(n_per_domain, 1))
         xs_i = (
             np.tile(ys_i, (1, p)) *
-            np.tile((np.array([beta_i]) @ z), (n_per_domain, 1))
+            np.tile((np.array(beta_i) @ z), (n_per_domain, 1))
         ) + (np.random.normal(scale=noise_scale, size=(n_per_domain, p)))
         if xs is None:
             xs = xs_i

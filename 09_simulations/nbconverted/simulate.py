@@ -14,7 +14,8 @@ from umap import UMAP
 
 from csd_simulations import (
     simulate_no_csd,
-    simulate_no_csd_same_z
+    simulate_no_csd_same_z,
+    simulate_no_csd_large_z,
 )
 from models import (
     train_ridge,
@@ -35,7 +36,8 @@ get_ipython().run_line_magic('autoreload', '2')
 n_domains = 3
 n_per_domain = 25
 p = 10
-noise_scale = 1.2
+k = 5
+noise_scale = 1
 
 simulate_same_z = True
 
@@ -43,7 +45,9 @@ simulate_same_z = True
 # In[3]:
 
 
-if simulate_same_z:
+if k is not None:
+    xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
+elif simulate_same_z:
     xs, ys = simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale)
 else:
     xs, ys = simulate_no_csd(n_domains, n_per_domain, p, noise_scale)
