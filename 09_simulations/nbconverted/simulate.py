@@ -17,6 +17,7 @@ from csd_simulations import (
     simulate_no_csd_same_z,
     simulate_no_csd_large_z,
     simulate_csd,
+    simulate_csd_corr,
 )
 from models import (
     train_ridge,
@@ -42,6 +43,7 @@ noise_scale = 1.5
 
 simulate_with_csd = True
 simulate_same_z = True
+correlated_noise = True
 
 
 # In[3]:
@@ -49,7 +51,10 @@ simulate_same_z = True
 
 if k is not None:
     if simulate_with_csd:
-        xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
+        if correlated_noise:
+            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k)
+        else:
+            xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
     else:
         xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
 elif simulate_same_z:

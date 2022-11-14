@@ -106,3 +106,47 @@ def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
         
     return xs, ys
 
+
+def simulate_csd_corr(n_domains, n_per_domain, p, k):
+    xs, ys = None, None
+    assert k < p, 'latent dimension must be smaller than # of features'
+
+    # generate orthogonal matrix
+    z = ortho_group.rvs(p)
+
+    # take the first vector as the common latent component
+    z_c = z[:1, :]
+    # take the next k vectors as the specific latent components
+    z_s = z[1:k+1, :]
+
+    betas = np.random.uniform(-1, 2, size=(n_domains, k))
+
+    for i in range(n_domains):
+        beta_i = betas[[i], :]
+        ys_i = np.random.choice([-1, 1], size=(n_per_domain, 1))
+
+        # create symmetric positive definite covariance matrix
+        # doing this for each loop iteration creates noise that is correlated
+        # within domains but uncorrelated across domains
+        sigma_i = np.random.uniform(size=(n_per_domain, n_per_domain))
+        sigma_i = sigma_i @ sigma_i.T
+
+        xs_i = (
+            np.tile(ys_i, (1, p)) *
+            np.tile(z_c + (np.array(beta_i) @ z_s), (n_per_domain, 1))
+        ) + (
+            np.random.multivariate_normal(mean=np.zeros(n_per_domain),
+                                          cov=sigma_i,
+                                          size=(p,)).T
+        )
+        if xs is None:
+            xs = xs_i
+        else:
+            xs = np.concatenate((xs, xs_i))
+        if ys is None:
+            ys = ys_i
+        else:
+            ys = np.concatenate((ys, ys_i))
+        
+    return xs, ys
+
