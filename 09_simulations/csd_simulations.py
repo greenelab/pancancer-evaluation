@@ -107,7 +107,7 @@ def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
     return xs, ys
 
 
-def simulate_csd_corr(n_domains, n_per_domain, p, k):
+def simulate_csd_corr(n_domains, n_per_domain, p, k, diag=None):
     xs, ys = None, None
     assert k < p, 'latent dimension must be smaller than # of features'
 
@@ -130,6 +130,8 @@ def simulate_csd_corr(n_domains, n_per_domain, p, k):
         # within domains but uncorrelated across domains
         sigma_i = np.random.uniform(size=(n_per_domain, n_per_domain))
         sigma_i = sigma_i @ sigma_i.T
+        if diag is not None:
+            sigma_i += (diag * np.eye(n_per_domain))
 
         xs_i = (
             np.tile(ys_i, (1, p)) *
