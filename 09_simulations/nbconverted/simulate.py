@@ -16,6 +16,7 @@ from csd_simulations import (
     simulate_no_csd,
     simulate_no_csd_same_z,
     simulate_no_csd_large_z,
+    simulate_csd,
 )
 from models import (
     train_ridge,
@@ -33,12 +34,13 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
-n_domains = 3
+n_domains = 5
 n_per_domain = 25
-p = 10
+p = 20
 k = 5
-noise_scale = 1
+noise_scale = 1.5
 
+simulate_with_csd = True
 simulate_same_z = True
 
 
@@ -46,7 +48,10 @@ simulate_same_z = True
 
 
 if k is not None:
-    xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
+    if simulate_with_csd:
+        xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
+    else:
+        xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
 elif simulate_same_z:
     xs, ys = simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale)
 else:

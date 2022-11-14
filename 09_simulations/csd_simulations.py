@@ -72,6 +72,37 @@ def simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale=1.):
         
     return xs, ys
 
-def simulate_csd(n_domains, n_per_domain, p, noise_scale):
-    raise NotImplementedError
+
+def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
+    xs, ys = None, None
+    assert k < p, 'latent dimension must be smaller than # of features'
+
+    # generate orthogonal matrix
+    z = ortho_group.rvs(p)
+
+    # take the first vector as the common latent component
+    z_c = z[:1, :]
+    # take the next k vectors as the specific latent components
+    z_s = z[1:k+1, :]
+
+    betas = np.random.uniform(-1, 2, size=(n_domains, k))
+
+    # TODO: domain-correlated noise?
+    for i in range(n_domains):
+        beta_i = betas[[i], :]
+        ys_i = np.random.choice([-1, 1], size=(n_per_domain, 1))
+        xs_i = (
+            np.tile(ys_i, (1, p)) *
+            np.tile(z_c + (np.array(beta_i) @ z_s), (n_per_domain, 1))
+        ) + (np.random.normal(scale=noise_scale, size=(n_per_domain, p)))
+        if xs is None:
+            xs = xs_i
+        else:
+            xs = np.concatenate((xs, xs_i))
+        if ys is None:
+            ys = ys_i
+        else:
+            ys = np.concatenate((ys, ys_i))
+        
+    return xs, ys
 
