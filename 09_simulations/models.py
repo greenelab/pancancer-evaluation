@@ -148,9 +148,9 @@ def train_mlp(X_train,
             n_iter=search_n_iter,
             cv=cv,
             scoring='roc_auc',
-            return_train_score=True,
-            n_jobs=3,
-            verbose=2,
+            # return_train_score=True,
+            # n_jobs=3,
+            verbose=1,
         )
     else:
         cv_pipeline = RandomizedSearchCV(

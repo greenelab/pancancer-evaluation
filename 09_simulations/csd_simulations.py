@@ -107,7 +107,7 @@ def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
     return xs, ys
 
 
-def simulate_csd_corr(n_domains, n_per_domain, p, k, diag=None):
+def simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=1., diag=None):
     xs, ys = None, None
     assert k < p, 'latent dimension must be smaller than # of features'
 
@@ -128,7 +128,7 @@ def simulate_csd_corr(n_domains, n_per_domain, p, k, diag=None):
         # create symmetric positive definite covariance matrix
         # doing this for each loop iteration creates noise that is correlated
         # within domains but uncorrelated across domains
-        sigma_i = np.random.uniform(size=(n_per_domain, n_per_domain))
+        sigma_i = np.random.uniform(high=corr_top, size=(n_per_domain, n_per_domain))
         sigma_i = sigma_i @ sigma_i.T
         if diag is not None:
             sigma_i += (diag * np.eye(n_per_domain))

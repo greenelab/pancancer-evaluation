@@ -37,7 +37,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 n_domains = 5
 n_per_domain = 50
-p = 20
+p = 40
 k = 5
 noise_scale = 1.5
 
@@ -52,7 +52,7 @@ correlated_noise = True
 if k is not None:
     if simulate_with_csd:
         if correlated_noise:
-            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, diag=0.2)
+            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.5, diag=3)
         else:
             xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
     else:
@@ -160,7 +160,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
         'weight_decay': [0, 0.1, 1, 10, 100]
     }
     
-    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, seed=42, max_iter=100)
+    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
     y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
     y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
     metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
@@ -238,7 +238,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
         assert metric_cols == results_cols
     results.append(metric_vals)
     
-    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, seed=42, max_iter=100)
+    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
     y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
     y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
     metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
