@@ -2,6 +2,9 @@ import numpy as np
 from scipy.stats import ortho_group
 
 def simulate_no_csd(n_domains, n_per_domain, p, noise_scale=1.):
+    """Simulate data from a latent variable model with multiple
+    domains, without a common component across domains.
+    """
     xs, ys = None, None
     z = np.random.normal(size=(n_domains, p))
     betas = np.random.uniform(-1, 2, size=(n_domains,))
@@ -25,6 +28,9 @@ def simulate_no_csd(n_domains, n_per_domain, p, noise_scale=1.):
 
 
 def simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale=1.):
+    """Simulate data from a latent variable model with multiple domains
+    but the same LVs.
+    """
     xs, ys = None, None
     z = np.random.normal(size=(1, p))
     betas = np.random.uniform(-1, 2, size=(n_domains,))
@@ -48,6 +54,9 @@ def simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale=1.):
 
 
 def simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale=1.):
+    """Simulate data from a latent variable model with multiple domains
+    and multiple dimensions in the latent space.
+    """
     xs, ys = None, None
     assert k < p, 'latent dimension must be smaller than # of features'
     # generate orthogonal matrix and take the first k vectors as latent vars
@@ -74,6 +83,12 @@ def simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale=1.):
 
 
 def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
+    """Simulate data from the CSD ('common-specific decomposition') model,
+    with uncorrelated noise within domains.
+
+    CSD and its generative model are described in more detail here:
+    http://proceedings.mlr.press/v119/piratla20a/piratla20a.pdf
+    """
     xs, ys = None, None
     assert k < p, 'latent dimension must be smaller than # of features'
 
@@ -87,7 +102,6 @@ def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
 
     betas = np.random.uniform(-1, 2, size=(n_domains, k))
 
-    # TODO: domain-correlated noise?
     for i in range(n_domains):
         beta_i = betas[[i], :]
         ys_i = np.random.choice([-1, 1], size=(n_per_domain, 1))
@@ -108,6 +122,12 @@ def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
 
 
 def simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=1., diag=None):
+    """Simulate data from the CSD ('common-specific decomposition') model,
+    with correlated noise within domains.
+
+    CSD and its generative model are described in more detail here:
+    http://proceedings.mlr.press/v119/piratla20a/piratla20a.pdf
+    """
     xs, ys = None, None
     assert k < p, 'latent dimension must be smaller than # of features'
 
