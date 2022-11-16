@@ -87,7 +87,9 @@ def simulate_csd(n_domains, n_per_domain, p, k, noise_scale=1.):
 
     betas = np.random.uniform(-1, 2, size=(n_domains, k))
 
-    # TODO: domain-correlated noise?
+    # note that the noise here is not domain-correlated, so the only
+    # domain-specific signal comes from the beta parameters
+    # simulate_csd_corr introduces correlated noise within domains
     for i in range(n_domains):
         beta_i = betas[[i], :]
         ys_i = np.random.choice([-1, 1], size=(n_per_domain, 1))

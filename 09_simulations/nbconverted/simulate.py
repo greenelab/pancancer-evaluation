@@ -37,7 +37,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 n_domains = 5
 n_per_domain = 50
-p = 40
+p = 10
 k = 5
 noise_scale = 1.5
 
@@ -52,7 +52,9 @@ correlated_noise = True
 if k is not None:
     if simulate_with_csd:
         if correlated_noise:
-            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.5, diag=3)
+            # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=1., diag=None)
+            # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.5, diag=5)
+            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.1, diag=10)
         else:
             xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
     else:
