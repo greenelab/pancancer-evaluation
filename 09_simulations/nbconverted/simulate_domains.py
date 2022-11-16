@@ -23,7 +23,7 @@ from models import (
     train_ridge,
     train_rf,
     train_mlp,
-    get_metrics
+    get_prob_metrics
 )
 
 np.random.seed(42)
@@ -143,7 +143,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
     fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
  
     metric_cols = list(metrics.keys()) + ['model', 'fold']
     metric_vals = list(metrics.values()) + ['ridge', fold]
@@ -156,7 +156,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
     fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
  
     metric_vals = list(metrics.values()) + ['random_forest', fold]
     if results_cols is None:
@@ -175,7 +175,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
     fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
     y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
     y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
                         
     metric_vals = list(metrics.values()) + ['mlp', fold]
     if results_cols is None:
@@ -195,6 +195,9 @@ results_df.head()
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+plt.title('Performance for each model for random train/test splits, colored by metric')
+plt.xlabel('Model type')
+plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
@@ -224,7 +227,7 @@ for fold, (_, test_ix) in enumerate(kf.split(X_holdout)):
     fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
 
     metric_cols = list(metrics.keys()) + ['model', 'fold']
     metric_vals = list(metrics.values()) + ['ridge', fold]
@@ -238,7 +241,7 @@ for fold, (_, test_ix) in enumerate(kf.split(X_holdout)):
     fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
 
     metric_vals = list(metrics.values()) + ['random_forest', fold]
     if results_cols is None:
@@ -257,7 +260,7 @@ for fold, (_, test_ix) in enumerate(kf.split(X_holdout)):
     fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
     y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
     y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
 
     metric_vals = list(metrics.values()) + ['mlp', fold]
     if results_cols is None:
@@ -277,6 +280,9 @@ results_df.head()
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+plt.title('Performance for each model for held out domain, colored by metric')
+plt.xlabel('Model type')
+plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
@@ -314,7 +320,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
     fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
     
     metric_cols = list(metrics.keys()) + ['model', 'fold']
     metric_vals = list(metrics.values()) + ['ridge', fold]
@@ -327,7 +333,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
     fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
     y_pred_train = fit_pipeline.predict(X_train)
     y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
                         
     metric_vals = list(metrics.values()) + ['random_forest', fold]
     if results_cols is None:
@@ -339,7 +345,7 @@ for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
     fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
     y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
     y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
-    metrics = get_metrics(y_train, y_test, y_pred_train, y_pred_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
                         
     metric_vals = list(metrics.values()) + ['mlp', fold]
     if results_cols is None:
@@ -359,5 +365,8 @@ results_df.head()
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+plt.title('Performance for each model for random train/test with domain covariate, colored by metric')
+plt.xlabel('Model type')
+plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
