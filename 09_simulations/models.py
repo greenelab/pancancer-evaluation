@@ -148,8 +148,6 @@ def train_mlp(X_train,
             n_iter=search_n_iter,
             cv=cv,
             scoring='roc_auc',
-            # return_train_score=True,
-            # n_jobs=3,
             verbose=1,
         )
     else:
@@ -160,7 +158,6 @@ def train_mlp(X_train,
             cv=n_folds,
             scoring='accuracy',
             verbose=1,
-            # return_train_score=True,
         )
 
     # pytorch wants [0, 1] labels
@@ -170,7 +167,11 @@ def train_mlp(X_train,
     return cv_pipeline
 
 
-def get_metrics(y_train, y_test, y_pred_train, y_pred_test):
+def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
+    """Get metrics for predicted probabilities.
+
+    y_pred_train and y_pred_test should be continuous - true values are binary.
+    """
 
     train_auroc = roc_auc_score(y_train, y_pred_train, average="weighted")
     test_auroc = roc_auc_score(y_test, y_pred_test, average="weighted")
@@ -178,19 +179,9 @@ def get_metrics(y_train, y_test, y_pred_train, y_pred_test):
     train_aupr = average_precision_score(y_train, y_pred_train, average="weighted")
     test_aupr = average_precision_score(y_test, y_pred_test, average="weighted")
 
-    # train_acc = accuracy_score(y_train, y_pred_train)
-    # test_acc = accuracy_score(y_test, y_pred_test)
-
-    # train_bacc = balanced_accuracy_score(y_train, y_pred_train)
-    # test_bacc = balanced_accuracy_score(y_test, y_pred_test)
-
     return {
         'train_auroc': train_auroc,
         'test_auroc': test_auroc,
         'train_aupr': train_aupr,
         'test_aupr': test_aupr,
-        # 'train_acc': train_acc,
-        # 'test_acc': test_acc,
-        # 'train_balanced_acc': train_bacc,
-        # 'test_balanced_acc': test_bacc
     }
