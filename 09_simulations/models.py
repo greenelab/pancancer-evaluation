@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -7,7 +8,7 @@ from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score
 )
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 
@@ -96,8 +97,8 @@ def train_rf(X_train,
 
 def train_mlp(X_train,
               y_train,
-              params,
               seed,
+              params=None,
               batch_size=50,
               n_folds=3,
               max_iter=1000,
@@ -108,6 +109,15 @@ def train_mlp(X_train,
     from skorch import NeuralNetClassifier
     from skorch.helper import SliceDataset
     from nn_models import ThreeLayerNet
+
+    if params is None:
+        # default params
+        params = {
+            'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+            'h1_size': [100, 200, 300, 500],
+            'dropout': [0.1, 0.5, 0.75],
+            'weight_decay': [0, 0.1, 1, 10, 100]
+        }
 
     model = ThreeLayerNet(input_size=X_train.shape[1])
 
@@ -149,6 +159,7 @@ def train_mlp(X_train,
             cv=cv,
             scoring='roc_auc',
             verbose=1,
+            random_state=seed
         )
     else:
         cv_pipeline = RandomizedSearchCV(
@@ -158,6 +169,7 @@ def train_mlp(X_train,
             cv=n_folds,
             scoring='accuracy',
             verbose=1,
+            random_state=seed
         )
 
     # pytorch wants [0, 1] labels
@@ -185,3 +197,70 @@ def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
         'train_aupr': train_aupr,
         'test_aupr': test_aupr,
     }
+
+
+def train_k_folds_all_models(xs, ys, train_data=None, n_splits=4, seed=42):
+    # xs is a numpy matrix (n, p)
+    # ys is a column vector of labels (n, 1)
+    # train_data has the same format and overrides train split
+    results = []
+    results_cols = None
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+
+    for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
+        # if train_data is provided then just split test set,
+        # and use provided training data
+        # otherwise split for both train and test
+        if train_data is not None:
+            # NOTE when train_data is passed in we really only have
+            # to train the models once, then evaluate them on each test
+            # fold - could speed things up to move this outside the loop
+            # for long-training models/large datasets
+            X_train, X_test = train_data[0], xs[test_ix, :]
+            y_train, y_test = train_data[1], ys[test_ix, :]
+        else:
+            X_train, X_test = xs[train_ix, :], xs[test_ix, :]
+            y_train, y_test = ys[train_ix, :], ys[test_ix, :]
+
+        fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=seed)
+        y_pred_train = fit_pipeline.predict(X_train)
+        y_pred_test = fit_pipeline.predict(X_test)
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_cols = list(metrics.keys()) + ['model', 'fold']
+        metric_vals = list(metrics.values()) + ['ridge', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+
+        fit_pipeline = train_rf(X_train, y_train.flatten(), seed=seed)
+        y_pred_train = fit_pipeline.predict(X_train)
+        y_pred_test = fit_pipeline.predict(X_test)
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_vals = list(metrics.values()) + ['random_forest', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+
+        fit_pipeline = train_mlp(X_train, y_train.flatten(), n_folds=-1, seed=seed, max_iter=100)
+        y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
+        y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_vals = list(metrics.values()) + ['mlp', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+
+    results_df = pd.DataFrame(results, columns=results_cols)
+    results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+
+    return results_df
+
