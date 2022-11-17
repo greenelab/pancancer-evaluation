@@ -57,8 +57,8 @@ if k is not None:
     if simulate_with_csd:
         if correlated_noise:
             # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=1., diag=None)
-            # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.5, diag=5)
-            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.1, diag=10)
+            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.5, diag=5)
+            # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.1, diag=10)
         else:
             xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
     else:
@@ -282,31 +282,196 @@ results_df.head()
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df, x='model', y='value', hue='metric')
-plt.title('Performance for each model for held out domain, colored by metric')
+plt.title('Performance for each model on held out domain, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
+
+
+# ### CORAL
+# 
+# CORAL
+
+# In[11]:
+
+
+# apply CORAL to map X_train onto X_holdout
+from transfertools.models import CORAL
+
+print(X_train.shape, X_holdout.shape)
+X_train_coral, X_holdout_coral = CORAL().fit_transfer(X_train, X_holdout)
+
+
+# In[12]:
+
+
+# visualize X_train and X_holdout after CORAL transformation
+xs_coral = np.concatenate((X_train_coral, X_holdout_coral))
+print(xs_coral.shape)
+
+
+# In[13]:
+
+
+pca = PCA(n_components=2)
+X_proj_pca = pca.fit_transform(xs_coral)
+reducer = UMAP(n_components=2, random_state=42)
+X_proj_umap = reducer.fit_transform(xs_coral)
+
+coral_train_test = np.concatenate((
+    ['train'] * X_train_coral.shape[0],
+    ['test'] * X_holdout_coral.shape[0]
+))
+
+X_pca_df = pd.DataFrame(X_proj_pca,
+                        columns=['PC{}'.format(j) for j in range(X_proj_pca.shape[1])])
+X_pca_df['coral_train_test'] = coral_train_test
+X_pca_df['label'] = ys.flatten()
+
+X_umap_df = pd.DataFrame(X_proj_umap,
+                        columns=['UMAP{}'.format(j) for j in range(X_proj_umap.shape[1])])
+X_umap_df['coral_train_test'] = coral_train_test
+X_umap_df['label'] = ys.flatten()
+
+X_umap_df.head()
+
+
+# In[14]:
+
+
+sns.set({'figure.figsize': (18, 8)})
+fig, axarr = plt.subplots(1, 2)
+
+sns.scatterplot(data=X_pca_df, x='PC0', y='PC1', hue='coral_train_test', style='label', s=50, ax=axarr[0])
+sns.scatterplot(data=X_umap_df, x='UMAP0', y='UMAP1', hue='coral_train_test', style='label', s=50, ax=axarr[1])
+    
+axarr[0].set_title('PCA projection after CORAL transformation, colored by train/test')
+axarr[1].set_xlabel('PC1')
+axarr[1].set_ylabel('PC2')
+axarr[0].legend()
+axarr[1].set_title('UMAP projection after CORAL transformation, colored by train/test')
+axarr[1].set_xlabel('UMAP dimension 1')
+axarr[1].set_ylabel('UMAP dimension 2')
+axarr[1].legend()
+
+
+# In[15]:
+
+
+kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+for fold, (_, test_ix) in enumerate(kf.split(X_holdout_coral)):
+    X_test, y_test = X_holdout_coral[test_ix, :], y_holdout[test_ix, :]
+
+    # train linear model with ridge penalty
+    fit_pipeline = train_ridge(X_train_coral, y_train.flatten(), seed=42)
+    y_pred_train = fit_pipeline.predict(X_train_coral)
+    y_pred_test = fit_pipeline.predict(X_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+    metric_cols = list(metrics.keys()) + ['model', 'fold']
+    metric_vals = list(metrics.values()) + ['ridge', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+
+    # train random forest model
+    fit_pipeline = train_rf(X_train_coral, y_train.flatten(), seed=42)
+    y_pred_train = fit_pipeline.predict(X_train_coral)
+    y_pred_test = fit_pipeline.predict(X_test)
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+    metric_vals = list(metrics.values()) + ['random_forest', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+
+    # train 3-layer neural network model
+    params = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'h1_size': [100, 200, 300, 500],
+        'dropout': [0.1, 0.5, 0.75],
+        'weight_decay': [0, 0.1, 1, 10, 100]
+    }
+    fit_pipeline = train_mlp(X_train_coral, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
+    y_pred_train = fit_pipeline.predict_proba(X_train_coral.astype(np.float32))[:, 1]
+    y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
+    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+    metric_vals = list(metrics.values()) + ['mlp', fold]
+    if results_cols is None:
+        results_cols = metric_cols
+    else:
+        assert metric_cols == results_cols
+    results.append(metric_vals)
+
+coral_results_df = pd.DataFrame(results, columns=results_cols)
+coral_results_df = coral_results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+coral_results_df.head()
+
+
+# In[16]:
+
+
+sns.set({'figure.figsize': (12, 6)})
+
+sns.boxplot(data=coral_results_df, x='model', y='value', hue='metric')
+plt.title('Performance for each model on held out domain after CORAL, colored by metric')
+plt.xlabel('Model type')
+plt.ylabel('Metric value')
+plt.ylim(-0.1, 1.1)
+
+
+# In[17]:
+
+
+results_df['preprocessing'] = 'none'
+coral_results_df['preprocessing'] = 'CORAL'
+
+results_df = pd.concat((results_df, coral_results_df))
+
+sns.set({'figure.figsize': (12, 8)})
+fig, axarr = plt.subplots(2, 1)
+
+sns.boxplot(data=results_df[results_df.metric == 'test_auroc'],
+            x='model', y='value', hue='preprocessing', ax=axarr[0])
+axarr[0].set_title('Performance on held-out domain before/after CORAL, measured by test AUROC')
+axarr[0].set_xlabel('Model type')
+axarr[0].set_ylabel('Metric value')
+axarr[0].set_ylim(-0.1, 1.1)
+
+sns.boxplot(data=results_df[results_df.metric == 'test_aupr'],
+            x='model', y='value', hue='preprocessing', ax=axarr[1])
+axarr[1].set_title('Performance on held-out domain before/after CORAL, measured by test AUPR')
+axarr[1].set_xlabel('Model type')
+axarr[1].set_ylabel('Metric value')
+axarr[1].set_ylim(-0.1, 1.1)
+
+plt.tight_layout()
 
 
 # ### Random split with dummy covariate for domain
 # 
 # Does providing the domain information (in the form of a dummy/one-hot variable) help performance?
 
-# In[11]:
+# In[18]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[12]:
+# In[19]:
 
 
 xs_fixed = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_fixed[:5, :]) 
 
 
-# In[13]:
+# In[20]:
 
 
 # split dataset into train/test
@@ -361,7 +526,7 @@ results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
 results_df.head()
 
 
-# In[14]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (12, 6)})
