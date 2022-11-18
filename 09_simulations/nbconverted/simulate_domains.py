@@ -16,8 +16,7 @@ from csd_simulations import (
     simulate_no_csd,
     simulate_no_csd_same_z,
     simulate_no_csd_large_z,
-    simulate_csd,
-    simulate_csd_corr,
+    simulate_csd
 )
 from models import (
     train_ridge,
@@ -39,11 +38,14 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
+# see 09_simulations/csd_simulations.py for details on simulation parameters
 n_domains = 5
 n_per_domain = 50
-p = 20
+p = 10
 k = 5
 noise_scale = 1.5
+corr_top = 0.8
+diag = None
 
 simulate_with_csd = True
 simulate_same_z = True
@@ -55,10 +57,11 @@ correlated_noise = True
 
 if k is not None:
     if simulate_with_csd:
-        if correlated_noise:
-            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.8, diag=1)
-        else:
-            xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
+        xs, ys = simulate_csd(n_domains, n_per_domain, p, k, 
+                              corr_noise=correlated_noise,
+                              noise_scale=noise_scale,
+                              corr_top=corr_top,
+                              diag=diag)
     else:
         xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
 elif simulate_same_z:
@@ -125,7 +128,7 @@ axarr[1].legend()
 
 # ### Random train/test splitting
 # 
-# Just split the data randomly here, and fit some models to the split data. This gives us an idea of what baseline performance we should expect when we have access to training data from all domains.
+# Just split the data randomly here, across all of the simulated domains, and fit some models to the split data. This gives us an idea of what baseline performance we should expect when we have access to training data from all domains.
 
 # In[7]:
 

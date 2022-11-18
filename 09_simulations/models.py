@@ -14,18 +14,13 @@ from sklearn.pipeline import Pipeline
 def train_ridge(X_train,
                 y_train,
                 seed,
-                c_values=None,
+                c_values=[1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000],
                 n_folds=3,
                 max_iter=1000):
 
-    if c_values is None:
-        clf_parameters = {
-            "classify__C": [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
-        }
-    else:
-        clf_parameters = {
-            "classify__C": c_values
-        }
+    clf_parameters = {
+        "classify__C": c_values
+    }
 
     estimator = Pipeline(
         steps=[
