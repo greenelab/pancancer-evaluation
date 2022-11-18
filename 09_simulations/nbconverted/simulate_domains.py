@@ -15,8 +15,7 @@ from csd_simulations import (
     simulate_no_csd,
     simulate_no_csd_same_z,
     simulate_no_csd_large_z,
-    simulate_csd,
-    simulate_csd_corr,
+    simulate_csd
 )
 from models import train_k_folds_all_models
 
@@ -33,11 +32,14 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
+# see 09_simulations/csd_simulations.py for details on simulation parameters
 n_domains = 5
 n_per_domain = 50
-p = 10
+p = 20
 k = 5
 noise_scale = 1.5
+corr_top = 0.5
+diag = 2.5
 
 simulate_with_csd = True
 simulate_same_z = True
@@ -49,12 +51,11 @@ correlated_noise = True
 
 if k is not None:
     if simulate_with_csd:
-        if correlated_noise:
-            # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=1., diag=None)
-            xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.5, diag=5)
-            # xs, ys = simulate_csd_corr(n_domains, n_per_domain, p, k, corr_top=0.1, diag=10)
-        else:
-            xs, ys = simulate_csd(n_domains, n_per_domain, p, k, noise_scale)
+        xs, ys = simulate_csd(n_domains, n_per_domain, p, k, 
+                              corr_noise=correlated_noise,
+                              noise_scale=noise_scale,
+                              corr_top=corr_top,
+                              diag=diag)
     else:
         xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
 elif simulate_same_z:
@@ -121,7 +122,7 @@ axarr[1].legend()
 
 # ### Random train/test splitting
 # 
-# Just split the data randomly here, and fit some models to the split data. This gives us an idea of what baseline performance we should expect when we have access to training data from all domains.
+# Just split the data randomly here, across all of the simulated domains, and fit some models to the split data. This gives us an idea of what baseline performance we should expect when we have access to training data from all domains.
 
 # In[7]:
 
@@ -146,7 +147,7 @@ plt.ylim(-0.1, 1.1)
 # 
 # Here, we want to hold out a single domain and train on the other domains. This simulates the case when we have access to some domains during training, and we want to measure generalization to domains that we can't train on for whatever reason.
 
-# In[9]:
+# In[ ]:
 
 
 # TODO: explain
@@ -162,7 +163,7 @@ results_df = train_k_folds_all_models(
 results_df.head()
 
 
-# In[10]:
+# In[ ]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -178,7 +179,7 @@ plt.ylim(-0.1, 1.1)
 # 
 # CORAL
 
-# In[11]:
+# In[ ]:
 
 
 # apply CORAL to map X_train onto X_holdout
@@ -188,7 +189,7 @@ print(X_train.shape, X_holdout.shape)
 X_train_coral, X_holdout_coral = CORAL().fit_transfer(X_train, X_holdout)
 
 
-# In[12]:
+# In[ ]:
 
 
 # visualize X_train and X_holdout after CORAL transformation
@@ -196,7 +197,7 @@ xs_coral = np.concatenate((X_train_coral, X_holdout_coral))
 print(xs_coral.shape)
 
 
-# In[13]:
+# In[ ]:
 
 
 pca = PCA(n_components=2)
@@ -222,7 +223,7 @@ X_umap_df['label'] = ys.flatten()
 X_umap_df.head()
 
 
-# In[14]:
+# In[ ]:
 
 
 sns.set({'figure.figsize': (18, 8)})
@@ -241,7 +242,7 @@ axarr[1].set_ylabel('UMAP dimension 2')
 axarr[1].legend()
 
 
-# In[15]:
+# In[ ]:
 
 
 # TODO: explain
@@ -251,7 +252,7 @@ coral_results_df = train_k_folds_all_models(
 coral_results_df.head()
 
 
-# In[16]:
+# In[ ]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -263,7 +264,7 @@ plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
-# In[17]:
+# In[ ]:
 
 
 results_df['preprocessing'] = 'none'
@@ -271,7 +272,7 @@ coral_results_df['preprocessing'] = 'CORAL'
 
 coral_results_df = pd.concat((results_df, coral_results_df))
 
-sns.set({'figure.figsize': (12, 8)})
+sns.set({'figure.figsize': (10, 8)})
 fig, axarr = plt.subplots(2, 1)
 
 sns.boxplot(data=coral_results_df[coral_results_df.metric == 'test_auroc'],
@@ -295,28 +296,28 @@ plt.tight_layout()
 # 
 # Does providing the domain information (in the form of a dummy/one-hot variable) help performance?
 
-# In[18]:
+# In[ ]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[19]:
+# In[ ]:
 
 
 xs_cov = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_cov[:5, :])
 
 
-# In[20]:
+# In[ ]:
 
 
 cov_results_df = train_k_folds_all_models(xs_cov, ys)
 cov_results_df.head()
 
 
-# In[21]:
+# In[ ]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -328,7 +329,7 @@ plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
-# In[22]:
+# In[ ]:
 
 
 results_df['covariate'] = 'none'
@@ -336,7 +337,7 @@ cov_results_df['covariate'] = 'domain'
 
 cov_results_df = pd.concat((results_df, cov_results_df))
 
-sns.set({'figure.figsize': (12, 8)})
+sns.set({'figure.figsize': (10, 8)})
 fig, axarr = plt.subplots(2, 1)
 
 sns.boxplot(data=cov_results_df[cov_results_df.metric == 'test_auroc'],
