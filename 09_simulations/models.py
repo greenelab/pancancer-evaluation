@@ -277,9 +277,10 @@ def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
     }
 
 
-def train_k_folds_all_models(xs, ys, train_data=None, n_splits=4, seed=42):
+def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=42):
     # xs is a numpy matrix (n, p)
     # ys is a column vector of labels (n, 1)
+    # domains is a column vector of domains (n, 1)
     # train_data has the same format and overrides train split
     results = []
     results_cols = None
@@ -296,9 +297,11 @@ def train_k_folds_all_models(xs, ys, train_data=None, n_splits=4, seed=42):
             # for long-training models/large datasets
             X_train, X_test = train_data[0], xs[test_ix, :]
             y_train, y_test = train_data[1], ys[test_ix, :]
+            ds_train, ds_test = train_data[2], domains[test_ix, :]
         else:
             X_train, X_test = xs[train_ix, :], xs[test_ix, :]
             y_train, y_test = ys[train_ix, :], ys[test_ix, :]
+            ds_train, ds_test = domains[train_ix, :], domains[test_ix, :]
 
         fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=seed)
         y_pred_train = fit_pipeline.predict(X_train)
@@ -325,12 +328,48 @@ def train_k_folds_all_models(xs, ys, train_data=None, n_splits=4, seed=42):
             assert metric_cols == results_cols
         results.append(metric_vals)
 
-        fit_pipeline = train_mlp(X_train, y_train.flatten(), n_folds=-1, seed=seed, max_iter=100)
+        fit_pipeline = train_mlp(X_train,
+                                 y_train.flatten(),
+                                 n_folds=-1,
+                                 seed=seed,
+                                 max_iter=100)
         y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
         y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
         metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
 
         metric_vals = list(metrics.values()) + ['mlp', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+
+        n_train_domains = np.unique(ds_train).shape[0]
+        fit_pipeline = train_linear_csd(X_train,
+                                        y_train.flatten(),
+                                        ds_train.flatten(),
+                                        n_domains=n_train_domains,
+                                        seed=seed,
+                                        n_folds=-1,
+                                        max_iter=100,
+                                        search_n_iter=5)
+        # currently predict_proba expects the input X to have the
+        # sample domains in the first column, TODO find a better/cleaner
+        # solution for this
+        y_pred_train = fit_pipeline.predict_proba(
+            np.concatenate((ds_train, X_train), 1).astype(np.float32)
+        )[:, 1]
+        # just use zero for test domains, we're only using the
+        # common logits for prediction anyway so this shouldn't matter
+        y_pred_test = fit_pipeline.predict_proba(
+            np.concatenate((np.zeros((X_test.shape[0], 1)), X_test), 1).astype(np.float32)
+        )[:, 1]
+        # y_pred_test = fit_pipeline.predict_proba(
+        #     np.concatenate((ds_test, X_test), 1).astype(np.float32)
+        # )[:, 1]
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_vals = list(metrics.values()) + ['linear_csd', fold]
         if results_cols is None:
             results_cols = metric_cols
         else:

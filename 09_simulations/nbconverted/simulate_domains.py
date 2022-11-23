@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn.decomposition import PCA
+import torch
 from umap import UMAP
 
 from csd_simulations import (
@@ -23,6 +24,7 @@ from models import (
 )
 
 np.random.seed(42)
+torch.manual_seed(42)
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
@@ -132,7 +134,7 @@ axarr[1].legend()
 # In[7]:
 
 
-results_df = train_k_folds_all_models(xs, ys)
+results_df = train_k_folds_all_models(xs, ys, domains[:, np.newaxis])
 results_df.head()
 
 
@@ -141,7 +143,7 @@ results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+sns.boxplot(data=results_df.sort_values(by='metric', ascending=False), x='metric', y='value', hue='model')
 plt.title('Performance for each model for random train/test splits, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
@@ -161,9 +163,11 @@ X_train = xs[domains != holdout_domain, :]
 X_holdout = xs[domains == holdout_domain, :]
 y_train = ys[domains != holdout_domain, :]
 y_holdout = ys[domains == holdout_domain, :]
+ds_train = domains[domains != holdout_domain, np.newaxis]
+ds_holdout = domains[domains == holdout_domain, np.newaxis]
 
 results_df = train_k_folds_all_models(
-    X_holdout, y_holdout, train_data=(X_train, y_train)
+    X_holdout, y_holdout, ds_holdout, train_data=(X_train, y_train, ds_train)
 )
 results_df.head()
 
@@ -266,7 +270,7 @@ axarr[1, 1].legend()
 
 # TODO: explain
 coral_results_df = train_k_folds_all_models(
-    X_holdout_coral, y_holdout, train_data=(X_train_coral, y_train)
+    X_holdout_coral, y_holdout, ds_holdout, train_data=(X_train_coral, y_train, ds_train)
 )
 coral_results_df.head()
 
@@ -311,52 +315,32 @@ axarr[1].set_ylim(-0.1, 1.1)
 plt.tight_layout()
 
 
-# In[18]:
-
-
-# TODO: explain
-linear_csd_results_df = train_k_folds_csd(xs, ys, domains[:, np.newaxis])
-linear_csd_results_df.head()
-
-
-# In[19]:
-
-
-sns.set({'figure.figsize': (12, 6)})
-
-sns.boxplot(data=linear_csd_results_df, x='metric', y='value')
-plt.title('Performance for linear CSD model on random holdout data')
-plt.xlabel('Model type')
-plt.ylabel('Metric value')
-plt.ylim(-0.1, 1.1)
-
-
 # ### Random split with dummy covariate for domain
 # 
 # Does providing the domain information (in the form of a dummy/one-hot variable) help performance?
 
-# In[20]:
+# In[18]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[21]:
+# In[19]:
 
 
 xs_cov = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_cov[:5, :])
 
 
-# In[22]:
+# In[20]:
 
 
-cov_results_df = train_k_folds_all_models(xs_cov, ys)
+cov_results_df = train_k_folds_all_models(xs_cov, ys, domains[:, np.newaxis])
 cov_results_df.head()
 
 
-# In[23]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -368,7 +352,7 @@ plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
-# In[24]:
+# In[22]:
 
 
 results_df['covariate'] = 'none'
