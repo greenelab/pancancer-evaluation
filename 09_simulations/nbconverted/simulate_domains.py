@@ -17,7 +17,10 @@ from csd_simulations import (
     simulate_no_csd_large_z,
     simulate_csd
 )
-from models import train_k_folds_all_models
+from models import (
+    train_k_folds_all_models,
+    train_k_folds_csd
+)
 
 np.random.seed(42)
 
@@ -38,8 +41,10 @@ n_per_domain = 50
 p = 20
 k = 5
 noise_scale = 1.5
-corr_top = 0.5
-diag = 2.5
+
+corr_top, diag = 1, None
+# corr_top, diag = 0.5, 5
+# corr_top, diag = 0.1, 10
 
 simulate_with_csd = True
 simulate_same_z = True
@@ -147,7 +152,7 @@ plt.ylim(-0.1, 1.1)
 # 
 # Here, we want to hold out a single domain and train on the other domains. This simulates the case when we have access to some domains during training, and we want to measure generalization to domains that we can't train on for whatever reason.
 
-# In[ ]:
+# In[9]:
 
 
 # TODO: explain
@@ -163,7 +168,7 @@ results_df = train_k_folds_all_models(
 results_df.head()
 
 
-# In[ ]:
+# In[10]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -179,7 +184,7 @@ plt.ylim(-0.1, 1.1)
 # 
 # CORAL
 
-# In[ ]:
+# In[11]:
 
 
 # apply CORAL to map X_train onto X_holdout
@@ -189,7 +194,7 @@ print(X_train.shape, X_holdout.shape)
 X_train_coral, X_holdout_coral = CORAL().fit_transfer(X_train, X_holdout)
 
 
-# In[ ]:
+# In[12]:
 
 
 # visualize X_train and X_holdout after CORAL transformation
@@ -197,52 +202,66 @@ xs_coral = np.concatenate((X_train_coral, X_holdout_coral))
 print(xs_coral.shape)
 
 
-# In[ ]:
+# In[13]:
 
 
 pca = PCA(n_components=2)
-X_proj_pca = pca.fit_transform(xs_coral)
+X_proj_pca_coral = pca.fit_transform(xs_coral)
 reducer = UMAP(n_components=2, random_state=42)
-X_proj_umap = reducer.fit_transform(xs_coral)
+X_proj_umap_coral = reducer.fit_transform(xs_coral)
 
-coral_train_test = np.concatenate((
-    ['train'] * X_train_coral.shape[0],
-    ['test'] * X_holdout_coral.shape[0]
+coral_train = np.concatenate((
+    [True] * X_train_coral.shape[0],
+    [False] * X_holdout_coral.shape[0]
 ))
 
-X_pca_df = pd.DataFrame(X_proj_pca,
-                        columns=['PC{}'.format(j) for j in range(X_proj_pca.shape[1])])
-X_pca_df['coral_train_test'] = coral_train_test
-X_pca_df['label'] = ys.flatten()
+X_pca_coral_df = pd.DataFrame(X_proj_pca_coral,
+                              columns=['PC{}'.format(j) for j in range(X_proj_pca_coral.shape[1])])
+X_pca_coral_df['coral_train'] = coral_train
+X_pca_coral_df['label'] = ys.flatten()
 
-X_umap_df = pd.DataFrame(X_proj_umap,
-                        columns=['UMAP{}'.format(j) for j in range(X_proj_umap.shape[1])])
-X_umap_df['coral_train_test'] = coral_train_test
-X_umap_df['label'] = ys.flatten()
+X_umap_coral_df = pd.DataFrame(X_proj_umap_coral,
+                               columns=['UMAP{}'.format(j) for j in range(X_proj_umap_coral.shape[1])])
+X_umap_coral_df['coral_train'] = coral_train
+X_umap_coral_df['label'] = ys.flatten()
 
-X_umap_df.head()
-
-
-# In[ ]:
+X_umap_coral_df.head()
 
 
-sns.set({'figure.figsize': (18, 8)})
-fig, axarr = plt.subplots(1, 2)
+# In[14]:
 
-sns.scatterplot(data=X_pca_df, x='PC0', y='PC1', hue='coral_train_test', style='label', s=50, ax=axarr[0])
-sns.scatterplot(data=X_umap_df, x='UMAP0', y='UMAP1', hue='coral_train_test', style='label', s=50, ax=axarr[1])
+
+sns.set({'figure.figsize': (18, 12)})
+fig, axarr = plt.subplots(2, 2)
+
+X_pca_df['coral_train'] = (domains != holdout_domain)
+X_umap_df['coral_train'] = (domains != holdout_domain)
+sns.scatterplot(data=X_pca_df, x='PC0', y='PC1', hue='coral_train', style='label', s=50, ax=axarr[0, 0])
+sns.scatterplot(data=X_umap_df, x='UMAP0', y='UMAP1', hue='coral_train', style='label', s=50, ax=axarr[0, 1])
     
-axarr[0].set_title('PCA projection after CORAL transformation, colored by train/test')
-axarr[0].set_xlabel('PC1')
-axarr[0].set_ylabel('PC2')
-axarr[0].legend()
-axarr[1].set_title('UMAP projection after CORAL transformation, colored by train/test')
-axarr[1].set_xlabel('UMAP dimension 1')
-axarr[1].set_ylabel('UMAP dimension 2')
-axarr[1].legend()
+axarr[0, 0].set_title('PCA projection of simulated data, colored by train/test')
+axarr[0, 0].set_xlabel('PC1')
+axarr[0, 0].set_ylabel('PC2')
+axarr[0, 0].legend()
+axarr[0, 1].set_title('UMAP projection of simulated data, colored by train/test')
+axarr[0, 1].set_xlabel('UMAP dimension 1')
+axarr[0, 1].set_ylabel('UMAP dimension 2')
+axarr[0, 1].legend()
+
+sns.scatterplot(data=X_pca_coral_df, x='PC0', y='PC1', hue='coral_train', style='label', s=50, ax=axarr[1, 0])
+sns.scatterplot(data=X_umap_coral_df, x='UMAP0', y='UMAP1', hue='coral_train', style='label', s=50, ax=axarr[1, 1])
+    
+axarr[1, 0].set_title('PCA projection after CORAL transformation, colored by train/test')
+axarr[1, 0].set_xlabel('PC1')
+axarr[1, 0].set_ylabel('PC2')
+axarr[1, 0].legend()
+axarr[1, 1].set_title('UMAP projection after CORAL transformation, colored by train/test')
+axarr[1, 1].set_xlabel('UMAP dimension 1')
+axarr[1, 1].set_ylabel('UMAP dimension 2')
+axarr[1, 1].legend()
 
 
-# In[ ]:
+# In[15]:
 
 
 # TODO: explain
@@ -252,7 +271,7 @@ coral_results_df = train_k_folds_all_models(
 coral_results_df.head()
 
 
-# In[ ]:
+# In[16]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -264,7 +283,7 @@ plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
-# In[ ]:
+# In[17]:
 
 
 results_df['preprocessing'] = 'none'
@@ -292,32 +311,52 @@ axarr[1].set_ylim(-0.1, 1.1)
 plt.tight_layout()
 
 
+# In[18]:
+
+
+# TODO: explain
+linear_csd_results_df = train_k_folds_csd(xs, ys, domains[:, np.newaxis])
+linear_csd_results_df.head()
+
+
+# In[19]:
+
+
+sns.set({'figure.figsize': (12, 6)})
+
+sns.boxplot(data=linear_csd_results_df, x='metric', y='value')
+plt.title('Performance for linear CSD model on random holdout data')
+plt.xlabel('Model type')
+plt.ylabel('Metric value')
+plt.ylim(-0.1, 1.1)
+
+
 # ### Random split with dummy covariate for domain
 # 
 # Does providing the domain information (in the form of a dummy/one-hot variable) help performance?
 
-# In[ ]:
+# In[20]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[ ]:
+# In[21]:
 
 
 xs_cov = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_cov[:5, :])
 
 
-# In[ ]:
+# In[22]:
 
 
 cov_results_df = train_k_folds_all_models(xs_cov, ys)
 cov_results_df.head()
 
 
-# In[ ]:
+# In[23]:
 
 
 sns.set({'figure.figsize': (12, 6)})
@@ -329,7 +368,7 @@ plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
 
-# In[ ]:
+# In[24]:
 
 
 results_df['covariate'] = 'none'
