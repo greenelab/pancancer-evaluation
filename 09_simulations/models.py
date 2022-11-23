@@ -11,6 +11,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
+from tqdm.auto import tqdm
 
 def train_ridge(X_train,
                 y_train,
@@ -151,7 +152,7 @@ def train_mlp(X_train,
             n_iter=search_n_iter,
             cv=cv,
             scoring='roc_auc',
-            verbose=1,
+            verbose=0,
             random_state=seed
         )
     else:
@@ -161,14 +162,13 @@ def train_mlp(X_train,
             n_iter=search_n_iter,
             cv=n_folds,
             scoring='accuracy',
-            verbose=1,
+            verbose=0,
             random_state=seed
         )
 
     # pytorch wants [0, 1] labels
     y_train[y_train == -1] = 0
     cv_pipeline.fit(X=X_train.astype(np.float32), y=y_train.astype(np.int))
-    print(cv_pipeline.best_params_)
 
     return cv_pipeline
 
@@ -242,7 +242,7 @@ def train_linear_csd(X_train,
             n_iter=search_n_iter,
             cv=cv,
             scoring='roc_auc',
-            verbose=1,
+            verbose=0,
             random_state=seed
         )
     else:
@@ -252,7 +252,7 @@ def train_linear_csd(X_train,
             n_iter=search_n_iter,
             cv=n_folds,
             scoring='accuracy',
-            verbose=1,
+            verbose=0,
             random_state=seed
         )
 
@@ -263,7 +263,6 @@ def train_linear_csd(X_train,
     )
     cv_pipeline.fit(X=train_data.astype(np.float32),
                     y=y_train.astype(np.int))
-    print(cv_pipeline.best_params_)
 
     return cv_pipeline
 
@@ -301,7 +300,10 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
     results_cols = None
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
-    for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
+    outer_progress = tqdm(enumerate(kf.split(xs)), total=n_splits)
+    inner_progress = tqdm(total=4, leave=True)
+    for fold, (train_ix, test_ix) in outer_progress:
+        outer_progress.set_description('fold: {}'.format(fold))
         # if train_data is provided then just split test set,
         # and use provided training data
         # otherwise split for both train and test
@@ -318,6 +320,9 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
             y_train, y_test = ys[train_ix, :], ys[test_ix, :]
             ds_train, ds_test = domains[train_ix, :], domains[test_ix, :]
 
+        inner_progress.reset()
+        inner_progress.set_description('model: ridge')
+
         # train/evaluate ridge regression model
         fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=seed)
         y_pred_train = fit_pipeline.predict(X_train)
@@ -331,6 +336,8 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
         else:
             assert metric_cols == results_cols
         results.append(metric_vals)
+        inner_progress.update(1)
+        inner_progress.set_description('model: random forest')
 
         # train/evaluate random forest model
         fit_pipeline = train_rf(X_train, y_train.flatten(), seed=seed)
@@ -344,6 +351,8 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
         else:
             assert metric_cols == results_cols
         results.append(metric_vals)
+        inner_progress.update(1)
+        inner_progress.set_description('model: mlp')
 
         # train/evaluate 3-layer NN model
         fit_pipeline = train_mlp(X_train,
@@ -361,6 +370,8 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
         else:
             assert metric_cols == results_cols
         results.append(metric_vals)
+        inner_progress.update(1)
+        inner_progress.set_description('model: linear CSD')
 
         # train/evaluate linear model with CSD loss layer
         fit_pipeline = train_linear_csd(X_train,
@@ -387,7 +398,9 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
         else:
             assert metric_cols == results_cols
         results.append(metric_vals)
+        inner_progress.update(1)
 
+    inner_progress.close()
     results_df = pd.DataFrame(results, columns=results_cols)
     results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
 
