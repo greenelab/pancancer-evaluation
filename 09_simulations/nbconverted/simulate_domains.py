@@ -18,10 +18,7 @@ from csd_simulations import (
     simulate_no_csd_large_z,
     simulate_csd
 )
-from models import (
-    train_k_folds_all_models,
-    train_k_folds_csd
-)
+from models import train_k_folds_all_models
 
 np.random.seed(42)
 torch.manual_seed(42)

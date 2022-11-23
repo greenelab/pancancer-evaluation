@@ -58,13 +58,13 @@ class LinearCSD(nn.Module):
             requires_grad=True
         )
 
-        # weights for latent variables, specific to each domain
+        # weights for LVs, one weight vector for each domain
         self.betas = nn.Parameter(
             torch.normal(0, 1e-4, size=[num_domains, k],
                          dtype=torch.float, device='cuda'),
             requires_grad=True
         )
-        # weight for common vs. specific loss
+        # scalar weight for common vs. specific loss
         self.cs_wt = nn.Parameter(
             torch.normal(.1, 1e-4, size=[],
                          dtype=torch.float, device='cuda'),
@@ -79,7 +79,7 @@ class LinearCSD(nn.Module):
              K=1):
         """CSD layer to be used as a replacement for final classification layer
 
-        See: https://gist.github.com/vihari/0dc2c296e74636725cfee364637fb4f7
+        Adapted from: https://gist.github.com/vihari/0dc2c296e74636725cfee364637fb4f7
 
         Args:
           embeds (tensor): final layer representations of dim 2
@@ -89,7 +89,6 @@ class LinearCSD(nn.Module):
           K (int): Number of domain specific components to use. should be >=1 and <=num_domains-1
         Returns:
           tuple of final loss, logits
-
         """
         w_c, b_c = self.sms[0, :, :], self.sm_biases[0, :]
         logits_common = torch.matmul(embeds, w_c) + b_c
@@ -122,12 +121,19 @@ class LinearCSD(nn.Module):
         return logits_specialized, logits_common, orth_loss
 
     def forward(self, x):
-        # un-concatenate domain info
+        """Forward pass function
+
+        NOTE this function expects the first column of x to be the sample
+        domain information. Here we'll separate the domain info from the
+        other features, and pass it to the CSD layer to calculate the loss
+        components.
+        """
         return self._csd(x[:, 1:],
                          x[:, 0].flatten().type(torch.long),
                          2,
                          self.num_domains,
                          self.k)
+
 
 class CSDClassifier(NeuralNet):
 
@@ -136,26 +142,19 @@ class CSDClassifier(NeuralNet):
         self.classes_ = [0, 1]
 
     def get_loss(self, y_pred, y_true, *args, **kwargs):
-        # override loss function to compute CSD loss
+        # override loss function to compute/minimize CSD loss
         logits_specialized, logits_common, orth_loss = y_pred
         criterion = nn.CrossEntropyLoss()
         specific_loss = criterion(logits_specialized, y_true.cuda())
         class_loss = criterion(logits_common, y_true.cuda())
         return class_loss + specific_loss + orth_loss
 
-    def predict_proba(self, X):
-        # override predict_proba to use only common logits
-        # the domains we pass in here don't matter since we only
-        # use the common loss, so just pass all zeros
-        # TODO we could try using domain info when we have it?
-        return (
-            self.module_.forward(torch.from_numpy(X).cuda())[1]
-        ).cpu().detach().numpy()
+    def predict_proba(self, X, domains=None):
+        # override predict_proba to use only common logits for prediction
+        return self.module_.forward(
+            torch.from_numpy(X).cuda()
+        )[1].cpu().detach().numpy()
 
     def decision_function(self, X):
-        return (
-            self.module_.forward(torch.from_numpy(X).cuda())[1][:, 1]
-        ).cpu().detach().numpy()
-
-
+        return self.predict_proba(X)[:, 1]
 
