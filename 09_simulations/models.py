@@ -168,6 +168,7 @@ def train_mlp(X_train,
     # pytorch wants [0, 1] labels
     y_train[y_train == -1] = 0
     cv_pipeline.fit(X=X_train.astype(np.float32), y=y_train.astype(np.int))
+    print(cv_pipeline.best_params_)
 
     return cv_pipeline
 
@@ -192,14 +193,20 @@ def train_linear_csd(X_train,
         # default params
         params = {
             'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+            'latent_dim': [1, 2, 3, 4, 5],
+            'weight_decay': [0, 0.01, 0.1, 1, 10, 100]
         }
 
     model = LinearCSD(input_size=X_train.shape[1],
-                      num_domains=n_domains,
-                      k=latent_dim)
+                      num_domains=n_domains)
 
     clf_parameters = {
         'lr': params['learning_rate'],
+        'module__input_size': [X_train.shape[1]],
+        'module__num_domains': [n_domains],
+        'module__k': params['latent_dim'],
+        # TODO should the weight decay only apply to certain params?
+        'optimizer__weight_decay': params['weight_decay'],
      }
 
     net = CSDClassifier(
@@ -253,6 +260,7 @@ def train_linear_csd(X_train,
     )
     cv_pipeline.fit(X=train_data.astype(np.float32),
                     y=y_train.astype(np.int))
+    print(cv_pipeline.best_params_)
 
     return cv_pipeline
 
@@ -351,11 +359,13 @@ def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=
                                         n_domains=n_train_domains,
                                         seed=seed,
                                         n_folds=-1,
-                                        max_iter=100,
-                                        search_n_iter=5)
+                                        max_iter=100)
         # currently predict_proba expects the input X to have the
         # sample domains in the first column, TODO find a better/cleaner
         # solution for this
+        # note that train_linear_csd will add the sample domains in the first
+        # column, these should probably be consistent (either provide them in
+        # both cases or automatically add in both cases)
         y_pred_train = fit_pipeline.predict_proba(
             np.concatenate((ds_train, X_train), 1).astype(np.float32)
         )[:, 1]
