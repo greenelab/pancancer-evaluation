@@ -12,12 +12,7 @@ from sklearn.decomposition import PCA
 import torch
 from umap import UMAP
 
-from csd_simulations import (
-    simulate_no_csd,
-    simulate_no_csd_same_z,
-    simulate_no_csd_large_z,
-    simulate_csd
-)
+from csd_simulations import simulate_csd
 from models import train_k_folds_all_models
 
 np.random.seed(42)
@@ -35,6 +30,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 # see 09_simulations/csd_simulations.py for details on simulation parameters
+# TODO: write bash script to run experiments for a variety of parameter settings
 n_domains = 5
 n_per_domain = 50
 p = 20
@@ -45,27 +41,17 @@ corr_top, diag = 1, None
 # corr_top, diag = 0.5, 5
 # corr_top, diag = 0.1, 10
 
-simulate_with_csd = True
-simulate_same_z = True
 correlated_noise = True
 
 
 # In[3]:
 
 
-if k is not None:
-    if simulate_with_csd:
-        xs, ys = simulate_csd(n_domains, n_per_domain, p, k, 
-                              corr_noise=correlated_noise,
-                              noise_scale=noise_scale,
-                              corr_top=corr_top,
-                              diag=diag)
-    else:
-        xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
-elif simulate_same_z:
-    xs, ys = simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale)
-else:
-    xs, ys = simulate_no_csd(n_domains, n_per_domain, p, noise_scale)
+xs, ys = simulate_csd(n_domains, n_per_domain, p, k, 
+                      corr_noise=correlated_noise,
+                      noise_scale=noise_scale,
+                      corr_top=corr_top,
+                      diag=diag)
 
 print(xs.shape)
 print(xs[:5, :5])
@@ -155,7 +141,7 @@ plt.ylim(-0.1, 1.1)
 # In[9]:
 
 
-# TODO: explain
+# hold out domain that was generated last; use all other domains for training
 holdout_domain = np.unique(domains)[-1]
 X_train = xs[domains != holdout_domain, :]
 X_holdout = xs[domains == holdout_domain, :]
@@ -185,7 +171,7 @@ plt.ylim(-0.1, 1.1)
 
 # ### CORAL
 # 
-# CORAL
+# Apply the [CORAL transformation](https://arxiv.org/abs/1612.01939) for unsupervised domain adaptation to the holdout domain. This should help a bit with performance, but not as much as adding the CSD layer since the data is generated using the CSD generative model.
 
 # In[11]:
 
@@ -200,7 +186,6 @@ X_train_coral, X_holdout_coral = CORAL().fit_transfer(X_train, X_holdout)
 # In[12]:
 
 
-# visualize X_train and X_holdout after CORAL transformation
 xs_coral = np.concatenate((X_train_coral, X_holdout_coral))
 print(xs_coral.shape)
 
@@ -208,6 +193,7 @@ print(xs_coral.shape)
 # In[13]:
 
 
+# visualize X_train and X_holdout before and after CORAL transformation
 pca = PCA(n_components=2)
 X_proj_pca_coral = pca.fit_transform(xs_coral)
 reducer = UMAP(n_components=2, random_state=42)
@@ -267,7 +253,7 @@ axarr[1, 1].legend()
 # In[15]:
 
 
-# TODO: explain
+# train model using CORAL-transformed training data, aligned to test domain, as input
 coral_results_df = train_k_folds_all_models(
     X_holdout_coral, y_holdout, ds_holdout, train_data=(X_train_coral, y_train, ds_train)
 )
