@@ -140,7 +140,8 @@ results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=results_df.sort_values(by='metric', ascending=False), x='metric', y='value', hue='model')
+sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
 plt.title('Performance for each model for random train/test splits, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
@@ -174,7 +175,8 @@ results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
 plt.title('Performance for each model on held out domain, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
@@ -277,7 +279,8 @@ coral_results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=coral_results_df, x='model', y='value', hue='metric')
+sns.boxplot(data=coral_results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
 plt.title('Performance for each model on held out domain after CORAL, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
@@ -342,7 +345,8 @@ cov_results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=cov_results_df, x='model', y='value', hue='metric')
+sns.boxplot(data=cov_results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
 plt.title('Performance for each model for random train/test with domain covariate, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
