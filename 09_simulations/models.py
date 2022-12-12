@@ -94,33 +94,40 @@ def train_rf(X_train,
 def train_mlp(X_train,
               y_train,
               seed,
-              params=None,
+              search_hparams={},
               batch_size=50,
               n_folds=3,
               max_iter=1000,
               search_n_iter=20):
+    """Train MLP model, using random search to choose hyperparameters.
+
+    search_hparams should be a dict with lists of hyperparameter options to
+    randomly search over; the options/defaults are specified below.
+    """
 
     import torch.optim
     from skorch import NeuralNetClassifier
     from nn_models import ThreeLayerNet
 
-    if params is None:
-        # default params
-        params = {
-            'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
-            'h1_size': [100, 200, 300, 500],
-            'dropout': [0.1, 0.5, 0.75],
-            'weight_decay': [0, 0.1, 1, 10, 100]
-        }
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'h1_size': [100, 200, 300, 500],
+        'dropout': [0.1, 0.5, 0.75],
+        'weight_decay': [0, 0.1, 1, 10, 100]
+    }
+    for k, v in default_hparams.items():
+        search_hparams.setdefault(k, v)
 
     model = ThreeLayerNet(input_size=X_train.shape[1])
 
     clf_parameters = {
-        'lr': params['learning_rate'],
+        'lr': search_hparams['learning_rate'],
         'module__input_size': [X_train.shape[1]],
-        'module__h1_size': params['h1_size'],
-        'module__dropout': params['dropout'],
-        'optimizer__weight_decay': params['weight_decay'],
+        'module__h1_size': search_hparams['h1_size'],
+        'module__dropout': search_hparams['dropout'],
+        'optimizer__weight_decay': search_hparams['weight_decay'],
      }
 
     net = NeuralNetClassifier(
@@ -178,12 +185,16 @@ def train_linear_csd(X_train,
                      train_domains,
                      seed,
                      n_domains=None,
-                     params=None,
-                     latent_dim=2,
+                     search_hparams={},
                      batch_size=50,
                      n_folds=3,
                      max_iter=1000,
                      search_n_iter=20):
+    """Train linear CSD model, using random search to choose hyperparameters.
+
+    search_hparams should be a dict with lists of hyperparameter options to
+    randomly search over; the options/defaults are specified below.
+    """
 
     import torch.optim
     from torch.nn import MSELoss
@@ -192,24 +203,26 @@ def train_linear_csd(X_train,
     if n_domains is None:
         n_domains = np.unique(train_domains).shape[0]
 
-    if params is None:
-        # default params
-        params = {
-            'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
-            'latent_dim': [1, 2, 3, 4, 5],
-            'weight_decay': [0, 0.01, 0.1, 1, 10, 100]
-        }
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'latent_dim': [1, 2, 3, 4, 5],
+        'weight_decay': [0, 0.01, 0.1, 1, 10, 100]
+    }
+    for k, v in default_hparams.items():
+        search_hparams.setdefault(k, v)
 
     model = LinearCSD(input_size=X_train.shape[1],
                       num_domains=n_domains)
 
     clf_parameters = {
-        'lr': params['learning_rate'],
+        'lr': search_hparams['learning_rate'],
         'module__input_size': [X_train.shape[1]],
         'module__num_domains': [n_domains],
-        'module__k': params['latent_dim'],
-        # TODO should the weight decay only apply to certain params?
-        'optimizer__weight_decay': params['weight_decay'],
+        'module__k': search_hparams['latent_dim'],
+        # TODO should the weight decay only apply to certain network params?
+        'optimizer__weight_decay': search_hparams['weight_decay'],
      }
 
     net = CSDClassifier(
