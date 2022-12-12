@@ -9,23 +9,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn.decomposition import PCA
-from sklearn.model_selection import KFold
+import torch
 from umap import UMAP
 
-from csd_simulations import (
-    simulate_no_csd,
-    simulate_no_csd_same_z,
-    simulate_no_csd_large_z,
-    simulate_csd
-)
-from models import (
-    train_ridge,
-    train_rf,
-    train_mlp,
-    get_prob_metrics
-)
+from csd_simulations import simulate_csd
+from models import train_k_folds_all_models
 
 np.random.seed(42)
+torch.manual_seed(42)
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
@@ -39,35 +30,28 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 # see 09_simulations/csd_simulations.py for details on simulation parameters
+# TODO: write bash script to run experiments for a variety of parameter settings
 n_domains = 5
 n_per_domain = 50
-p = 10
+p = 20
 k = 5
 noise_scale = 1.5
-corr_top = 0.8
-diag = None
 
-simulate_with_csd = True
-simulate_same_z = True
+corr_top, diag = 1, None
+# corr_top, diag = 0.5, 5
+# corr_top, diag = 0.1, 10
+
 correlated_noise = True
 
 
 # In[3]:
 
 
-if k is not None:
-    if simulate_with_csd:
-        xs, ys = simulate_csd(n_domains, n_per_domain, p, k, 
-                              corr_noise=correlated_noise,
-                              noise_scale=noise_scale,
-                              corr_top=corr_top,
-                              diag=diag)
-    else:
-        xs, ys = simulate_no_csd_large_z(n_domains, n_per_domain, p, k, noise_scale)
-elif simulate_same_z:
-    xs, ys = simulate_no_csd_same_z(n_domains, n_per_domain, p, noise_scale)
-else:
-    xs, ys = simulate_no_csd(n_domains, n_per_domain, p, noise_scale)
+xs, ys = simulate_csd(n_domains, n_per_domain, p, k, 
+                      corr_noise=correlated_noise,
+                      noise_scale=noise_scale,
+                      corr_top=corr_top,
+                      diag=diag)
 
 print(xs.shape)
 print(xs[:5, :5])
@@ -117,8 +101,8 @@ sns.scatterplot(data=X_pca_df, x='PC0', y='PC1', hue='domain', style='label', s=
 sns.scatterplot(data=X_umap_df, x='UMAP0', y='UMAP1', hue='domain', style='label', s=50, ax=axarr[1])
     
 axarr[0].set_title('PCA projection of simulated data, colored by domain')
-axarr[1].set_xlabel('PC1')
-axarr[1].set_ylabel('PC2')
+axarr[0].set_xlabel('PC1')
+axarr[0].set_ylabel('PC2')
 axarr[0].legend()
 axarr[1].set_title('UMAP projection of simulated data, colored by domain')
 axarr[1].set_xlabel('UMAP dimension 1')
@@ -133,62 +117,7 @@ axarr[1].legend()
 # In[7]:
 
 
-# split dataset into train/test
-n_splits = 4
-results = []
-results_cols = None
-
-kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-for fold, (train_ix, test_ix) in enumerate(kf.split(xs)):
-    X_train, X_test = xs[train_ix, :], xs[test_ix, :]
-    y_train, y_test = ys[train_ix, :], ys[test_ix, :]
-    
-    fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
-    y_pred_train = fit_pipeline.predict(X_train)
-    y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
- 
-    metric_cols = list(metrics.keys()) + ['model', 'fold']
-    metric_vals = list(metrics.values()) + ['ridge', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
- 
-    fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
-    y_pred_train = fit_pipeline.predict(X_train)
-    y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
- 
-    metric_vals = list(metrics.values()) + ['random_forest', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-    
-    params = {
-        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
-        'h1_size': [100, 200, 300, 500],
-        'dropout': [0.1, 0.5, 0.75],
-        'weight_decay': [0, 0.1, 1, 10, 100]
-    }
-    
-    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
-    y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
-    y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-                        
-    metric_vals = list(metrics.values()) + ['mlp', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-    
-results_df = pd.DataFrame(results, columns=results_cols)
-results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+results_df = train_k_folds_all_models(xs, ys, domains[:, np.newaxis])
 results_df.head()
 
 
@@ -197,7 +126,8 @@ results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
 plt.title('Performance for each model for random train/test splits, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
@@ -211,69 +141,18 @@ plt.ylim(-0.1, 1.1)
 # In[9]:
 
 
-# split dataset into train/test
-n_splits = 4
-results = []
-results_cols = None
-
+# hold out domain that was generated last; use all other domains for training
 holdout_domain = np.unique(domains)[-1]
 X_train = xs[domains != holdout_domain, :]
 X_holdout = xs[domains == holdout_domain, :]
 y_train = ys[domains != holdout_domain, :]
 y_holdout = ys[domains == holdout_domain, :]
+ds_train = domains[domains != holdout_domain, np.newaxis]
+ds_holdout = domains[domains == holdout_domain, np.newaxis]
 
-kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-for fold, (_, test_ix) in enumerate(kf.split(X_holdout)):
-    X_test, y_test = X_holdout[test_ix, :], y_holdout[test_ix, :]
-
-    # train linear model with ridge penalty
-    fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
-    y_pred_train = fit_pipeline.predict(X_train)
-    y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-
-    metric_cols = list(metrics.keys()) + ['model', 'fold']
-    metric_vals = list(metrics.values()) + ['ridge', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-
-    # train random forest model
-    fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
-    y_pred_train = fit_pipeline.predict(X_train)
-    y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-
-    metric_vals = list(metrics.values()) + ['random_forest', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-
-    # train 3-layer neural network model
-    params = {
-        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
-        'h1_size': [100, 200, 300, 500],
-        'dropout': [0.1, 0.5, 0.75],
-        'weight_decay': [0, 0.1, 1, 10, 100]
-    }
-    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
-    y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
-    y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-
-    metric_vals = list(metrics.values()) + ['mlp', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-
-results_df = pd.DataFrame(results, columns=results_cols)
-results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+results_df = train_k_folds_all_models(
+    X_holdout, y_holdout, ds_holdout, train_data=(X_train, y_train, ds_train)
+)
 results_df.head()
 
 
@@ -282,94 +161,208 @@ results_df.head()
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=results_df, x='model', y='value', hue='metric')
-plt.title('Performance for each model for held out domain, colored by metric')
+sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
+plt.title('Performance for each model on held out domain, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
+
+
+# ### CORAL
+# 
+# Apply the [CORAL transformation](https://arxiv.org/abs/1612.01939) for unsupervised domain adaptation to the holdout domain. This should help a bit with performance, but not as much as adding the CSD layer since the data is generated using the CSD generative model.
+
+# In[11]:
+
+
+# apply CORAL to map X_train onto X_holdout
+from transfertools.models import CORAL
+
+print(X_train.shape, X_holdout.shape)
+X_train_coral, X_holdout_coral = CORAL().fit_transfer(X_train, X_holdout)
+
+
+# In[12]:
+
+
+xs_coral = np.concatenate((X_train_coral, X_holdout_coral))
+print(xs_coral.shape)
+
+
+# In[13]:
+
+
+# visualize X_train and X_holdout before and after CORAL transformation
+pca = PCA(n_components=2)
+X_proj_pca_coral = pca.fit_transform(xs_coral)
+reducer = UMAP(n_components=2, random_state=42)
+X_proj_umap_coral = reducer.fit_transform(xs_coral)
+
+coral_train = np.concatenate((
+    [True] * X_train_coral.shape[0],
+    [False] * X_holdout_coral.shape[0]
+))
+
+X_pca_coral_df = pd.DataFrame(X_proj_pca_coral,
+                              columns=['PC{}'.format(j) for j in range(X_proj_pca_coral.shape[1])])
+X_pca_coral_df['coral_train'] = coral_train
+X_pca_coral_df['label'] = ys.flatten()
+
+X_umap_coral_df = pd.DataFrame(X_proj_umap_coral,
+                               columns=['UMAP{}'.format(j) for j in range(X_proj_umap_coral.shape[1])])
+X_umap_coral_df['coral_train'] = coral_train
+X_umap_coral_df['label'] = ys.flatten()
+
+X_umap_coral_df.head()
+
+
+# In[14]:
+
+
+sns.set({'figure.figsize': (18, 12)})
+fig, axarr = plt.subplots(2, 2)
+
+X_pca_df['coral_train'] = (domains != holdout_domain)
+X_umap_df['coral_train'] = (domains != holdout_domain)
+sns.scatterplot(data=X_pca_df, x='PC0', y='PC1', hue='coral_train', style='label', s=50, ax=axarr[0, 0])
+sns.scatterplot(data=X_umap_df, x='UMAP0', y='UMAP1', hue='coral_train', style='label', s=50, ax=axarr[0, 1])
+    
+axarr[0, 0].set_title('PCA projection of simulated data, colored by train/test')
+axarr[0, 0].set_xlabel('PC1')
+axarr[0, 0].set_ylabel('PC2')
+axarr[0, 0].legend()
+axarr[0, 1].set_title('UMAP projection of simulated data, colored by train/test')
+axarr[0, 1].set_xlabel('UMAP dimension 1')
+axarr[0, 1].set_ylabel('UMAP dimension 2')
+axarr[0, 1].legend()
+
+sns.scatterplot(data=X_pca_coral_df, x='PC0', y='PC1', hue='coral_train', style='label', s=50, ax=axarr[1, 0])
+sns.scatterplot(data=X_umap_coral_df, x='UMAP0', y='UMAP1', hue='coral_train', style='label', s=50, ax=axarr[1, 1])
+    
+axarr[1, 0].set_title('PCA projection after CORAL transformation, colored by train/test')
+axarr[1, 0].set_xlabel('PC1')
+axarr[1, 0].set_ylabel('PC2')
+axarr[1, 0].legend()
+axarr[1, 1].set_title('UMAP projection after CORAL transformation, colored by train/test')
+axarr[1, 1].set_xlabel('UMAP dimension 1')
+axarr[1, 1].set_ylabel('UMAP dimension 2')
+axarr[1, 1].legend()
+
+
+# In[15]:
+
+
+# train model using CORAL-transformed training data, aligned to test domain, as input
+coral_results_df = train_k_folds_all_models(
+    X_holdout_coral, y_holdout, ds_holdout, train_data=(X_train_coral, y_train, ds_train)
+)
+coral_results_df.head()
+
+
+# In[16]:
+
+
+sns.set({'figure.figsize': (12, 6)})
+
+sns.boxplot(data=coral_results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
+plt.title('Performance for each model on held out domain after CORAL, colored by metric')
+plt.xlabel('Model type')
+plt.ylabel('Metric value')
+plt.ylim(-0.1, 1.1)
+
+
+# In[17]:
+
+
+results_df['preprocessing'] = 'none'
+coral_results_df['preprocessing'] = 'CORAL'
+
+coral_results_df = pd.concat((results_df, coral_results_df))
+
+sns.set({'figure.figsize': (10, 8)})
+fig, axarr = plt.subplots(2, 1)
+
+sns.boxplot(data=coral_results_df[coral_results_df.metric == 'test_auroc'],
+            x='model', y='value', hue='preprocessing', ax=axarr[0])
+axarr[0].set_title('Performance on held-out domain before/after CORAL, measured by test AUROC')
+axarr[0].set_xlabel('Model type')
+axarr[0].set_ylabel('Metric value')
+axarr[0].set_ylim(-0.1, 1.1)
+
+sns.boxplot(data=coral_results_df[coral_results_df.metric == 'test_aupr'],
+            x='model', y='value', hue='preprocessing', ax=axarr[1])
+axarr[1].set_title('Performance on held-out domain before/after CORAL, measured by test AUPR')
+axarr[1].set_xlabel('Model type')
+axarr[1].set_ylabel('Metric value')
+axarr[1].set_ylim(-0.1, 1.1)
+
+plt.tight_layout()
 
 
 # ### Random split with dummy covariate for domain
 # 
 # Does providing the domain information (in the form of a dummy/one-hot variable) help performance?
 
-# In[11]:
+# In[18]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[12]:
+# In[19]:
 
 
-xs_fixed = np.concatenate((xs, x_covariates.values), axis=1)
-print(xs_fixed[:5, :]) 
+xs_cov = np.concatenate((xs, x_covariates.values), axis=1)
+print(xs_cov[:5, :])
 
 
-# In[13]:
+# In[20]:
 
 
-# split dataset into train/test
-# this time with a covariate for domain membership (this should help performance)
-results = []
-results_cols = None
-
-kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
-for fold, (train_ix, test_ix) in enumerate(kf.split(xs_fixed)):
-    X_train, X_test = xs_fixed[train_ix, :], xs_fixed[test_ix, :]
-    y_train, y_test = ys[train_ix, :], ys[test_ix, :]
-    
-    fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=42)
-    y_pred_train = fit_pipeline.predict(X_train)
-    y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-    
-    metric_cols = list(metrics.keys()) + ['model', 'fold']
-    metric_vals = list(metrics.values()) + ['ridge', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-    
-    fit_pipeline = train_rf(X_train, y_train.flatten(), seed=42)
-    y_pred_train = fit_pipeline.predict(X_train)
-    y_pred_test = fit_pipeline.predict(X_test)
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-                        
-    metric_vals = list(metrics.values()) + ['random_forest', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-    
-    fit_pipeline = train_mlp(X_train, y_train.flatten(), params, n_folds=-1, seed=42, max_iter=100)
-    y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
-    y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
-    metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
-                        
-    metric_vals = list(metrics.values()) + ['mlp', fold]
-    if results_cols is None:
-        results_cols = metric_cols
-    else:
-        assert metric_cols == results_cols
-    results.append(metric_vals)
-    
-results_df = pd.DataFrame(results, columns=results_cols)
-results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
-results_df.head()
+cov_results_df = train_k_folds_all_models(xs_cov, ys, domains[:, np.newaxis])
+cov_results_df.head()
 
 
-# In[14]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (12, 6)})
 
-sns.boxplot(data=results_df, x='model', y='value', hue='metric')
+sns.boxplot(data=cov_results_df.sort_values(by='metric', ascending=False),
+            x='metric', y='value', hue='model')
 plt.title('Performance for each model for random train/test with domain covariate, colored by metric')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
+
+
+# In[22]:
+
+
+results_df['covariate'] = 'none'
+cov_results_df['covariate'] = 'domain'
+
+cov_results_df = pd.concat((results_df, cov_results_df))
+
+sns.set({'figure.figsize': (10, 8)})
+fig, axarr = plt.subplots(2, 1)
+
+sns.boxplot(data=cov_results_df[cov_results_df.metric == 'test_auroc'],
+            x='model', y='value', hue='covariate', ax=axarr[0])
+axarr[0].set_title('Performance on held-out domain with/without domain covariate, measured by test AUROC')
+axarr[0].set_xlabel('Model type')
+axarr[0].set_ylabel('Metric value')
+axarr[0].set_ylim(-0.1, 1.1)
+
+sns.boxplot(data=cov_results_df[cov_results_df.metric == 'test_aupr'],
+            x='model', y='value', hue='covariate', ax=axarr[1])
+axarr[1].set_title('Performance on held-out domain with/without domain covariate, measured by test AUPR')
+axarr[1].set_xlabel('Model type')
+axarr[1].set_ylabel('Metric value')
+axarr[1].set_ylim(-0.1, 1.1)
+
+plt.tight_layout()
 

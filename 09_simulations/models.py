@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -7,9 +8,10 @@ from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score
 )
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
+from tqdm.auto import tqdm
 
 def train_ridge(X_train,
                 y_train,
@@ -91,27 +93,41 @@ def train_rf(X_train,
 
 def train_mlp(X_train,
               y_train,
-              params,
               seed,
+              search_hparams={},
               batch_size=50,
               n_folds=3,
               max_iter=1000,
               search_n_iter=20):
+    """Train MLP model, using random search to choose hyperparameters.
+
+    search_hparams should be a dict with lists of hyperparameter options to
+    randomly search over; the options/defaults are specified below.
+    """
 
     import torch.optim
-    from torch.utils.data import Dataset
     from skorch import NeuralNetClassifier
-    from skorch.helper import SliceDataset
     from nn_models import ThreeLayerNet
+
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'h1_size': [100, 200, 300, 500],
+        'dropout': [0.1, 0.5, 0.75],
+        'weight_decay': [0, 0.1, 1, 10, 100]
+    }
+    for k, v in default_hparams.items():
+        search_hparams.setdefault(k, v)
 
     model = ThreeLayerNet(input_size=X_train.shape[1])
 
     clf_parameters = {
-        'lr': params['learning_rate'],
+        'lr': search_hparams['learning_rate'],
         'module__input_size': [X_train.shape[1]],
-        'module__h1_size': params['h1_size'],
-        'module__dropout': params['dropout'],
-        'optimizer__weight_decay': params['weight_decay'],
+        'module__h1_size': search_hparams['h1_size'],
+        'module__dropout': search_hparams['dropout'],
+        'optimizer__weight_decay': search_hparams['weight_decay'],
      }
 
     net = NeuralNetClassifier(
@@ -143,7 +159,8 @@ def train_mlp(X_train,
             n_iter=search_n_iter,
             cv=cv,
             scoring='roc_auc',
-            verbose=1,
+            verbose=0,
+            random_state=seed
         )
     else:
         cv_pipeline = RandomizedSearchCV(
@@ -152,7 +169,8 @@ def train_mlp(X_train,
             n_iter=search_n_iter,
             cv=n_folds,
             scoring='accuracy',
-            verbose=1,
+            verbose=0,
+            random_state=seed
         )
 
     # pytorch wants [0, 1] labels
@@ -162,12 +180,111 @@ def train_mlp(X_train,
     return cv_pipeline
 
 
+def train_linear_csd(X_train,
+                     y_train,
+                     train_domains,
+                     seed,
+                     n_domains=None,
+                     search_hparams={},
+                     batch_size=50,
+                     n_folds=3,
+                     max_iter=1000,
+                     search_n_iter=20):
+    """Train linear CSD model, using random search to choose hyperparameters.
+
+    search_hparams should be a dict with lists of hyperparameter options to
+    randomly search over; the options/defaults are specified below.
+    """
+
+    import torch.optim
+    from torch.nn import MSELoss
+    from nn_models import LinearCSD, CSDClassifier
+
+    if n_domains is None:
+        n_domains = np.unique(train_domains).shape[0]
+
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'latent_dim': [1, 2, 3, 4, 5],
+        'weight_decay': [0, 0.01, 0.1, 1, 10, 100]
+    }
+    for k, v in default_hparams.items():
+        search_hparams.setdefault(k, v)
+
+    model = LinearCSD(input_size=X_train.shape[1],
+                      num_domains=n_domains)
+
+    clf_parameters = {
+        'lr': search_hparams['learning_rate'],
+        'module__input_size': [X_train.shape[1]],
+        'module__num_domains': [n_domains],
+        'module__k': search_hparams['latent_dim'],
+        # TODO should the weight decay only apply to certain network params?
+        'optimizer__weight_decay': search_hparams['weight_decay'],
+     }
+
+    net = CSDClassifier(
+        model,
+        max_epochs=max_iter,
+        batch_size=batch_size,
+        criterion=MSELoss,
+        optimizer=torch.optim.Adam,
+        iterator_train__shuffle=True,
+        verbose=0, # by default this prints loss for each epoch
+        train_split=False,
+        device='cuda'
+    )
+
+    if n_folds == -1:
+        # for this option we just want to do a grid search for a single
+        # train/test split, this is much more computationally efficient
+        # but could have higher variance
+        from sklearn.model_selection import train_test_split
+        train_ixs, valid_ixs = train_test_split(
+            np.arange(X_train.shape[0]),
+            test_size=0.2,
+            random_state=seed,
+            shuffle=True
+        )
+        cv = zip([train_ixs], [valid_ixs])
+        cv_pipeline = RandomizedSearchCV(
+            estimator=net,
+            param_distributions=clf_parameters,
+            n_iter=search_n_iter,
+            cv=cv,
+            scoring='roc_auc',
+            verbose=0,
+            random_state=seed
+        )
+    else:
+        cv_pipeline = RandomizedSearchCV(
+            estimator=net,
+            param_distributions=clf_parameters,
+            n_iter=search_n_iter,
+            cv=n_folds,
+            scoring='accuracy',
+            verbose=0,
+            random_state=seed
+        )
+
+    # pytorch wants [0, 1] labels
+    y_train[y_train == -1] = 0
+    train_data = np.concatenate(
+        (train_domains[:, np.newaxis], X_train), axis=1
+    )
+    cv_pipeline.fit(X=train_data.astype(np.float32),
+                    y=y_train.astype(np.int))
+
+    return cv_pipeline
+
+
 def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
     """Get metrics for predicted probabilities.
 
-    y_pred_train and y_pred_test should be continuous - true values are binary.
+    y_pred_train and y_pred_test should be continuous; true values are binary.
     """
-
     train_auroc = roc_auc_score(y_train, y_pred_train, average="weighted")
     test_auroc = roc_auc_score(y_test, y_pred_test, average="weighted")
 
@@ -180,3 +297,125 @@ def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
         'train_aupr': train_aupr,
         'test_aupr': test_aupr,
     }
+
+
+def train_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=42):
+    """Split data into k folds and evaluate all implemented models.
+
+    Arguments:
+    xs is a numpy array of features (n, p)
+    ys is a column vector of labels (n, 1)
+    domains is a column vector of domains (n, 1)
+    train_data has the format (xs_train, ys_train, domains_train)
+    and overrides train split if provided
+    """
+    results = []
+    results_cols = None
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+
+    outer_progress = tqdm(enumerate(kf.split(xs)), total=n_splits)
+    inner_progress = tqdm(total=4, leave=True)
+    for fold, (train_ix, test_ix) in outer_progress:
+        outer_progress.set_description('fold: {}'.format(fold))
+        # if train_data is provided then just split test set,
+        # and use provided training data
+        # otherwise split for both train and test
+        if train_data is not None:
+            # NOTE when train_data is passed in we really only have
+            # to train the models once, then evaluate them on each test
+            # fold - could speed things up to move this outside the loop
+            # for long-training models/large datasets
+            X_train, X_test = train_data[0], xs[test_ix, :]
+            y_train, y_test = train_data[1], ys[test_ix, :]
+            ds_train, ds_test = train_data[2], domains[test_ix, :]
+        else:
+            X_train, X_test = xs[train_ix, :], xs[test_ix, :]
+            y_train, y_test = ys[train_ix, :], ys[test_ix, :]
+            ds_train, ds_test = domains[train_ix, :], domains[test_ix, :]
+
+        inner_progress.reset()
+        inner_progress.set_description('model: ridge')
+
+        # train/evaluate ridge regression model
+        fit_pipeline = train_ridge(X_train, y_train.flatten(), seed=seed)
+        y_pred_train = fit_pipeline.predict(X_train)
+        y_pred_test = fit_pipeline.predict(X_test)
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_cols = list(metrics.keys()) + ['model', 'fold']
+        metric_vals = list(metrics.values()) + ['ridge', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+        inner_progress.update(1)
+        inner_progress.set_description('model: random forest')
+
+        # train/evaluate random forest model
+        fit_pipeline = train_rf(X_train, y_train.flatten(), seed=seed)
+        y_pred_train = fit_pipeline.predict(X_train)
+        y_pred_test = fit_pipeline.predict(X_test)
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_vals = list(metrics.values()) + ['random_forest', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+        inner_progress.update(1)
+        inner_progress.set_description('model: mlp')
+
+        # train/evaluate 3-layer NN model
+        fit_pipeline = train_mlp(X_train,
+                                 y_train.flatten(),
+                                 seed=seed,
+                                 n_folds=-1,
+                                 max_iter=100)
+        y_pred_train = fit_pipeline.predict_proba(X_train.astype(np.float32))[:, 1]
+        y_pred_test = fit_pipeline.predict_proba(X_test.astype(np.float32))[:, 1]
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_vals = list(metrics.values()) + ['mlp', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+        inner_progress.update(1)
+        inner_progress.set_description('model: linear CSD')
+
+        # train/evaluate linear model with CSD loss layer
+        fit_pipeline = train_linear_csd(X_train,
+                                        y_train.flatten(),
+                                        ds_train.flatten(),
+                                        seed=seed,
+                                        n_folds=-1,
+                                        max_iter=100)
+        # predict_proba expects the first column of the feature matrix to be the
+        # domain info, so we'll concatenate it here
+        y_pred_train = fit_pipeline.predict_proba(
+            np.concatenate((ds_train, X_train), 1).astype(np.float32)
+        )[:, 1]
+        y_pred_test = fit_pipeline.predict_proba(
+            np.concatenate(
+                (np.zeros((X_test.shape[0], 1)), X_test), 1
+            ).astype(np.float32)
+        )[:, 1]
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_vals = list(metrics.values()) + ['linear_csd', fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+        inner_progress.update(1)
+
+    inner_progress.close()
+    results_df = pd.DataFrame(results, columns=results_cols)
+    results_df = results_df.melt(id_vars=['model', 'fold'], var_name='metric')
+
+    return results_df
+
