@@ -14,7 +14,7 @@ from umap import UMAP
 
 import pancancer_evaluation.config as cfg
 from csd_simulations import simulate_csd
-from models import train_k_folds_all_models
+from fit_models import fit_k_folds_all_models
 
 np.random.seed(42)
 torch.manual_seed(42)
@@ -130,7 +130,7 @@ if output_plots:
 # In[7]:
 
 
-results_df = train_k_folds_all_models(xs, ys, domains[:, np.newaxis])
+results_df = fit_k_folds_all_models(xs, ys, domains[:, np.newaxis])
 results_df.head()
 
 
@@ -150,7 +150,7 @@ sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model for random train/test splits, colored by metric')
+plt.title('Performance for each metric for random train/test splits, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
@@ -178,7 +178,7 @@ y_holdout = ys[domains == holdout_domain, :]
 ds_train = domains[domains != holdout_domain, np.newaxis]
 ds_holdout = domains[domains == holdout_domain, np.newaxis]
 
-results_df = train_k_folds_all_models(
+results_df = fit_k_folds_all_models(
     X_holdout, y_holdout, ds_holdout, train_data=(X_train, y_train, ds_train)
 )
 results_df.head()
@@ -199,7 +199,7 @@ sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model on held out domain, colored by metric')
+plt.title('Performance for each metric on held out domain, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
@@ -302,7 +302,7 @@ if output_plots:
 
 
 # train model using CORAL-transformed training data, aligned to test domain, as input
-coral_results_df = train_k_folds_all_models(
+coral_results_df = fit_k_folds_all_models(
     X_holdout_coral, y_holdout, ds_holdout, train_data=(X_train_coral, y_train, ds_train)
 )
 coral_results_df.head()
@@ -315,7 +315,7 @@ sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=coral_results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model on held out domain after CORAL, colored by metric')
+plt.title('Performance for each metric on held out domain after CORAL, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
@@ -382,7 +382,7 @@ print(xs_cov[:5, :])
 # In[22]:
 
 
-cov_results_df = train_k_folds_all_models(xs_cov, ys, domains[:, np.newaxis])
+cov_results_df = fit_k_folds_all_models(xs_cov, ys, domains[:, np.newaxis])
 cov_results_df.head()
 
 
@@ -401,7 +401,7 @@ sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=cov_results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model for random train/test with domain covariate, colored by metric')
+plt.title('Performance for each metric for random train/test with domain covariate, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
