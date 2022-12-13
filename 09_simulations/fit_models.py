@@ -167,7 +167,7 @@ def fit_k_folds_csd(xs, ys, domains, k_up_to, train_data=None, n_splits=4, seed=
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
     outer_progress = tqdm(enumerate(kf.split(xs)), total=n_splits)
-    inner_progress = tqdm(range(1, k_up_to))
+    inner_progress = tqdm(range(1, k_up_to+1))
     for fold, (train_ix, test_ix) in outer_progress:
         outer_progress.set_description('fold: {}'.format(fold))
         # if train_data is provided then just split test set,
@@ -186,8 +186,9 @@ def fit_k_folds_csd(xs, ys, domains, k_up_to, train_data=None, n_splits=4, seed=
             y_train, y_test = ys[train_ix, :], ys[test_ix, :]
             ds_train, ds_test = domains[train_ix, :], domains[test_ix, :]
 
+        inner_progress.reset()
         for k_model in inner_progress:
-            inner_progress.set_description('k: {}/{}'.format(fold, k_up_to))
+            inner_progress.set_description('k: {}/{}'.format(k_model, k_up_to))
 
             # train/evaluate linear model with CSD loss layer
             fit_pipeline = train_linear_csd(
