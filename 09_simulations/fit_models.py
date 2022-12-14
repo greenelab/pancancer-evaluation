@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, average_precision_score
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from tqdm.auto import tqdm
 
 from models import (
@@ -151,25 +151,29 @@ def fit_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=42
     return results_df
 
 
-def fit_k_folds_csd(xs, ys, domains, k_up_to, train_data=None, n_splits=4, seed=42):
+def fit_k_folds_csd(xs, ys, domains, k_model_range,
+                    stratify=False, train_data=None, n_splits=4, seed=42):
     """Split data into k folds and evaluate all implemented models.
 
     Arguments:
     xs is a numpy array of features (n, p)
     ys is a column vector of labels (n, 1)
     domains is a column vector of domains (n, 1)
-    k_up_to controls how many k to try (from [1, ..., k_up_to])
+    k_model_range controls which k to try
     train_data has the format (xs_train, ys_train, domains_train)
     and overrides train split if provided
     """
     results = []
     results_cols = None
-    kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    if stratify:
+        kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        progress = tqdm(enumerate(kf.split(xs, ys)), total=n_splits)
+    else:
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        progress = tqdm(enumerate(kf.split(xs)), total=n_splits)
 
-    outer_progress = tqdm(enumerate(kf.split(xs)), total=n_splits)
-    inner_progress = tqdm(range(1, k_up_to+1))
-    for fold, (train_ix, test_ix) in outer_progress:
-        outer_progress.set_description('fold: {}'.format(fold))
+    for fold, (train_ix, test_ix) in progress:
+        progress.set_description('fold: {}'.format(fold))
         # if train_data is provided then just split test set,
         # and use provided training data
         # otherwise split for both train and test
@@ -186,9 +190,7 @@ def fit_k_folds_csd(xs, ys, domains, k_up_to, train_data=None, n_splits=4, seed=
             y_train, y_test = ys[train_ix, :], ys[test_ix, :]
             ds_train, ds_test = domains[train_ix, :], domains[test_ix, :]
 
-        inner_progress.reset()
-        for k_model in inner_progress:
-            inner_progress.set_description('k: {}/{}'.format(k_model, k_up_to))
+        for k_model in k_model_range:
 
             # train/evaluate linear model with CSD loss layer
             fit_pipeline = train_linear_csd(
@@ -219,6 +221,8 @@ def fit_k_folds_csd(xs, ys, domains, k_up_to, train_data=None, n_splits=4, seed=
             else:
                 assert metric_cols == results_cols
             results.append(metric_vals)
+
+
 
     results_df = pd.DataFrame(results, columns=results_cols)
     results_df = results_df.melt(id_vars=['k_model', 'fold'], var_name='metric')
