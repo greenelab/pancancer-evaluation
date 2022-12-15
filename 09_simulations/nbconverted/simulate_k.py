@@ -40,8 +40,6 @@ k_sim_range = [1, 2, 3, 5, 10]
 k_model_range = [1, 2, 3, 5, 10]
 
 corr_top, diag = 1, None
-# corr_top, diag = 0.5, 5
-# corr_top, diag = 0.1, 10
 
 # location to save plots to
 output_plots = True
@@ -178,7 +176,7 @@ holdout_split = get_holdout_split(xs, ys, domains)
  ds_train,
  ds_holdout) = holdout_split
 
-results_df = fit_k_folds_csd(
+results_df = fit_csd_k_range(
     X_holdout, y_holdout, ds_holdout, k_model_range,
     train_data=(X_train, y_train, ds_train)
 )
@@ -227,7 +225,7 @@ for k_sim in tqdm(k_sim_range):
      ds_train,
      ds_holdout) = holdout_split
     
-    k_results_df = fit_k_folds_csd(
+    k_results_df = fit_csd_k_range(
         X_holdout, y_holdout, ds_holdout, k_model_range,
         stratify=True, train_data=(X_train, y_train, ds_train)
     )

@@ -151,9 +151,83 @@ def fit_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=42
     return results_df
 
 
-def fit_k_folds_csd(xs, ys, domains, k_model_range,
+def fit_k_folds_csd(xs, ys, domains, stratify=False,
+                    train_data=None, n_splits=4, seed=42):
+    """Split data into k folds and evaluate linear CSD model.
+
+    Arguments:
+    xs is a numpy array of features (n, p)
+    ys is a column vector of labels (n, 1)
+    domains is a column vector of domains (n, 1)
+    k_model_range controls which k to try
+    train_data has the format (xs_train, ys_train, domains_train)
+    and overrides train split if provided
+    """
+    results = []
+    results_cols = None
+    if stratify:
+        kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        progress = tqdm(enumerate(kf.split(xs, ys)), total=n_splits)
+    else:
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        progress = tqdm(enumerate(kf.split(xs)), total=n_splits)
+
+    for fold, (train_ix, test_ix) in progress:
+        progress.set_description('fold: {}'.format(fold))
+        # if train_data is provided then just split test set,
+        # and use provided training data
+        # otherwise split for both train and test
+        if train_data is not None:
+            # NOTE when train_data is passed in we really only have
+            # to train the models once, then evaluate them on each test
+            # fold - could speed things up to move this outside the loop
+            # for long-training models/large datasets
+            X_train, X_test = train_data[0], xs[test_ix, :]
+            y_train, y_test = train_data[1], ys[test_ix, :]
+            ds_train, ds_test = train_data[2], domains[test_ix, :]
+        else:
+            X_train, X_test = xs[train_ix, :], xs[test_ix, :]
+            y_train, y_test = ys[train_ix, :], ys[test_ix, :]
+            ds_train, ds_test = domains[train_ix, :], domains[test_ix, :]
+
+        # train/evaluate linear model with CSD loss layer
+        fit_pipeline = train_linear_csd(
+            X_train,
+            y_train.flatten(),
+            ds_train.flatten(),
+            seed=seed,
+            n_folds=-1,
+            max_iter=100
+        )
+        # predict_proba expects the first column of the feature matrix to be the
+        # domain info, so we'll concatenate it here
+        y_pred_train = fit_pipeline.predict_proba(
+            np.concatenate((ds_train, X_train), 1).astype(np.float32)
+        )[:, 1]
+        y_pred_test = fit_pipeline.predict_proba(
+            np.concatenate(
+                (np.zeros((X_test.shape[0], 1)), X_test), 1
+            ).astype(np.float32)
+        )[:, 1]
+        metrics = get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test)
+
+        metric_cols = list(metrics.keys()) + ['fold']
+        metric_vals = list(metrics.values()) + [fold]
+        if results_cols is None:
+            results_cols = metric_cols
+        else:
+            assert metric_cols == results_cols
+        results.append(metric_vals)
+
+    results_df = pd.DataFrame(results, columns=results_cols)
+    results_df = results_df.melt(id_vars=['fold'], var_name='metric')
+
+    return results_df
+
+
+def fit_csd_k_range(xs, ys, domains, k_model_range,
                     stratify=False, train_data=None, n_splits=4, seed=42):
-    """Split data into k folds and evaluate all implemented models.
+    """Evaluate linear CSD model for a range of different latent dims.
 
     Arguments:
     xs is a numpy array of features (n, p)
