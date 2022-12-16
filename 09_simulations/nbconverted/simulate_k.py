@@ -262,7 +262,6 @@ plt.xlabel(r'$k$ value fixed in model')
 plt.ylabel(r'$k$ value used to simulate data')
 
 if output_plots:
-    output_plots_dir.mkdir(exist_ok=True)
     plt.savefig(
         output_plots_dir / 'n{}_p{}_ktop{}_corr{}_scale{}_heatmap.png'.format(
             n_domains, p, max(k_sim_range), corr_top, diag),

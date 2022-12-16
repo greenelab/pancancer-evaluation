@@ -203,6 +203,12 @@ plt.xlabel('Number of training domains')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_corr{}_scale{}_boxes.png'.format(
+            n_domains, p, corr_top, diag),
+    dpi=200, bbox_inches='tight')
+
 
 # In[11]:
 
@@ -221,4 +227,10 @@ plt.title(
 plt.xlabel('Number of training domains')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
+
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_corr{}_scale{}_points.png'.format(
+            n_domains, p, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 
