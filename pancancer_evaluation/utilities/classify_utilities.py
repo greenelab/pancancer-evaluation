@@ -175,6 +175,8 @@ def run_cv_cancer_type(data_model,
                        predictor='classify',
                        stratify_label=False,
                        ridge=False,
+                       lasso=False,
+                       lasso_penalty=None,
                        use_coral=False,
                        coral_lambda=1.0,
                        coral_by_cancer_type=False,
@@ -302,7 +304,10 @@ def run_cv_cancer_type(data_model,
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
-                train_model_params = apply_model_params(train_model, ridge)
+                train_model_params = apply_model_params(train_model,
+                                                        ridge,
+                                                        lasso,
+                                                        lasso_penalty)
                 model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,
@@ -620,13 +625,22 @@ def shuffle_by_cancer_type(y_df, seed):
     return y_copy_df.status.values
 
 
-def apply_model_params(train_model, ridge=False):
+def apply_model_params(train_model,
+                       ridge=False,
+                       lasso=False,
+                       lasso_penalty=None):
     """Pass hyperparameters to model, based on which model we want to fit."""
     if ridge:
         return partial(
             train_model,
             ridge=ridge,
             c_values=cfg.ridge_c_values
+        )
+    elif lasso:
+        return partial(
+            train_model,
+            lasso=lasso,
+            lasso_penalty=lasso_penalty
         )
     else:
         return partial(

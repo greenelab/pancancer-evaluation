@@ -114,6 +114,45 @@ def save_results_cancer_type(results_dir,
     )
 
 
+def save_results_lasso_penalty(results_dir,
+                               check_file,
+                               results,
+                               identifier,
+                               cancer_type,
+                               shuffle_labels,
+                               seed,
+                               feature_selection,
+                               num_features,
+                               lasso_penalty,
+                               predictor='classify'):
+
+    signal = 'shuffled' if shuffle_labels else 'signal'
+
+    metrics_df = pd.concat(results['gene_metrics'])
+    coef_df = pd.concat(results['gene_coef'])
+
+    auc_df = pd.concat(results['gene_auc'])
+    aupr_df = pd.concat(results['gene_aupr'])
+
+    # NOTE: these filenames follow the following convention:
+    #       any experiment identified by a gene and a cancer type has
+    #       the identifier {gene}_{cancer_type}, in this order
+    coef_df.to_csv(
+        check_file, sep="\t", index=False, compression="gzip",
+        float_format="%.5g"
+    )
+
+    output_file = Path(
+        results_dir, "{}_{}_{}_{}_s{}_n{}_c{}_{}_metrics.tsv.gz".format(
+            identifier, cancer_type, signal, feature_selection,
+            seed, num_features, lasso_penalty, predictor
+        )
+    ).resolve()
+    metrics_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+
 def save_results_cross_cancer(output_dir,
                               check_file,
                               results,
@@ -317,16 +356,24 @@ def check_cancer_type_file(results_dir,
                            seed,
                            feature_selection,
                            num_features,
+                           lasso_penalty=None,
                            predictor='classify'):
     # NOTE: these filenames follow the following convention:
     #       any experiment identified by an identifier and a cancer type has
     #       the format {identifier}_{cancer_type}, in this order
     signal = 'shuffled' if shuffle_labels else 'signal'
-    check_file = Path(
-        results_dir, "{}_{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
-            identifier, cancer_type, signal, feature_selection,
-            seed, num_features, predictor
-        )).resolve()
+    if lasso_penalty is not None:
+        check_file = Path(
+            results_dir, "{}_{}_{}_{}_s{}_n{}_c{}_{}_coefficients.tsv.gz".format(
+                identifier, cancer_type, signal, feature_selection, seed,
+                num_features, lasso_penalty, predictor
+            )).resolve()
+    else:
+        check_file = Path(
+            results_dir, "{}_{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
+                identifier, cancer_type, signal, feature_selection,
+                seed, num_features, predictor
+            )).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for identifier: {}\n'.format(identifier)

@@ -25,6 +25,8 @@ def train_classifier(X_train,
                      y_train,
                      seed,
                      ridge=False,
+                     lasso=False,
+                     lasso_penalty=None,
                      alphas=None,
                      l1_ratios=None,
                      c_values=None,
@@ -51,7 +53,7 @@ def train_classifier(X_train,
     if ridge:
         assert c_values is not None
         clf_parameters = {
-            "classify__C": [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
+            "classify__C": c_values
         }
         estimator = Pipeline(
             steps=[
@@ -62,6 +64,31 @@ def train_classifier(X_train,
                         class_weight='balanced',
                         penalty='l2',
                         solver='lbfgs',
+                        max_iter=max_iter,
+                        tol=1e-3,
+                    ),
+                )
+            ]
+        )
+    elif lasso:
+        if lasso_penalty is not None:
+            clf_parameters = {
+                "classify__alpha": [lasso_penalty]
+            }
+        else:
+            assert c_values is not None
+            clf_parameters = {
+                "classify__alpha": c_values
+            }
+        estimator = Pipeline(
+            steps=[
+                (
+                    "classify",
+                    SGDClassifier(
+                        random_state=seed,
+                        class_weight='balanced',
+                        penalty='l1',
+                        loss="log_loss",
                         max_iter=max_iter,
                         tol=1e-3,
                     ),
