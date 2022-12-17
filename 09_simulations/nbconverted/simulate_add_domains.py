@@ -71,10 +71,6 @@ print(ys.shape)
 print(ys[:3, :])
 
 
-# ### Plot simulated data
-# 
-# We'll do this using both PCA and UMAP, side by side. We can color by domain and use different shapes for each label, to get an idea of how data clusters with respect to domain and how separable we expect different labels to be across domains.
-
 # In[5]:
 
 
@@ -122,9 +118,9 @@ if output_plots:
     dpi=200, bbox_inches='tight')
 
 
-# ### Fit models with varying (fixed) k
+# ### Fit models with increasing number of training domains
 # 
-# TODO: explain
+# If the CSD model is correctly distinguishing between "common" (cross-domain) and "specific" (within-domain) signal, we would expect that as more domains are added to the training data the model will perform better at out-of-domain prediction.
 
 # In[7]:
 

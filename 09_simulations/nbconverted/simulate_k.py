@@ -67,10 +67,6 @@ print(ys.shape)
 print(ys[:3, :])
 
 
-# ### Plot simulated data
-# 
-# We'll do this using both PCA and UMAP, side by side. We can color by domain and use different shapes for each label, to get an idea of how data clusters with respect to domain and how separable we expect different labels to be across domains.
-
 # In[5]:
 
 
@@ -120,7 +116,7 @@ if output_plots:
 
 # ### Fit models with varying (fixed) k
 # 
-# TODO: explain
+# Here, we'll fix a k (latent space dimension) value for the simulated data, and try several different values for the model. We'd expect the model to find the true value or something close to it.
 
 # In[7]:
 
@@ -204,7 +200,7 @@ plt.ylim(-0.1, 1.1)
 
 # ### Fit models with varying (fixed) k, on varying simulated k
 # 
-# TODO: explain
+# Here, we'll vary both the simulation (true) k and the model k, to see if they correspond at all across a variety of different simulations. We can visualize the results in a heatmap, where we'd expect to see high values along the diagonal if the model is performing better for the "true" value of k.
 
 # In[12]:
 
