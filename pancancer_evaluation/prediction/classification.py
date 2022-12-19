@@ -72,9 +72,16 @@ def train_classifier(X_train,
         )
     elif lasso:
         if lasso_penalty is not None:
-            clf_parameters = {
-                "classify__alpha": [lasso_penalty]
-            }
+            return train_lasso(
+                X_train,
+                X_test,
+                y_train,
+                seed,
+                lasso_penalty,
+                n_folds=n_folds,
+                max_iter=max_iter
+            )
+
         else:
             assert c_values is not None
             clf_parameters = {
@@ -145,6 +152,34 @@ def train_classifier(X_train,
     y_predict_test = cv_pipeline.decision_function(X_test)
 
     return cv_pipeline, y_predict_train, y_predict_test, y_cv
+
+
+def train_lasso(X_train,
+                X_test,
+                y_train,
+                seed,
+                lasso_penalty,
+                n_folds=5,
+                max_iter=1000):
+
+    estimator = SGDClassifier(
+        random_state=seed,
+        class_weight='balanced',
+        penalty='l1',
+        alpha=lasso_penalty,
+        loss="log_loss",
+        max_iter=max_iter,
+        tol=1e-3,
+    )
+
+    # Fit the model
+    estimator.fit(X=X_train, y=y_train.status)
+
+    # Get all performance results
+    y_predict_train = estimator.decision_function(X_train)
+    y_predict_test = estimator.decision_function(X_test)
+
+    return estimator, y_predict_train, y_predict_test, y_predict_train
 
 
 def get_threshold_metrics(y_true, y_pred, drop=False):

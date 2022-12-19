@@ -13,10 +13,10 @@ MAD_PRESELECT=8000
 mkdir -p $ERRORS_DIR
 
 genes=(
-  "TP53"
   "EGFR"
   "ATRX"
   "CDKN2A"
+  "TP53"
 )
 
 lasso_penalties=(
