@@ -15,7 +15,7 @@ from umap import UMAP
 
 import pancancer_evaluation.config as cfg
 from csd_simulations import simulate_csd
-from fit_models import fit_k_folds_csd
+from preprocess_and_score_models import fit_k_folds_csd
 
 np.random.seed(42)
 torch.manual_seed(42)

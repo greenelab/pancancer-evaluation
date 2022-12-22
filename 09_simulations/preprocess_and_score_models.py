@@ -1,3 +1,7 @@
+"""
+Code to preprocess input data (cross-validation, domain holdout, etc) and score
+model predictions. Used as a wrapper around model fitting code in models.py.
+"""
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, average_precision_score
@@ -10,25 +14,6 @@ from models import (
     train_mlp,
     train_linear_csd
 )
-
-def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
-    """Get metrics for predicted probabilities.
-
-    y_pred_train and y_pred_test should be continuous; true values are binary.
-    """
-    train_auroc = roc_auc_score(y_train, y_pred_train, average="weighted")
-    test_auroc = roc_auc_score(y_test, y_pred_test, average="weighted")
-
-    train_aupr = average_precision_score(y_train, y_pred_train, average="weighted")
-    test_aupr = average_precision_score(y_test, y_pred_test, average="weighted")
-
-    return {
-        'train_auroc': train_auroc,
-        'test_auroc': test_auroc,
-        'train_aupr': train_aupr,
-        'test_aupr': test_aupr,
-    }
-
 
 def fit_k_folds_all_models(xs, ys, domains, train_data=None, n_splits=4, seed=42):
     """Split data into k folds and evaluate all implemented models.
@@ -302,4 +287,28 @@ def fit_csd_k_range(xs, ys, domains, k_model_range,
     results_df = results_df.melt(id_vars=['k_model', 'fold'], var_name='metric')
 
     return results_df
+
+
+def get_prob_metrics(y_train, y_test, y_pred_train, y_pred_test):
+    """Given predicted scores and true labels for train and test samples,
+    calculate classification metrics.
+
+    y_pred_train and y_pred_test should be continuous (higher = more likely
+    to be positively labeled, e.g. output of logistic regression); true values
+    are binary.
+    """
+    train_auroc = roc_auc_score(y_train, y_pred_train, average="weighted")
+    test_auroc = roc_auc_score(y_test, y_pred_test, average="weighted")
+
+    train_aupr = average_precision_score(y_train, y_pred_train, average="weighted")
+    test_aupr = average_precision_score(y_test, y_pred_test, average="weighted")
+
+    return {
+        'train_auroc': train_auroc,
+        'test_auroc': test_auroc,
+        'train_aupr': train_aupr,
+        'test_aupr': test_aupr,
+    }
+
+
 
