@@ -21,11 +21,12 @@ genes=(
 
 lasso_penalties=(
   "0.0001"
+  "0.0005"
   "0.001"
+  "0.005"
   "0.01"
+  "0.05"
   "0.1"
-  "1"
-  "10"
 )
 
 for seed in 42 1; do
@@ -66,7 +67,6 @@ for seed in 42 1; do
             cmd+="--mad_preselect $MAD_PRESELECT "
             cmd+="--training_samples all_other_cancers "
             cmd+="--lasso_penalty $lasso_penalty "
-            cmd+="2>$ERRORS_DIR/errors_${gene}_${seed}_mad_all_other_cancers.txt"
             cmd+="2>$ERRORS_DIR/errors_${gene}_${seed}_${lasso_penalty}_all_other_cancers.txt"
             echo "Running: $cmd"
             eval $cmd
