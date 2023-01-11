@@ -78,7 +78,7 @@ def train_classifier(X_train,
                 y_train,
                 seed,
                 lasso_penalty,
-                n_folds=n_folds,
+                # n_folds=n_folds,
                 max_iter=max_iter
             )
 
@@ -172,14 +172,29 @@ def train_lasso(X_train,
         tol=1e-3,
     )
 
+    from sklearn.model_selection import train_test_split
+
+    subtrain_ixs, valid_ixs = train_test_split(
+        np.arange(X_train.shape[0]),
+        test_size=(1 / n_folds),
+        # TODO probably want a seed per fold
+        # random_state=seed,
+        shuffle=True
+    )
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
     # Fit the model
-    estimator.fit(X=X_train, y=y_train.status)
+    estimator.fit(X=X_subtrain, y=y_subtrain.status)
 
     # Get all performance results
-    y_predict_train = estimator.decision_function(X_train)
+    y_predict_train = estimator.decision_function(X_subtrain)
+    y_predict_valid = estimator.decision_function(X_valid)
     y_predict_test = estimator.decision_function(X_test)
 
-    return estimator, y_predict_train, y_predict_test, y_predict_train
+    return (estimator, 
+            (y_subtrain, y_valid),
+            (y_predict_train, y_predict_valid, y_predict_test))
 
 
 def get_threshold_metrics(y_true, y_pred, drop=False):
@@ -214,8 +229,8 @@ def get_threshold_metrics(y_true, y_pred, drop=False):
     return {"auroc": auroc, "aupr": aupr, "roc_df": roc_df, "pr_df": pr_df}
 
 
-def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
-                gene, cancer_type, signal, seed, fold_no):
+def get_metrics(y_train_df, y_test_df, y_pred_cv, y_pred_train, y_pred_test,
+                gene, cancer_type, signal, seed, fold_no, y_cv_df=None):
 
     # get classification metric values
     y_train_results = get_threshold_metrics(
@@ -224,9 +239,16 @@ def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
     y_test_results = get_threshold_metrics(
         y_test_df.status, y_pred_test, drop=False
     )
-    y_cv_results = get_threshold_metrics(
-        y_train_df.status, y_cv_df, drop=False
-    )
+
+    # TODO: clean up/document?
+    if y_cv_df is not None:
+        y_cv_results = get_threshold_metrics(
+            y_cv_df.status, y_pred_cv, drop=False
+        )
+    else:
+        y_cv_results = get_threshold_metrics(
+            y_train_df.status, y_pred_cv, drop=False
+        )
 
     # summarize all results in dataframes
     metric_cols = [
