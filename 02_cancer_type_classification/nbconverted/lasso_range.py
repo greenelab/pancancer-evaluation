@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ### LASSO parameter range experiments
+# 
+# We want to see whether smaller models (i.e. models with fewer nonzero features) tend to generalize to new cancer types better than larger ones; this script compares/visualizes those results.
+
 # In[1]:
 
 
@@ -10,6 +14,7 @@ import itertools as it
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
 import seaborn as sns
 
 import pancancer_evaluation.config as cfg
@@ -138,8 +143,10 @@ coefs_perf_df.head()
 sns.set({'figure.figsize': (8, 6)})
 
 plot_df = coefs_perf_df[coefs_perf_df.data_type == 'test']
+r, p = pearsonr(plot_df.nz_coefs.values, plot_df.aupr.values)
+
 sns.scatterplot(data=plot_df, x='nz_coefs', y='aupr', hue='holdout_cancer_type')
-plt.title('Cancer holdout AUPR vs. # of nonzero features')
+plt.title('Cancer holdout AUPR vs. # of nonzero features (r={:.3f}, p={:.3f})'.format(r, p))
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Holdout AUPR')
 
@@ -163,9 +170,10 @@ coefs_perf_pivot_df
 
 # plot validation performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
+r, p = pearsonr(coefs_perf_pivot_df.nz_coefs.values, coefs_perf_pivot_df.aupr_cv.values)
 
 sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='aupr_cv', hue='holdout_cancer_type')
-plt.title('Validation set AUPR vs. # of nonzero features')
+plt.title('Validation set AUPR vs. # of nonzero features (r={:.3f}, p={:.3f})'.format(r, p))
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Validation AUPR')
 
@@ -179,8 +187,14 @@ sns.set({'figure.figsize': (8, 6)})
 coefs_perf_pivot_df['cv_test_aupr_ratio'] = (
     coefs_perf_pivot_df['aupr_cv']/ coefs_perf_pivot_df['aupr_test']
 )
+r, p = pearsonr(coefs_perf_pivot_df.nz_coefs.values, coefs_perf_pivot_df.cv_test_aupr_ratio.values)
+
 sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='cv_test_aupr_ratio', hue='holdout_cancer_type')
-plt.title('(Validation AUPR) / (Holdout AUPR) vs. # of nonzero features')
+plt.title('(Validation AUPR) / (Holdout AUPR) vs. # of nonzero features (r={:.3f}, p={:.3f})'.format(r, p))
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('(Validation AUPR) / (Holdout AUPR)')
 
+
+# For this limited set of genes/cancer types, there doesn't seem to be much of a relationship between model size and "performance", for any of these three ways of defining performance.
+# 
+# A better way to explore correlation between model size and performance might be to look at the partial correlation while controlling for cancer type - we'll explore this in the future.
