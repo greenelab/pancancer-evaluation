@@ -12,8 +12,9 @@ from sklearn.decomposition import PCA
 import torch
 from umap import UMAP
 
+import pancancer_evaluation.config as cfg
 from csd_simulations import simulate_csd
-from models import train_k_folds_all_models
+from preprocess_and_score_models import fit_k_folds_all_models
 
 np.random.seed(42)
 torch.manual_seed(42)
@@ -42,6 +43,11 @@ corr_top, diag = 1, None
 # corr_top, diag = 0.1, 10
 
 correlated_noise = True
+
+# location to save plots to
+output_plots = True
+sim_results_dir = cfg.repo_root / '09_simulations' / 'simulation_results'
+output_plots_dir = cfg.repo_root / '09_simulations' / 'simulation_plots'
 
 
 # In[3]:
@@ -109,6 +115,13 @@ axarr[1].set_xlabel('UMAP dimension 1')
 axarr[1].set_ylabel('UMAP dimension 2')
 axarr[1].legend()
 
+if output_plots:
+    output_plots_dir.mkdir(exist_ok=True)
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_pca_umap.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
+
 
 # ### Random train/test splitting
 # 
@@ -117,28 +130,43 @@ axarr[1].legend()
 # In[7]:
 
 
-results_df = train_k_folds_all_models(xs, ys, domains[:, np.newaxis])
+results_df = fit_k_folds_all_models(xs, ys, domains[:, np.newaxis])
 results_df.head()
 
 
 # In[8]:
 
 
+sim_results_dir.mkdir(exist_ok=True)
+results_df.to_csv(
+    sim_results_dir / 'n{}_p{}_k{}_corr{}_scale{}_random.tsv'.format(
+        n_domains, p, k, corr_top, diag), sep='\t')
+
+
+# In[9]:
+
+
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model for random train/test splits, colored by metric')
+plt.title('Performance for each metric for random train/test splits, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
+
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_random_perf.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 
 
 # ### Domain holdout train/test splitting
 # 
 # Here, we want to hold out a single domain and train on the other domains. This simulates the case when we have access to some domains during training, and we want to measure generalization to domains that we can't train on for whatever reason.
 
-# In[9]:
+# In[10]:
 
 
 # hold out domain that was generated last; use all other domains for training
@@ -150,30 +178,44 @@ y_holdout = ys[domains == holdout_domain, :]
 ds_train = domains[domains != holdout_domain, np.newaxis]
 ds_holdout = domains[domains == holdout_domain, np.newaxis]
 
-results_df = train_k_folds_all_models(
+results_df = fit_k_folds_all_models(
     X_holdout, y_holdout, ds_holdout, train_data=(X_train, y_train, ds_train)
 )
 results_df.head()
 
 
-# In[10]:
+# In[11]:
+
+
+results_df.to_csv(
+    sim_results_dir / 'n{}_p{}_k{}_corr{}_scale{}_domain.tsv'.format(
+        n_domains, p, k, corr_top, diag), sep='\t')
+
+
+# In[12]:
 
 
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model on held out domain, colored by metric')
+plt.title('Performance for each metric on held out domain, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
+
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_domain_perf.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 
 
 # ### CORAL
 # 
 # Apply the [CORAL transformation](https://arxiv.org/abs/1612.01939) for unsupervised domain adaptation to the holdout domain. This should help a bit with performance, but not as much as adding the CSD layer since the data is generated using the CSD generative model.
 
-# In[11]:
+# In[13]:
 
 
 # apply CORAL to map X_train onto X_holdout
@@ -183,14 +225,14 @@ print(X_train.shape, X_holdout.shape)
 X_train_coral, X_holdout_coral = CORAL().fit_transfer(X_train, X_holdout)
 
 
-# In[12]:
+# In[14]:
 
 
 xs_coral = np.concatenate((X_train_coral, X_holdout_coral))
 print(xs_coral.shape)
 
 
-# In[13]:
+# In[15]:
 
 
 # visualize X_train and X_holdout before and after CORAL transformation
@@ -217,7 +259,7 @@ X_umap_coral_df['label'] = ys.flatten()
 X_umap_coral_df.head()
 
 
-# In[14]:
+# In[16]:
 
 
 sns.set({'figure.figsize': (18, 12)})
@@ -249,31 +291,43 @@ axarr[1, 1].set_xlabel('UMAP dimension 1')
 axarr[1, 1].set_ylabel('UMAP dimension 2')
 axarr[1, 1].legend()
 
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_coral_pca_umap.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 
-# In[15]:
+
+# In[17]:
 
 
 # train model using CORAL-transformed training data, aligned to test domain, as input
-coral_results_df = train_k_folds_all_models(
+coral_results_df = fit_k_folds_all_models(
     X_holdout_coral, y_holdout, ds_holdout, train_data=(X_train_coral, y_train, ds_train)
 )
 coral_results_df.head()
 
 
-# In[16]:
+# In[18]:
 
 
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=coral_results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model on held out domain after CORAL, colored by metric')
+plt.title('Performance for each metric on held out domain after CORAL, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_coral_perf.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 
-# In[17]:
+
+# In[19]:
 
 
 results_df['preprocessing'] = 'none'
@@ -300,46 +354,66 @@ axarr[1].set_ylim(-0.1, 1.1)
 
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_coral_comparison.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
+
 
 # ### Random split with dummy covariate for domain
 # 
 # Does providing the domain information (in the form of a dummy/one-hot variable) help performance?
 
-# In[18]:
+# In[20]:
 
 
 x_covariates = pd.get_dummies(domains)
 x_covariates.head()
 
 
-# In[19]:
+# In[21]:
 
 
 xs_cov = np.concatenate((xs, x_covariates.values), axis=1)
 print(xs_cov[:5, :])
 
 
-# In[20]:
+# In[22]:
 
 
-cov_results_df = train_k_folds_all_models(xs_cov, ys, domains[:, np.newaxis])
+cov_results_df = fit_k_folds_all_models(xs_cov, ys, domains[:, np.newaxis])
 cov_results_df.head()
 
 
-# In[21]:
+# In[23]:
+
+
+cov_results_df.to_csv(
+    sim_results_dir / 'n{}_p{}_k{}_corr{}_scale{}_random_dummy.tsv'.format(
+        n_domains, p, k, corr_top, diag), sep='\t')
+
+
+# In[24]:
 
 
 sns.set({'figure.figsize': (12, 6)})
 
 sns.boxplot(data=cov_results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='model')
-plt.title('Performance for each model for random train/test with domain covariate, colored by metric')
+plt.title('Performance for each metric for random train/test with domain covariate, colored by model')
 plt.xlabel('Model type')
 plt.ylabel('Metric value')
 plt.ylim(-0.1, 1.1)
 
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_dummy_perf.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 
-# In[22]:
+
+# In[25]:
 
 
 results_df['covariate'] = 'none'
@@ -365,4 +439,10 @@ axarr[1].set_ylabel('Metric value')
 axarr[1].set_ylim(-0.1, 1.1)
 
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(
+        output_plots_dir / 'n{}_p{}_k{}_corr{}_scale{}_dummy_comparison.png'.format(
+            n_domains, p, k, corr_top, diag),
+    dpi=200, bbox_inches='tight')
 

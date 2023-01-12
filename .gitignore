@@ -16,3 +16,6 @@ data/ccle/*
 
 08_cell_line_prediction/drug_response_dists/*
 08_cell_line_prediction/sample_dists/*
+
+09_simulations/simulation_plots/*
+09_simulations/simulation_results/*
