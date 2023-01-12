@@ -143,3 +143,44 @@ plt.title('Cancer holdout AUPR vs. # of nonzero features')
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Holdout AUPR')
 
+
+# In[9]:
+
+
+coefs_perf_pivot_df = coefs_perf_df.pivot(
+    index=['gene', 'holdout_cancer_type', 'seed', 'fold', 'lasso_param', 'nz_coefs'],
+    columns='data_type',
+    values=['auroc', 'aupr']
+)
+coefs_perf_pivot_df.columns = ['_'.join(col).strip() for col in coefs_perf_pivot_df.columns.values]
+coefs_perf_pivot_df.reset_index(inplace=True)
+
+coefs_perf_pivot_df
+
+
+# In[10]:
+
+
+# plot validation performance vs. number of nonzero features
+sns.set({'figure.figsize': (8, 6)})
+
+sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='aupr_cv', hue='holdout_cancer_type')
+plt.title('Validation set AUPR vs. # of nonzero features')
+plt.xlabel('Number of nonzero features in model')
+plt.ylabel('Validation AUPR')
+
+
+# In[11]:
+
+
+# plot validation performance vs. number of nonzero features
+sns.set({'figure.figsize': (8, 6)})
+
+coefs_perf_pivot_df['cv_test_aupr_ratio'] = (
+    coefs_perf_pivot_df['aupr_cv']/ coefs_perf_pivot_df['aupr_test']
+)
+sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='cv_test_aupr_ratio', hue='holdout_cancer_type')
+plt.title('(Validation AUPR) / (Holdout AUPR) vs. # of nonzero features')
+plt.xlabel('Number of nonzero features in model')
+plt.ylabel('(Validation AUPR) / (Holdout AUPR)')
+
