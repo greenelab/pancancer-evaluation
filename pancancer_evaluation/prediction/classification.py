@@ -78,7 +78,7 @@ def train_classifier(X_train,
                 y_train,
                 seed,
                 lasso_penalty,
-                # n_folds=n_folds,
+                n_folds=n_folds,
                 max_iter=max_iter
             )
 
@@ -177,8 +177,6 @@ def train_lasso(X_train,
     subtrain_ixs, valid_ixs = train_test_split(
         np.arange(X_train.shape[0]),
         test_size=(1 / n_folds),
-        # TODO probably want a seed per fold
-        # random_state=seed,
         shuffle=True
     )
     X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
@@ -240,11 +238,15 @@ def get_metrics(y_train_df, y_test_df, y_pred_cv, y_pred_train, y_pred_test,
         y_test_df.status, y_pred_test, drop=False
     )
 
-    # TODO: clean up/document?
+    # if "cv" (validation set) labels are passed in, use those - this happens
+    # when we have a single train/validation split
     if y_cv_df is not None:
         y_cv_results = get_threshold_metrics(
             y_cv_df.status, y_pred_cv, drop=False
         )
+    # otherwise use the training labels as ground truth - this happens when we
+    # do nested cross-validation and the whole training set is used for
+    # validation at some point
     else:
         y_cv_results = get_threshold_metrics(
             y_train_df.status, y_pred_cv, drop=False

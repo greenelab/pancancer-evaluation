@@ -1,8 +1,8 @@
 """
-Script to run pan-cancer classification experiments for all chosen combinations
-of gene and cancer type.
+Script to run mutation status classification experiments for a given (fixed) lasso
+penalty, using L1 penalty only.
 
-Output files are identified by {gene}_{cancer_type} (in this order).
+Output files are identified by {gene}_{cancer_type}, in this order.
 """
 import sys
 import argparse
@@ -59,6 +59,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--shuffle_labels', action='store_true')
     p.add_argument('--training_samples',
                    choices=['single_cancer', 'pancancer', 'all_other_cancers'],
                    default='single_cancer',
@@ -123,8 +124,7 @@ if __name__ == '__main__':
 
     genes_df = tcga_data.load_gene_set(args.gene_set)
 
-    # for shuffle_labels in (False, True):
-    for shuffle_labels in [False]:
+    for shuffle_labels in [args.shuffle_labels]:
 
         print('training_samples: {}, shuffle_labels: {}'.format(
                args.training_samples, shuffle_labels))
