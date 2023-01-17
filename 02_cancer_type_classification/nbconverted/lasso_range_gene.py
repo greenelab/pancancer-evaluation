@@ -35,7 +35,7 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-plot_gene = 'TP53'
+plot_gene = 'ATRX'
 metric = 'aupr'
 
 output_plots = True
@@ -182,6 +182,57 @@ if output_plots:
 # In[10]:
 
 
+# look at correlation for each cancer type individually
+# positive correlation => more features, better performance
+corr_cancer_type_df = []
+
+for cancer_type in coefs_perf_df.holdout_cancer_type.unique():
+    corr_df = coefs_perf_df[
+        (coefs_perf_df.holdout_cancer_type == cancer_type) &
+        (coefs_perf_df.data_type == 'test')
+    ]
+    r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)
+    corr_cancer_type_df.append(
+        [plot_gene, cancer_type, r, p]
+    )
+    
+corr_cancer_type_df = pd.DataFrame(
+    corr_cancer_type_df,
+    columns=['gene', 'cancer_type', 'pearson_r', 'pearson_pval']
+).sort_values(by='pearson_r', ascending=False)
+
+corr_cancer_type_df
+
+
+# In[11]:
+
+
+# plot test performance vs. number of nonzero features
+sns.set({'figure.figsize': (8, 6)})
+
+top_cancers = corr_cancer_type_df.cancer_type.values[:5]
+    
+plot_df = (
+    coefs_perf_df[(coefs_perf_df.holdout_cancer_type.isin(top_cancers)) &
+                  (coefs_perf_df.data_type == 'test')]
+      .sort_values(by='holdout_cancer_type')
+)
+r, p = pearsonr(plot_df.nz_coefs.values, plot_df.aupr.values)
+
+ax = sns.scatterplot(data=plot_df, x='nz_coefs', y='aupr', hue='holdout_cancer_type')
+sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+plt.title(f'{plot_gene} cancer holdout AUPR vs. # of nonzero features (r={r:.3f}, p={p:.3f})')
+plt.xlabel('Number of nonzero features in model')
+plt.ylabel('Holdout AUPR')
+
+if output_plots:
+    plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_holdout_perf_top_cancers.png',
+                dpi=200, bbox_inches='tight')
+
+
+# In[12]:
+
+
 coefs_perf_pivot_df = coefs_perf_df.pivot(
     index=['gene', 'holdout_cancer_type', 'seed', 'fold', 'lasso_param', 'nz_coefs'],
     columns='data_type',
@@ -193,7 +244,7 @@ coefs_perf_pivot_df.reset_index(inplace=True)
 coefs_perf_pivot_df
 
 
-# In[11]:
+# In[13]:
 
 
 # plot validation performance vs. number of nonzero features
@@ -211,7 +262,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[12]:
+# In[14]:
 
 
 # plot validation performance vs. number of nonzero features
