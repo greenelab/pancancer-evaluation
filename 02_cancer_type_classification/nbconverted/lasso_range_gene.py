@@ -29,11 +29,14 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_poc'
+    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_valid'
 )
 
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
+
+plot_gene = 'TP53'
+metric = 'aupr'
 
 
 # ### Get coefficient information for each lasso penalty
@@ -59,6 +62,7 @@ nz_coefs_df = pd.DataFrame(
     nz_coefs_df,
     columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
 )
+nz_coefs_df = nz_coefs_df[nz_coefs_df.gene == plot_gene].copy()
 nz_coefs_df.head()
 
 
@@ -67,21 +71,13 @@ nz_coefs_df.head()
 
 genes = ['TP53']
 
-sns.set({'figure.figsize': (12, 5*len(genes))})
-fig, axarr = plt.subplots(len(genes), 1)
+sns.set({'figure.figsize': (12, 5)})
 
-for ix, gene in enumerate(genes):
-    if len(genes) == 1:
-        ax = axarr
-    else:
-        ax = axarr[ix]
-    sns.boxplot(
-        data=(
-            nz_coefs_df[nz_coefs_df.gene == gene]
-              .sort_values(by=['cancer_type', 'lasso_param'])
-        ), x='cancer_type', y='nz_coefs', hue='lasso_param', ax=ax
-    )
-    ax.set_title(f'LASSO parameter vs. number of nonzero coefficients, {gene}')
+sns.boxplot(
+    data=nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
+    x='cancer_type', y='nz_coefs', hue='lasso_param'
+)
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
 plt.tight_layout()
 
 
@@ -91,39 +87,51 @@ plt.tight_layout()
 
 
 perf_df = au.load_prediction_results_lasso_range(results_dir, training_dataset)
+perf_df = perf_df[perf_df.gene == plot_gene].copy()
 perf_df.head()
 
 
 # In[6]:
 
 
-# genes = ['EGFR', 'ATRX', 'CDKN2A']
-genes = ['TP53']
-metric = 'aupr'
+sns.set({'figure.figsize': (12, 5)})
 
-sns.set({'figure.figsize': (12, 5*len(genes))})
-fig, axarr = plt.subplots(len(genes), 1)
+sns.boxplot(
+    data=(
+        perf_df[(perf_df.signal == 'signal') &
+                (perf_df.data_type == 'test')]
+          .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+    ), x='holdout_cancer_type', y=metric, hue='lasso_param'
+)
+plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
+plt.tight_layout()
 
-for ix, gene in enumerate(genes):
-    if len(genes) == 1:
-        ax = axarr
-    else:
-        ax = axarr[ix]
-    sns.boxplot(
-        data=(
-            perf_df[(perf_df.gene == gene) &
-                    (perf_df.signal == 'signal') &
-                    (perf_df.data_type == 'test')]
-              .sort_values(by=['holdout_cancer_type', 'lasso_param'])
-        ), x='holdout_cancer_type', y=metric, hue='lasso_param', ax=ax
-    )
-    ax.set_title(f'LASSO parameter vs. {metric.upper()}, {gene}')
+
+# In[7]:
+
+
+sns.set({'figure.figsize': (12, 5)})
+
+plot_df = (
+    perf_df[(perf_df.signal == 'signal') &
+            (perf_df.data_type == 'test')]
+      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+      .reset_index(drop=True)
+)
+
+g = sns.relplot(
+    data=plot_df,
+    x="lasso_param", y=metric, col="holdout_cancer_type", col_wrap=5,
+    kind="line",
+)
+g.set_xticklabels(rotation=70)
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
 plt.tight_layout()
 
 
 # ### Compare feature selection with performance
 
-# In[7]:
+# In[8]:
 
 
 coefs_perf_df = (nz_coefs_df
@@ -136,22 +144,26 @@ coefs_perf_df = (nz_coefs_df
 coefs_perf_df.head()
 
 
-# In[8]:
+# In[9]:
 
 
 # plot test performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 
-plot_df = coefs_perf_df[coefs_perf_df.data_type == 'test']
+plot_df = (
+    coefs_perf_df[coefs_perf_df.data_type == 'test']
+      .sort_values(by='holdout_cancer_type')
+)
 r, p = pearsonr(plot_df.nz_coefs.values, plot_df.aupr.values)
 
-sns.scatterplot(data=plot_df, x='nz_coefs', y='aupr', hue='holdout_cancer_type')
-plt.title('Cancer holdout AUPR vs. # of nonzero features (r={:.3f}, p={:.3f})'.format(r, p))
+ax = sns.scatterplot(data=plot_df, x='nz_coefs', y='aupr', hue='holdout_cancer_type')
+sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+plt.title(f'{plot_gene} cancer holdout AUPR vs. # of nonzero features (r={r:.3f}, p={p:.3f})')
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Holdout AUPR')
 
 
-# In[9]:
+# In[10]:
 
 
 coefs_perf_pivot_df = coefs_perf_df.pivot(
@@ -165,20 +177,21 @@ coefs_perf_pivot_df.reset_index(inplace=True)
 coefs_perf_pivot_df
 
 
-# In[10]:
+# In[11]:
 
 
 # plot validation performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 r, p = pearsonr(coefs_perf_pivot_df.nz_coefs.values, coefs_perf_pivot_df.aupr_cv.values)
 
-sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='aupr_cv', hue='holdout_cancer_type')
-plt.title('Validation set AUPR vs. # of nonzero features (r={:.3f}, p={:.3f})'.format(r, p))
+ax = sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='aupr_cv', hue='holdout_cancer_type')
+sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+plt.title(f'{plot_gene} validation set AUPR vs. # of nonzero features (r={r:.3f}, p={p:.3f})')
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Validation AUPR')
 
 
-# In[11]:
+# In[12]:
 
 
 # plot validation performance vs. number of nonzero features
@@ -189,8 +202,9 @@ coefs_perf_pivot_df['cv_test_aupr_ratio'] = (
 )
 r, p = pearsonr(coefs_perf_pivot_df.nz_coefs.values, coefs_perf_pivot_df.cv_test_aupr_ratio.values)
 
-sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='cv_test_aupr_ratio', hue='holdout_cancer_type')
-plt.title('(Validation AUPR) / (Holdout AUPR) vs. # of nonzero features (r={:.3f}, p={:.3f})'.format(r, p))
+ax = sns.scatterplot(data=coefs_perf_pivot_df, x='nz_coefs', y='cv_test_aupr_ratio', hue='holdout_cancer_type')
+sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+plt.title(f'{plot_gene} (Validation AUPR) / (Holdout AUPR) vs. nonzero features (r={r:.3f}, p={p:.3f})')
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('(Validation AUPR) / (Holdout AUPR)')
 
