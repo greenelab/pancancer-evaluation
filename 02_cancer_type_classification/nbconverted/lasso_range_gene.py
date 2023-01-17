@@ -38,6 +38,9 @@ results_dir = os.path.join(base_results_dir, training_dataset)
 plot_gene = 'TP53'
 metric = 'aupr'
 
+output_plots = True
+output_plots_dir = cfg.cancer_type_lasso_range_dir
+
 
 # ### Get coefficient information for each lasso penalty
 
@@ -106,6 +109,11 @@ sns.boxplot(
 plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
 plt.tight_layout()
 
+if output_plots:
+    output_plots_dir.mkdir(exist_ok=True)
+    plt.savefig(output_plots_dir / f'{plot_gene}_lasso_boxes.png',
+                dpi=200, bbox_inches='tight')
+
 
 # In[7]:
 
@@ -127,6 +135,10 @@ g = sns.relplot(
 g.set_xticklabels(rotation=70)
 plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',
+                dpi=200, bbox_inches='tight')
 
 
 # ### Compare feature selection with performance
@@ -162,6 +174,10 @@ plt.title(f'{plot_gene} cancer holdout AUPR vs. # of nonzero features (r={r:.3f}
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Holdout AUPR')
 
+if output_plots:
+    plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_holdout_perf.png',
+                dpi=200, bbox_inches='tight')
+
 
 # In[10]:
 
@@ -190,6 +206,10 @@ plt.title(f'{plot_gene} validation set AUPR vs. # of nonzero features (r={r:.3f}
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('Validation AUPR')
 
+if output_plots:
+    plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_validation_perf.png',
+                dpi=200, bbox_inches='tight')
+
 
 # In[12]:
 
@@ -207,6 +227,10 @@ sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
 plt.title(f'{plot_gene} (Validation AUPR) / (Holdout AUPR) vs. nonzero features (r={r:.3f}, p={p:.3f})')
 plt.xlabel('Number of nonzero features in model')
 plt.ylabel('(Validation AUPR) / (Holdout AUPR)')
+
+if output_plots:
+    plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_perf_ratio.png',
+                dpi=200, bbox_inches='tight')
 
 
 # For this limited set of genes/cancer types, there doesn't seem to be much of a relationship between model size and "performance", for any of these three ways of defining performance.
