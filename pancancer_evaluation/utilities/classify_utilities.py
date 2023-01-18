@@ -175,6 +175,8 @@ def run_cv_cancer_type(data_model,
                        predictor='classify',
                        stratify_label=False,
                        ridge=False,
+                       lasso=False,
+                       lasso_penalty=None,
                        use_coral=False,
                        coral_lambda=1.0,
                        coral_by_cancer_type=False,
@@ -298,11 +300,14 @@ def run_cv_cancer_type(data_model,
             'regress': reg.train_regressor,
         }[predictor]
         try:
-            # also ignore warnings here, same deal as above
+        # also ignore warnings here, same deal as above
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
-                train_model_params = apply_model_params(train_model, ridge)
+                train_model_params = apply_model_params(train_model,
+                                                        ridge,
+                                                        lasso,
+                                                        lasso_penalty)
                 model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,
@@ -311,10 +316,19 @@ def run_cv_cancer_type(data_model,
                     n_folds=cfg.folds,
                     max_iter=cfg.max_iter
                 )
-                (cv_pipeline,
-                 y_pred_train_df,
-                 y_pred_test_df,
-                 y_cv_df) = model_results
+                if lasso_penalty is not None:
+                    (cv_pipeline, labels, preds) = model_results
+                    (y_train_df,
+                     y_cv_df) = labels
+                    (y_pred_train,
+                     y_pred_cv,
+                     y_pred_test) = preds
+                else:
+                    y_cv_df = None
+                    (cv_pipeline,
+                     y_pred_train,
+                     y_pred_test,
+                     y_pred_cv) = model_results
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for cancer type: {}, '
@@ -338,9 +352,9 @@ def run_cv_cancer_type(data_model,
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
-                        y_train_df, y_test_df, y_cv_df, y_pred_train_df,
-                        y_pred_test_df, identifier, cancer_type, signal,
-                        data_model.seed, fold_no
+                        y_train_df, y_test_df, y_pred_cv, y_pred_train,
+                        y_pred_test, identifier, cancer_type, signal,
+                        data_model.seed, fold_no, y_cv_df
                     )
                 results['gene_metrics'].append(metric_df)
                 results['gene_auc'].append(gene_auc_df)
@@ -350,9 +364,9 @@ def run_cv_cancer_type(data_model,
                 metric_df = reg.get_metrics(
                     y_train_df,
                     y_test_df,
-                    y_cv_df,
-                    y_pred_train_df,
-                    y_pred_test_df,
+                    y_pred_cv,
+                    y_pred_train,
+                    y_pred_test,
                     identifier=cancer_type, 
                     signal=signal,
                     seed=data_model.seed,
@@ -620,13 +634,22 @@ def shuffle_by_cancer_type(y_df, seed):
     return y_copy_df.status.values
 
 
-def apply_model_params(train_model, ridge=False):
+def apply_model_params(train_model,
+                       ridge=False,
+                       lasso=False,
+                       lasso_penalty=None):
     """Pass hyperparameters to model, based on which model we want to fit."""
     if ridge:
         return partial(
             train_model,
             ridge=ridge,
             c_values=cfg.ridge_c_values
+        )
+    elif lasso:
+        return partial(
+            train_model,
+            lasso=lasso,
+            lasso_penalty=lasso_penalty
         )
     else:
         return partial(

@@ -25,6 +25,8 @@ def train_classifier(X_train,
                      y_train,
                      seed,
                      ridge=False,
+                     lasso=False,
+                     lasso_penalty=None,
                      alphas=None,
                      l1_ratios=None,
                      c_values=None,
@@ -51,7 +53,7 @@ def train_classifier(X_train,
     if ridge:
         assert c_values is not None
         clf_parameters = {
-            "classify__C": [1e-6, 1e-5, 1e-4, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
+            "classify__C": c_values
         }
         estimator = Pipeline(
             steps=[
@@ -62,6 +64,38 @@ def train_classifier(X_train,
                         class_weight='balanced',
                         penalty='l2',
                         solver='lbfgs',
+                        max_iter=max_iter,
+                        tol=1e-3,
+                    ),
+                )
+            ]
+        )
+    elif lasso:
+        if lasso_penalty is not None:
+            return train_lasso(
+                X_train,
+                X_test,
+                y_train,
+                seed,
+                lasso_penalty,
+                n_folds=n_folds,
+                max_iter=max_iter
+            )
+
+        else:
+            assert c_values is not None
+            clf_parameters = {
+                "classify__alpha": c_values
+            }
+        estimator = Pipeline(
+            steps=[
+                (
+                    "classify",
+                    SGDClassifier(
+                        random_state=seed,
+                        class_weight='balanced',
+                        penalty='l1',
+                        loss="log_loss",
                         max_iter=max_iter,
                         tol=1e-3,
                     ),
@@ -120,6 +154,47 @@ def train_classifier(X_train,
     return cv_pipeline, y_predict_train, y_predict_test, y_cv
 
 
+def train_lasso(X_train,
+                X_test,
+                y_train,
+                seed,
+                lasso_penalty,
+                n_folds=5,
+                max_iter=1000):
+
+    estimator = SGDClassifier(
+        random_state=seed,
+        class_weight='balanced',
+        penalty='l1',
+        alpha=lasso_penalty,
+        loss="log_loss",
+        max_iter=max_iter,
+        tol=1e-3,
+    )
+
+    from sklearn.model_selection import train_test_split
+
+    subtrain_ixs, valid_ixs = train_test_split(
+        np.arange(X_train.shape[0]),
+        test_size=(1 / n_folds),
+        shuffle=True
+    )
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
+    # Fit the model
+    estimator.fit(X=X_subtrain, y=y_subtrain.status)
+
+    # Get all performance results
+    y_predict_train = estimator.decision_function(X_subtrain)
+    y_predict_valid = estimator.decision_function(X_valid)
+    y_predict_test = estimator.decision_function(X_test)
+
+    return (estimator, 
+            (y_subtrain, y_valid),
+            (y_predict_train, y_predict_valid, y_predict_test))
+
+
 def get_threshold_metrics(y_true, y_pred, drop=False):
     """
     Retrieve true/false positive rates and auroc/aupr for class predictions
@@ -152,8 +227,8 @@ def get_threshold_metrics(y_true, y_pred, drop=False):
     return {"auroc": auroc, "aupr": aupr, "roc_df": roc_df, "pr_df": pr_df}
 
 
-def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
-                gene, cancer_type, signal, seed, fold_no):
+def get_metrics(y_train_df, y_test_df, y_pred_cv, y_pred_train, y_pred_test,
+                gene, cancer_type, signal, seed, fold_no, y_cv_df=None):
 
     # get classification metric values
     y_train_results = get_threshold_metrics(
@@ -162,9 +237,20 @@ def get_metrics(y_train_df, y_test_df, y_cv_df, y_pred_train, y_pred_test,
     y_test_results = get_threshold_metrics(
         y_test_df.status, y_pred_test, drop=False
     )
-    y_cv_results = get_threshold_metrics(
-        y_train_df.status, y_cv_df, drop=False
-    )
+
+    # if "cv" (validation set) labels are passed in, use those - this happens
+    # when we have a single train/validation split
+    if y_cv_df is not None:
+        y_cv_results = get_threshold_metrics(
+            y_cv_df.status, y_pred_cv, drop=False
+        )
+    # otherwise use the training labels as ground truth - this happens when we
+    # do nested cross-validation and the whole training set is used for
+    # validation at some point
+    else:
+        y_cv_results = get_threshold_metrics(
+            y_train_df.status, y_pred_cv, drop=False
+        )
 
     # summarize all results in dataframes
     metric_cols = [
