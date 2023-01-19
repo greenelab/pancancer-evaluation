@@ -92,9 +92,25 @@ coefs_perf_df.head()
 # In[6]:
 
 
+sns.set({'figure.figsize': (8, 6)})
+
+sns.histplot(coefs_perf_df.nz_coefs, log_scale=(True, False))
+plt.gca().axvline(coefs_perf_df.nz_coefs.quantile(q=0.1), linestyle='--')
+plt.title('Distribution o
+
+coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
+
+
+# In[7]:
+
+
 # look at correlation for each cancer type individually
 # positive correlation => more features, better performance
 corr_cancer_type_df = []
+nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=0.1)
+
+if nz_coefs_cutoff is not None:
+    coefs_perf_df = coefs_perf_df[coefs_perf_df.nz_coefs > nz_coefs_cutoff].copy()
 
 for gene in coefs_perf_df.gene.unique():
     for cancer_type in coefs_perf_df.holdout_cancer_type.unique():
@@ -122,7 +138,7 @@ print(corr_cancer_type_df.shape)
 corr_cancer_type_df.head()
 
 
-# In[7]:
+# In[8]:
 
 
 # plot test performance vs. number of nonzero features
@@ -130,7 +146,7 @@ sns.set({'figure.figsize': (12, 6)})
 
 ax = sns.boxplot(data=corr_cancer_type_df, x='gene', y='pearson_r')
 ax.axhline(0.0, linestyle='--', color='black')
-plt.title(f'Model size/performance correlations across cancer types, per gene')
+plt.title(f'Model size/performance correlations across cancer types, per gene (nonzero cutoff: {nz_coefs_cutoff})')
 plt.xlabel('Gene')
 plt.ylabel('Pearson correlation')
 
