@@ -115,26 +115,28 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[7]:
+# In[24]:
 
 
 sns.set({'figure.figsize': (12, 5)})
+sns.set_style('ticks')
 
 plot_df = (
     perf_df[(perf_df.signal == 'signal') &
-            (perf_df.data_type == 'test')]
+            (perf_df.data_type.isin(['cv', 'test']))]
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
 
-g = sns.relplot(
-    data=plot_df,
-    x="lasso_param", y=metric, col="holdout_cancer_type", col_wrap=5,
-    kind="line",
-)
-g.set_xticklabels(rotation=70)
-plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
-plt.tight_layout()
+with sns.plotting_context('notebook', font_scale=1.25):
+    g = sns.relplot(
+        data=plot_df,
+        x='lasso_param', y=metric, hue='data_type',
+        kind='line', col='holdout_cancer_type',
+        col_wrap=5, height=4, aspect=1.2
+    )
+    g.set_xticklabels(rotation=70)
+    plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', y=1.025)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',

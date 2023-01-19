@@ -96,7 +96,8 @@ sns.set({'figure.figsize': (8, 6)})
 
 sns.histplot(coefs_perf_df.nz_coefs, log_scale=(True, False))
 plt.gca().axvline(coefs_perf_df.nz_coefs.quantile(q=0.1), linestyle='--')
-plt.title('Distribution o
+plt.title('Distribution of feature count across cancer types/folds')
+plt.xlabel('Number of nonzero features')
 
 coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 
@@ -150,3 +151,5 @@ plt.title(f'Model size/performance correlations across cancer types, per gene (n
 plt.xlabel('Gene')
 plt.ylabel('Pearson correlation')
 
+
+# This box plot suggests that across these 4 genes, there tends to be a positive correlation between the number of features in the model and generalization performance (i.e. in general, more features in the model => better generalization). 
