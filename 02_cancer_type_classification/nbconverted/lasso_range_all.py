@@ -62,6 +62,8 @@ nz_coefs_df = pd.DataFrame(
     nz_coefs_df,
     columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
 )
+print(nz_coefs_df.shape)
+print(nz_coefs_df.gene.unique())
 nz_coefs_df.head()
 
 
@@ -71,6 +73,9 @@ nz_coefs_df.head()
 
 
 perf_df = au.load_prediction_results_lasso_range(results_dir, training_dataset)
+
+print(perf_df.shape)
+print(perf_df.gene.unique())
 perf_df.head()
 
 
@@ -94,7 +99,7 @@ coefs_perf_df.head()
 
 sns.set({'figure.figsize': (8, 6)})
 
-sns.histplot(coefs_perf_df.nz_coefs, log_scale=(True, False))
+sns.histplot(coefs_perf_df.nz_coefs)
 plt.gca().axvline(coefs_perf_df.nz_coefs.quantile(q=0.1), linestyle='--')
 plt.title('Distribution of feature count across cancer types/folds')
 plt.xlabel('Number of nonzero features')
@@ -143,13 +148,77 @@ corr_cancer_type_df.head()
 
 
 # plot test performance vs. number of nonzero features
-sns.set({'figure.figsize': (12, 6)})
+sns.set({'figure.figsize': (30, 6)})
 
-ax = sns.boxplot(data=corr_cancer_type_df, x='gene', y='pearson_r')
+ax = sns.boxplot(data=corr_cancer_type_df.sort_values(by='pearson_r', ascending=False), x='gene', y='pearson_r')
 ax.axhline(0.0, linestyle='--', color='black')
 plt.title(f'Model size/performance correlations across cancer types, per gene (nonzero cutoff: {nz_coefs_cutoff})')
 plt.xlabel('Gene')
 plt.ylabel('Pearson correlation')
+
+
+# In[9]:
+
+
+mean_corr_gene_df = (corr_cancer_type_df
+    .groupby('gene')
+    .agg(np.mean)
+    .drop(columns=['pearson_pval'])
+)
+
+mean_corr_gene_df.sort_values(by='pearson_r', ascending=False).head()
+
+
+# In[10]:
+
+
+mean_corr_gene_df.sort_values(by='pearson_r', ascending=False).tail()
+
+
+# In[11]:
+
+
+sns.set({'figure.figsize': (10, 6)})
+
+plt.xlim(-1.0, 1.0)
+sns.histplot(data=mean_corr_gene_df, x='pearson_r')
+plt.axvline(0.0, linestyle=':', color='black')
+plt.axvline(mean_corr_gene_df.pearson_r.mean(), linestyle='--', color='blue')
+plt.title('Distribution of average Pearson correlations between model size and performance, per gene')
+plt.xlabel('Mean Pearson correlation')
+plt.ylabel('Gene count')
+
+
+# In[12]:
+
+
+mean_corr_cancer_type_df = (corr_cancer_type_df
+    .groupby('cancer_type')
+    .agg(np.mean)
+    .drop(columns=['pearson_pval'])
+)
+
+mean_corr_cancer_type_df.sort_values(by='pearson_r', ascending=False).head()
+
+
+# In[13]:
+
+
+mean_corr_cancer_type_df.sort_values(by='pearson_r', ascending=False).tail()
+
+
+# In[14]:
+
+
+sns.set({'figure.figsize': (10, 6)})
+
+plt.xlim(-1.0, 1.0)
+sns.histplot(data=mean_corr_cancer_type_df, x='pearson_r')
+plt.axvline(0.0, linestyle=':', color='black')
+plt.axvline(mean_corr_cancer_type_df.pearson_r.mean(), linestyle='--', color='blue')
+plt.title('Distribution of average Pearson correlations between model size and performance, per cancer type')
+plt.xlabel('Mean Pearson correlation')
+plt.ylabel('Cancer type count')
 
 
 # This box plot suggests that across these 4 genes, there tends to be a positive correlation between the number of features in the model and generalization performance (i.e. in general, more features in the model => better generalization). 
