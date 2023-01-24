@@ -71,7 +71,8 @@ def load_prediction_results_cc(results_dir, experiment_descriptor):
 def load_prediction_results_lasso_range(results_dir,
                                         experiment_descriptor,
                                         identifier_from_fname=False,
-                                        holdout_from_fname=False):
+                                        holdout_from_fname=False,
+                                        gene=None):
     """Load results of cross-cancer mutation prediction experiments.
 
     Argument
@@ -88,6 +89,8 @@ def load_prediction_results_lasso_range(results_dir,
     """
     results_df = pd.DataFrame()
     for gene_name in os.listdir(results_dir):
+        # if gene argument is provided, only process files for that gene
+        if gene is not None and gene not in gene_name: continue
         gene_dir = os.path.join(results_dir, gene_name)
         if not os.path.isdir(gene_dir): continue
         for results_file in os.listdir(gene_dir):
@@ -354,7 +357,7 @@ def generate_nonzero_coefficients_fs(results_dir, fs_methods):
             yield identifier, coefs
 
 
-def generate_nonzero_coefficients_lasso_range(results_dir):
+def generate_nonzero_coefficients_lasso_range(results_dir, gene=None):
     """Generate coefficients for lasso range experiments.
 
 
@@ -374,6 +377,8 @@ def generate_nonzero_coefficients_lasso_range(results_dir):
     all_features = None
     for gene_name in os.listdir(results_dir):
         gene_dir = os.path.join(results_dir, gene_name)
+        # if gene argument is provided, only process files for that gene
+        if gene is not None and gene not in gene_name: continue
         if not os.path.isdir(gene_dir): continue
         for coefs_file in os.listdir(gene_dir):
             if coefs_file[0] == '.': continue
