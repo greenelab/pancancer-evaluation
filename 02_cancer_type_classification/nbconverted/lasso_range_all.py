@@ -33,6 +33,9 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
+# TODO: explain
+quantile_cutoff = 0.01
+
 metric = 'aupr'
 
 output_plots = True
@@ -100,7 +103,10 @@ coefs_perf_df.head()
 sns.set({'figure.figsize': (8, 6)})
 
 sns.histplot(coefs_perf_df.nz_coefs)
-plt.gca().axvline(coefs_perf_df.nz_coefs.quantile(q=0.1), linestyle='--')
+if quantile_cutoff is not None:
+    nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=0.01)
+    plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
+    print('cutoff:', nz_coefs_cutoff)
 plt.title('Distribution of feature count across cancer types/folds')
 plt.xlabel('Number of nonzero features')
 
@@ -110,37 +116,36 @@ coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 # In[7]:
 
 
-# look at correlation for each cancer type individually
-# positive correlation => more features, better performance
-corr_cancer_type_df = []
-nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=0.1)
-
-if nz_coefs_cutoff is not None:
-    coefs_perf_df = coefs_perf_df[coefs_perf_df.nz_coefs > nz_coefs_cutoff].copy()
-
-for gene in coefs_perf_df.gene.unique():
-    for cancer_type in coefs_perf_df.holdout_cancer_type.unique():
-        corr_df = coefs_perf_df[
-            (coefs_perf_df.gene == gene) &
-            (coefs_perf_df.holdout_cancer_type == cancer_type) &
-            (coefs_perf_df.data_type == 'test')
-        ]
-        try:
-            r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)
-        except ValueError:
-            # this happens when the model wasn't trained on the cancer type
-            # for the given gene, just skip
-            continue
-        corr_cancer_type_df.append(
-            [gene, cancer_type, r, p]
-        )
-    
-corr_cancer_type_df = pd.DataFrame(
-    corr_cancer_type_df,
-    columns=['gene', 'cancer_type', 'pearson_r', 'pearson_pval']
-).sort_values(by='pearson_r', ascending=False)
-
-print(corr_cancer_type_df.shape)
+# look at correlation for each cancer type individually                                               
+# positive correlation => more features, better performance                                           
+corr_cancer_type_df = []                                                                              
+                                                                                                      
+if quantile_cutoff is not None:                                                                       
+    coefs_perf_df = coefs_perf_df[coefs_perf_df.nz_coefs > nz_coefs_cutoff].copy()                    
+                                                                                                      
+for gene in coefs_perf_df.gene.unique():                                                              
+    for cancer_type in coefs_perf_df.holdout_cancer_type.unique():                                    
+        corr_df = coefs_perf_df[                                                                      
+            (coefs_perf_df.gene == gene) &                                                            
+            (coefs_perf_df.holdout_cancer_type == cancer_type) &                                      
+            (coefs_perf_df.data_type == 'test')                                                       
+        ]                                                                                             
+        try:                                                                                          
+            r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
+        except ValueError:                                                                            
+            # this happens when the model wasn't trained on the cancer type                           
+            # for the given gene, just skip                                                           
+            continue                                                                                  
+        corr_cancer_type_df.append(                                                                   
+            [gene, cancer_type, r, p]                                                                 
+        )                                                                                             
+                                                                                                      
+corr_cancer_type_df = pd.DataFrame(                                                                   
+    corr_cancer_type_df,                                                                              
+    columns=['gene', 'cancer_type', 'pearson_r', 'pearson_pval']                                      
+).sort_values(by='pearson_r', ascending=False)                                                        
+                                                                                                      
+print(corr_cancer_type_df.shape)                                                                      
 corr_cancer_type_df.head()
 
 
@@ -150,9 +155,17 @@ corr_cancer_type_df.head()
 # plot test performance vs. number of nonzero features
 sns.set({'figure.figsize': (30, 6)})
 
-ax = sns.boxplot(data=corr_cancer_type_df.sort_values(by='pearson_r', ascending=False), x='gene', y='pearson_r')
+# order boxes by median pearson per gene
+gene_order = (corr_cancer_type_df
+    .groupby('gene')
+    .agg(np.median)
+    .sort_values(by='pearson_r', ascending=False)
+).index.values
+
+ax = sns.boxplot(data=corr_cancer_type_df, order=gene_order, x='gene', y='pearson_r')
 ax.axhline(0.0, linestyle='--', color='black')
-plt.title(f'Model size/performance correlations across cancer types, per gene (nonzero cutoff: {nz_coefs_cutoff})')
+plt.xticks(rotation=50)
+plt.title(f'Model size/performance correlations across cancer types, per gene (nonzero cutoff: {nz_coefs_cutoff:.0f})')
 plt.xlabel('Gene')
 plt.ylabel('Pearson correlation')
 
