@@ -41,8 +41,8 @@ quantile_cutoff = 0.01
 # 'aupr' or 'auroc'
 metric = 'aupr'
 
-# 'pearson' or 'spearman'
-correlation = 'spearman'
+# 'pearson', 'spearman', or 'ccc'
+correlation = 'ccc'
 
 output_plots = True
 output_plots_dir = cfg.cancer_type_lasso_range_dir
@@ -141,6 +141,11 @@ for gene in coefs_perf_df.gene.unique():
                 r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
             elif correlation == 'spearman':
                 r, p = spearmanr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
+            elif correlation == 'ccc':
+                from ccc.coef import ccc
+                r = ccc(corr_df.nz_coefs.values, corr_df.aupr.values)
+                # CCC doesn't have p-values, as far as I know
+                p = 0.0
             else:
                 raise NotImplementedError
         except ValueError:                                                                            
@@ -169,6 +174,9 @@ corr_cancer_type_df.head()
 sns.set({'figure.figsize': (28, 6)})
 sns.set_style('ticks')
 
+def print_corr_name(correlation):
+    return correlation.upper() if correlation == 'ccc' else correlation.capitalize()
+
 # order boxes by median pearson per gene
 gene_order = (corr_cancer_type_df
     .groupby('gene')
@@ -182,7 +190,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
     plt.xticks(rotation=90)
     plt.title(f'Model size/performance correlations across cancer types, per gene (nonzero cutoff: {nz_coefs_cutoff:.0f})', y=1.02)
     plt.xlabel('Gene')
-    plt.ylabel(f'{correlation.capitalize()} correlation')
+    plt.ylabel(f'{print_corr_name(correlation)} correlation')
 
 
 # In[9]:
@@ -214,10 +222,10 @@ with sns.plotting_context('notebook', font_scale=1.2):
     plt.axvline(0.0, linestyle=':', color='black')
     plt.axvline(mean_corr_gene_df[corr_column].mean(), linestyle='--', color='blue')
     plt.title(
-        f'Distribution of average {correlation.capitalize()} correlations between model size and performance, per gene',
+        f'Distribution of average {print_corr_name(correlation)} correlations between model size and performance, per gene',
         y=1.02
     )
-    plt.xlabel(f'Mean {correlation.capitalize()} correlation')
+    plt.xlabel(f'Mean {print_corr_name(correlation)} correlation')
     plt.ylabel('Gene count')
 
 print(f'Mean of mean correlations: {mean_corr_gene_df[corr_column].mean():.4f}')
@@ -251,15 +259,9 @@ with sns.plotting_context('notebook', font_scale=1.2):
     sns.histplot(data=mean_corr_cancer_type_df, x=corr_column)
     plt.axvline(0.0, linestyle=':', color='black')
     plt.axvline(mean_corr_cancer_type_df[corr_column].mean(), linestyle='--', color='blue')
-    plt.title(f'Distribution of average {correlation.capitalize()} correlations between model size and performance, per cancer type', y=1.02)
-    plt.xlabel(f'Mean {correlation.capitalize()} correlation')
+    plt.title(f'Distribution of average {print_corr_name(correlation)} correlations between model size and performance, per cancer type', y=1.02)
+    plt.xlabel(f'Mean {print_corr_name(correlation)} correlation')
     plt.ylabel('Cancer type count')
 
 print(f'Mean of mean correlations: {mean_corr_cancer_type_df[corr_column].mean():.4f}')
-
-
-# In[ ]:
-
-
-
 
