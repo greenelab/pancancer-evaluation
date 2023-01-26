@@ -76,14 +76,14 @@ perf_df.head()
 
 # ### Compare feature selection with performance
 
-# In[5]:
+# In[16]:
 
 
 coefs_perf_df = (nz_coefs_df
     .rename(columns={'cancer_type': 'holdout_cancer_type'})
     .merge(perf_df[perf_df.signal == 'signal'],
            on=['gene', 'holdout_cancer_type', 'seed', 'fold', 'lasso_param'])
-    .drop(columns=['signal'])
+    .drop(columns=['signal', 'experiment'])
 )
 
 coefs_perf_df.head()
@@ -102,14 +102,21 @@ plt.xlabel('Number of nonzero features')
 coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 
 
+# ### Calculate model size/performance correlations for each cancer type individually
+# 
+# In this case, a positive correlation means that more features in the model is associated with better performance.
+
 # In[7]:
 
 
-# look at correlation for each cancer type individually
-# positive correlation => more features, better performance
 corr_cancer_type_df = []
-nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=0.1)
 
+# nz_coefs_cutoff sets a minimum number of features per model
+# this can help to trim the "dummy regressors" from the dataset that only
+# use very few features at high lasso penalties, these can deflate performance
+# and lead to a spurious positive correlation
+# for now, we're setting it to be the smallest 10% of models
+nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=0.1)
 if nz_coefs_cutoff is not None:
     coefs_perf_df = coefs_perf_df[coefs_perf_df.nz_coefs > nz_coefs_cutoff].copy()
 

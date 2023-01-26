@@ -49,7 +49,7 @@ output_plots_dir = cfg.cancer_type_lasso_range_dir
 
 nz_coefs_df = []
 
-# get pancancer coefs info for now
+# get coefficient info for training dataset specified above
 for coef_info in au.generate_nonzero_coefficients_lasso_range(results_dir):
     (gene,
      cancer_type,
@@ -71,8 +71,6 @@ nz_coefs_df.head()
 
 # In[4]:
 
-
-genes = ['TP53']
 
 sns.set({'figure.figsize': (12, 5)})
 
