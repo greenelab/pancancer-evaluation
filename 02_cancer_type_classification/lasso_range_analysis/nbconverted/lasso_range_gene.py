@@ -35,7 +35,7 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-plot_gene = 'TP53'
+plot_gene = 'CTNNB1'
 metric = 'aupr'
 nz_cutoff = 5.0
 
@@ -50,8 +50,7 @@ output_plots_dir = cfg.cancer_type_lasso_range_dir
 
 nz_coefs_df = []
 
-# get pancancer coefs info for now
-# TODO: only load for relevant gene
+# get coefficient info for training dataset specified above
 for coef_info in au.generate_nonzero_coefficients_lasso_range(results_dir, gene=plot_gene):
     (gene,
      cancer_type,
@@ -289,7 +288,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[ ]:
+# In[15]:
 
 
 # plot validation performance vs. number of nonzero features

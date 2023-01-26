@@ -34,7 +34,8 @@ training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
 # cutoff to filter out "dummy regressor" over-regularized models
-# these can deflate performance around feature count 0, which can inflate correlations,
+# these can deflate performance around feature count 0, which can lead to
+# spurious positive correlations between model size and performance
 # set to None for no cutoff
 quantile_cutoff = 0.01
 
@@ -42,7 +43,7 @@ quantile_cutoff = 0.01
 metric = 'aupr'
 
 # 'pearson', 'spearman', or 'ccc'
-correlation = 'ccc'
+correlation = 'pearson'
 
 output_plots = True
 output_plots_dir = cfg.cancer_type_lasso_range_dir
@@ -97,9 +98,10 @@ coefs_perf_df = (nz_coefs_df
     .rename(columns={'cancer_type': 'holdout_cancer_type'})
     .merge(perf_df[perf_df.signal == 'signal'],
            on=['gene', 'holdout_cancer_type', 'seed', 'fold', 'lasso_param'])
-    .drop(columns=['signal'])
+    .drop(columns=['signal', 'experiment'])
 )
 
+print(coefs_perf_df.shape)
 coefs_perf_df.head()
 
 
@@ -109,23 +111,28 @@ coefs_perf_df.head()
 sns.set({'figure.figsize': (8, 6)})
 
 sns.histplot(coefs_perf_df.nz_coefs)
-if quantile_cutoff is not None:
-    nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=0.01)
-    plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
-    print('cutoff:', nz_coefs_cutoff)
 plt.title('Distribution of feature count across cancer types/folds')
 plt.xlabel('Number of nonzero features')
 
+# calculate quantile cutoff if included
+if quantile_cutoff is not None:
+    nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=quantile_cutoff)
+    plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
+    print('cutoff:', nz_coefs_cutoff)
+    
 coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 
+
+# ### Calculate model size/performance correlations for each cancer type individually
+# 
+# In this case, a positive correlation means that more features in the model is associated with better performance.
 
 # In[7]:
 
 
-# look at correlation for each cancer type individually                                               
-# positive correlation => more features, better performance                                           
 corr_cancer_type_df = []                                                                              
-                                                                                                      
+
+# apply quantile cutoff if included
 if quantile_cutoff is not None:                                                                       
     coefs_perf_df = coefs_perf_df[coefs_perf_df.nz_coefs > nz_coefs_cutoff].copy()                    
                                                                                                       
@@ -136,22 +143,21 @@ for gene in coefs_perf_df.gene.unique():
             (coefs_perf_df.holdout_cancer_type == cancer_type) &                                      
             (coefs_perf_df.data_type == 'test')                                                       
         ]                                                                                             
-        try:                                                                                          
-            if correlation == 'pearson':
-                r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
-            elif correlation == 'spearman':
-                r, p = spearmanr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
-            elif correlation == 'ccc':
-                from ccc.coef import ccc
-                r = ccc(corr_df.nz_coefs.values, corr_df.aupr.values)
-                # CCC doesn't have p-values, as far as I know
-                p = 0.0
-            else:
-                raise NotImplementedError
-        except ValueError:                                                                            
+        if corr_df.shape[0] == 0:
             # this happens when the model wasn't trained on the cancer type                           
             # for the given gene, just skip                                                           
-            continue                                                                                  
+            continue
+        if correlation == 'pearson':
+            r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
+        elif correlation == 'spearman':
+            r, p = spearmanr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
+        elif correlation == 'ccc':
+            from ccc.coef import ccc
+            r = ccc(corr_df.nz_coefs.values, corr_df.aupr.values)
+            # CCC doesn't have p-values, as far as I know
+            p = 0.0
+        else:
+            raise NotImplementedError
         corr_cancer_type_df.append(                                                                   
             [gene, cancer_type, r, p]                                                                 
         )                                                                                             
@@ -168,6 +174,13 @@ corr_cancer_type_df.head()
 
 
 # In[8]:
+
+
+# save correlation dataframe
+corr_cancer_type_df.to_csv(f'./{correlation}_q{quantile_cutoff}_cancer_type_corrs.tsv', sep='\t', index=False)
+
+
+# In[9]:
 
 
 # plot test performance vs. number of nonzero features
@@ -193,7 +206,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
     plt.ylabel(f'{print_corr_name(correlation)} correlation')
 
 
-# In[9]:
+# In[10]:
 
 
 mean_corr_gene_df = (corr_cancer_type_df
@@ -205,13 +218,13 @@ mean_corr_gene_df = (corr_cancer_type_df
 mean_corr_gene_df.sort_values(by=corr_column, ascending=False).head()
 
 
-# In[10]:
+# In[11]:
 
 
 mean_corr_gene_df.sort_values(by=corr_column, ascending=False).tail()
 
 
-# In[11]:
+# In[12]:
 
 
 sns.set(style='ticks', rc={'figure.figsize': (10, 6), 'axes.grid': True, 'axes.grid.axis': 'y'})
@@ -231,7 +244,7 @@ with sns.plotting_context('notebook', font_scale=1.2):
 print(f'Mean of mean correlations: {mean_corr_gene_df[corr_column].mean():.4f}')
 
 
-# In[12]:
+# In[13]:
 
 
 mean_corr_cancer_type_df = (corr_cancer_type_df
@@ -243,13 +256,13 @@ mean_corr_cancer_type_df = (corr_cancer_type_df
 mean_corr_cancer_type_df.sort_values(by=corr_column, ascending=False).head()
 
 
-# In[13]:
+# In[14]:
 
 
 mean_corr_cancer_type_df.sort_values(by=corr_column, ascending=False).tail()
 
 
-# In[14]:
+# In[15]:
 
 
 sns.set(style='ticks', rc={'figure.figsize': (10, 6), 'axes.grid': True, 'axes.grid.axis': 'y'})
