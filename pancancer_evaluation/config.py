@@ -88,6 +88,10 @@ cancer_type_fs_plots_dir = (
     repo_root / '02_cancer_type_classification' / 'fs_plots'
 )
 
+cancer_type_lasso_range_dir = (
+    repo_root / '02_cancer_type_classification' / 'lasso_range_plots'
+)
+
 # location of tumor purity data
 tumor_purity_data = data_dir / 'TCGA_mastercalls.abs_tables_JSedit.fixed.txt'
 purity_fs_plots_dir = (

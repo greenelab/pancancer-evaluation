@@ -11,6 +11,7 @@ data/ccle/*
 **/da_images/*
 **/fs_plots/*
 **/heatmaps/*
+**/lasso_range_plots/*
 **/papermill_output_nbs/*
 **/results/*
 
