@@ -115,6 +115,8 @@ plt.title('Distribution of feature count across cancer types/folds')
 plt.xlabel('Number of nonzero features')
 
 # calculate quantile cutoff if included
+# models below the cutoff get filtered out in the next cell, here we'll visualize the
+# distribution and a few of the filtered rows
 if quantile_cutoff is not None:
     nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=quantile_cutoff)
     plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
@@ -244,6 +246,10 @@ with sns.plotting_context('notebook', font_scale=1.2):
 print(f'Mean of mean correlations: {mean_corr_gene_df[corr_column].mean():.4f}')
 
 
+# ### Calculate average model size/performance correlations across genes for each cancer type
+# 
+# This is intended to give a coarse-grained idea of which cancer types really benefit from larger models, and which benefit more from regularized/smaller models.
+
 # In[13]:
 
 
@@ -251,6 +257,9 @@ mean_corr_cancer_type_df = (corr_cancer_type_df
     .groupby('cancer_type')
     .agg(np.mean)
     .drop(columns=[pval_column])
+    .merge(corr_cancer_type_df.groupby('cancer_type').count()[pval_column],
+           left_index=True, right_index=True)
+    .rename(columns={pval_column: 'gene_count'})
 )
 
 mean_corr_cancer_type_df.sort_values(by=corr_column, ascending=False).head()
@@ -278,3 +287,7 @@ with sns.plotting_context('notebook', font_scale=1.2):
 
 print(f'Mean of mean correlations: {mean_corr_cancer_type_df[corr_column].mean():.4f}')
 
+
+# The cancer types with the highest correlations seem to only be included in the models for a small handful of genes. These are likely genes that are commonly pan-cancer mutated, meaning the classifiers tend to be better for those genes than others in the dataset.
+# 
+# Not sure how much this really says about which cancer types are more different, or harder to predict mutation status in - we'd likely have to find an analysis that's less dependent on sample size.
