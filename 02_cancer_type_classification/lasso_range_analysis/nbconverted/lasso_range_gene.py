@@ -35,8 +35,9 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-plot_gene = 'ATRX'
+plot_gene = 'CTNNB1'
 metric = 'aupr'
+nz_cutoff = 5.0
 
 output_plots = True
 output_plots_dir = cfg.cancer_type_lasso_range_dir
@@ -50,7 +51,7 @@ output_plots_dir = cfg.cancer_type_lasso_range_dir
 nz_coefs_df = []
 
 # get coefficient info for training dataset specified above
-for coef_info in au.generate_nonzero_coefficients_lasso_range(results_dir):
+for coef_info in au.generate_nonzero_coefficients_lasso_range(results_dir, gene=plot_gene):
     (gene,
      cancer_type,
      seed,
@@ -87,7 +88,8 @@ plt.tight_layout()
 # In[5]:
 
 
-perf_df = au.load_prediction_results_lasso_range(results_dir, training_dataset)
+perf_df = au.load_prediction_results_lasso_range(results_dir, training_dataset,
+                                                 gene=plot_gene)
 perf_df = perf_df[perf_df.gene == plot_gene].copy()
 perf_df.head()
 
@@ -113,7 +115,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[24]:
+# In[7]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -182,6 +184,30 @@ if output_plots:
 # In[10]:
 
 
+# plot test performance vs. number of nonzero features
+sns.set({'figure.figsize': (8, 6)})
+
+plot_df = (
+    coefs_perf_df[(coefs_perf_df.data_type == 'test') &
+                  (coefs_perf_df.nz_coefs > nz_cutoff)]
+      .sort_values(by='holdout_cancer_type')
+)
+r, p = pearsonr(plot_df.nz_coefs.values, plot_df.aupr.values)
+
+ax = sns.scatterplot(data=plot_df, x='nz_coefs', y='aupr', hue='holdout_cancer_type')
+sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+plt.title(f'{plot_gene} cancer holdout AUPR vs. # of nonzero features (cutoff: {nz_cutoff:.0f}, r={r:.3f}, p={p:.3f})')
+plt.xlabel('Number of nonzero features in model')
+plt.ylabel('Holdout AUPR')
+
+if output_plots:
+    plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_holdout_perf.png',
+                dpi=200, bbox_inches='tight')
+
+
+# In[11]:
+
+
 # look at correlation for each cancer type individually
 # positive correlation => more features, better performance
 corr_cancer_type_df = []
@@ -204,7 +230,7 @@ corr_cancer_type_df = pd.DataFrame(
 corr_cancer_type_df
 
 
-# In[11]:
+# In[12]:
 
 
 # plot test performance vs. number of nonzero features
@@ -230,7 +256,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[12]:
+# In[13]:
 
 
 coefs_perf_pivot_df = coefs_perf_df.pivot(
@@ -244,7 +270,7 @@ coefs_perf_pivot_df.reset_index(inplace=True)
 coefs_perf_pivot_df
 
 
-# In[13]:
+# In[14]:
 
 
 # plot validation performance vs. number of nonzero features
@@ -262,7 +288,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[14]:
+# In[15]:
 
 
 # plot validation performance vs. number of nonzero features
