@@ -56,7 +56,7 @@ def process_args():
 
     sample_info_df = du.load_sample_info(args.verbose)
 
-    msi_cancer_types = cfg.msi_cancer_types + ['pancancer']
+    msi_cancer_types = cfg.msi_cancer_types
     if args.holdout_cancer_types is None:
         args.holdout_cancer_types = msi_cancer_types
     else:
@@ -83,7 +83,6 @@ if __name__ == '__main__':
 
     # create empty log file if it doesn't exist
     log_columns = [
-        'gene',
         'cancer_type',
         'training_samples',
         'shuffle_labels',
@@ -168,12 +167,12 @@ if __name__ == '__main__':
                 )
             except OneClassError:
                 if args.verbose:
-                    print('Skipping due to one holdout class: gene {}, '
-                          'cancer type {}'.format(gene, cancer_type),
+                    print('Skipping due to one holdout class: '
+                          'cancer type {}'.format(cancer_type),
                           file=sys.stderr)
                 cancer_type_log_df = fu.generate_log_df(
                     log_columns,
-                    [gene, cancer_type, args.training_samples, shuffle_labels, 'one_class']
+                    [cancer_type, args.training_samples, shuffle_labels, 'one_class']
                 )
             else:
                 # only save results if no exceptions

@@ -135,5 +135,4 @@ ccle_fs_plots_dir = (
 
 # info for microsatellite instability prediction
 msi_data_dir = data_dir / 'msi_data'
-# COADREAD = COAD + READ, most MSI analyses group them together
-msi_cancer_types = ['COADREAD', 'STAD', 'UCEC']
+msi_cancer_types = ['COAD', 'READ', 'STAD', 'UCEC']

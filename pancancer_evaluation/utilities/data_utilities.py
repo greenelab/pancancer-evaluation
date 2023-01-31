@@ -349,8 +349,10 @@ def load_msi(cancer_type, mut_burden_df, sample_info_df, verbose=False):
 
 
 def _load_msi_all():
+    import glob
     msi_list = []
-    for cancer_type in cfg.msi_cancer_types:
+    for fname in glob.glob(str(cfg.msi_data_dir / '*_msi_status.tsv')):
+        cancer_type = Path(fname).stem.split('_')[0]
         msi_list.append(_load_msi_cancer_type(cancer_type))
     return pd.concat(msi_list)
 
