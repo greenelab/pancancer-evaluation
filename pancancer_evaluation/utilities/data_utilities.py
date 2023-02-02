@@ -301,6 +301,39 @@ def load_purity(mut_burden_df,
     )
     return purity_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
 
+def load_sex_labels(mut_burden_df,
+                    sample_info_df,
+                    verbose=False):
+
+    if verbose:
+        print('Loading patient sex info...', file=sys.stderr)
+
+    clinical_df = (
+        pd.read_excel(cfg.clinical_data,
+                      sheet_name='TCGA-CDR',
+                      index_col='bcr_patient_barcode',
+                      engine='openpyxl')
+          .dropna(subset=['gender'])
+    )[['gender']]
+    clinical_df.index.rename('sample_id', inplace=True)
+
+    # set male = 0, female = 1 (this is totally arbitrary)
+    assert set(clinical_df.gender.unique()) == set(['MALE', 'FEMALE'])
+    clinical_df['status'] = (clinical_df.gender == 'FEMALE').astype(int)
+
+    sample_info_df['clinical_id'] = sample_info_df.index.str[:-3]
+
+    # join mutation burden information and cancer type information
+    # these are necessary to generate non-gene covariates later on
+    print(clinical_df.head())
+    sex_labels_df = (clinical_df
+        .merge(sample_info_df, left_index=True, right_on='clinical_id')
+        .merge(mut_burden_df, left_index=True, right_index=True)
+        .drop(columns=['gender', 'clinical_id'])
+        .rename(columns={'cancer_type': 'DISEASE'})
+    )
+    return sex_labels_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
+
 
 def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
                      seed=cfg.default_seed):

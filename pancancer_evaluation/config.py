@@ -132,3 +132,6 @@ gene_aliases = {
 ccle_fs_plots_dir = (
     repo_root / '08_cell_line_prediction' / 'fs_plots'
 )
+
+# location of clinical data from TCGA
+clinical_data = data_dir / 'TCGA-CDR-SupplementalTableS1.xlsx'

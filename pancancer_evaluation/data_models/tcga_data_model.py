@@ -162,6 +162,24 @@ class TCGADataModel():
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
+    def process_sex_labels_data(self,
+                                output_dir,
+                                add_cancertype_covariate=False):
+
+        y_df_raw = du.load_sex_labels(self.mut_burden_df,
+                                      self.sample_info_df,
+                                      verbose=self.verbose)
+
+        filtered_data = self._filter_data_for_gene(
+            self.rnaseq_df,
+            y_df_raw,
+            add_cancertype_covariate
+        )
+        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        self.X_df = rnaseq_filtered_df
+        self.y_df = y_filtered_df
+        self.gene_features = gene_features
 
     def process_data_for_identifiers(self,
                                      train_identifier,
