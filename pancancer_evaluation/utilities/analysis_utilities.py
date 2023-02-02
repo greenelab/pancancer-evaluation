@@ -111,6 +111,44 @@ def load_prediction_results_lasso_range(results_dir,
     return results_df
 
 
+def load_prediction_results_lasso_range_msi(results_dir,
+                                            experiment_descriptor,
+                                            identifier_from_fname=False,
+                                            holdout_from_fname=False,
+                                            gene=None):
+    """Load results of cross-cancer mutation prediction experiments.
+
+    Argument
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+    experiment_descriptor (str): string describing this experiment, can be useful
+                                 to segment analyses involving multiple
+                                 experiments or results sets
+
+    Returns
+    -------
+    results_df (pd.DataFrame): results of classification experiments
+    """
+    results_df = pd.DataFrame()
+    for results_file in os.listdir(results_dir):
+        if not ('classify_metrics' in results_file): continue
+        if results_file[0] == '.': continue
+        full_results_file = os.path.join(results_dir, results_file)
+        gene_results_df = pd.read_csv(full_results_file, sep='\t')
+        gene_results_df['experiment'] = experiment_descriptor
+        lasso_param = results_file.split('_')[-3].replace('c', '')
+        gene_results_df['lasso_param'] = lasso_param
+        if identifier_from_fname:
+            identifier = results_file.split('_')[0]
+            gene_results_df['identifier'] = identifier
+        if holdout_from_fname:
+            holdout_cancer_type = results_file.split('_')[1]
+            gene_results_df['holdout_cancer_type'] = holdout_cancer_type
+        results_df = pd.concat((results_df, gene_results_df))
+    return results_df
+
+
 def load_prediction_results_fs(results_dir,
                                fs_methods,
                                classify=True,
@@ -394,6 +432,39 @@ def generate_nonzero_coefficients_lasso_range(results_dir, gene=None):
             identifier = '{}_{}'.format(gene_name, cancer_type)
             coefs = process_coefs(coefs_df)
             yield gene_name, cancer_type, seed, lasso_param, coefs
+
+
+def generate_nonzero_coefficients_lasso_range_msi(results_dir):
+    """Generate coefficients for lasso range experiments.
+
+
+    Arguments
+    ---------
+    results_dir (str): directory to look in for results, subdirectories should
+                       be experiments for individual genes
+
+    Yields
+    ------
+    identifier (str): identifier for given coefficients
+    lasso_param (str): lasso regularization parameter
+    coefs (dict): list of nonzero coefficients for each fold of CV, for the
+                  given identifier
+    """
+    coefs = {}
+    all_features = None
+    for coefs_file in os.listdir(results_dir):
+        if coefs_file[0] == '.': continue
+        if 'signal' not in coefs_file: continue
+        if 'coefficients' not in coefs_file: continue
+        cancer_type = coefs_file.split('_')[1]
+        seed = int(coefs_file.split('_')[-4].replace('s', ''))
+        lasso_param = coefs_file.split('_')[-2].replace('c', '')
+        full_coefs_file = os.path.join(results_dir, coefs_file)
+        coefs_df = pd.read_csv(full_coefs_file, sep='\t')
+        if all_features is None:
+            all_features = np.unique(coefs_df.feature.values)
+        coefs = process_coefs(coefs_df)
+        yield cancer_type, seed, lasso_param, coefs
 
 
 def generate_coefficients_fs_purity(results_dir,

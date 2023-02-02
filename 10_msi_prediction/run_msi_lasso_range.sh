@@ -9,6 +9,10 @@ ERRORS_DIR=./msi_lasso_range_errors
 mkdir -p $ERRORS_DIR
 
 lasso_penalties=(
+  "0.00000001"
+  "0.0000001"
+  "0.000001"
+  "0.00001"
   "0.0001"
   "0.0005"
   "0.001"
