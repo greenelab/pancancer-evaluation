@@ -325,7 +325,6 @@ def load_sex_labels(mut_burden_df,
 
     # join mutation burden information and cancer type information
     # these are necessary to generate non-gene covariates later on
-    print(clinical_df.head())
     sex_labels_df = (clinical_df
         .merge(sample_info_df, left_index=True, right_on='clinical_id')
         .merge(mut_burden_df, left_index=True, right_index=True)
