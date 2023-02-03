@@ -165,21 +165,62 @@ class TCGADataModel():
     def process_sex_labels_data(self,
                                 output_dir,
                                 add_cancertype_covariate=False):
+        """Prepare to run experiments predicting sex labels.
+
+        Arguments
+        ---------
+        output_dir (str): directory to write output to, if None don't write output
+        add_cancertype_covariate (bool): whether or not to include cancer type
+                                         covariate in feature matrix
+        """
 
         y_df_raw = du.load_sex_labels(self.mut_burden_df,
                                       self.sample_info_df,
                                       verbose=self.verbose)
+        filtered_data = self._filter_data_for_gene(
+            self.rnaseq_df,
+            y_df_raw,
+            add_cancertype_covariate
+        )
+        train_filtered_df, y_filtered_df, gene_features = filtered_data
+
+        self.X_df = train_filtered_df
+        self.y_df = y_filtered_df
+        self.gene_features = gene_features
+
+        assert np.count_nonzero(self.X_df.index.duplicated()) == 0
+        assert np.count_nonzero(self.y_df.index.duplicated()) == 0
+
+    def process_msi_data(self,
+                         cancer_type,
+                         output_dir,
+                         add_cancertype_covariate=False):
+        """Prepare to run experiments predicting microsatellite instability status.
+
+        Arguments
+        ---------
+        output_dir (str): directory to write output to, if None don't write output
+        add_cancertype_covariate (bool): whether or not to include cancer type
+                                         covariate in feature matrix
+        """
+        y_df_raw = du.load_msi(cancer_type,
+                               self.mut_burden_df,
+                               self.sample_info_df,
+                               verbose=self.verbose)
 
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
             add_cancertype_covariate
         )
-        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+        train_filtered_df, y_filtered_df, gene_features = filtered_data
 
-        self.X_df = rnaseq_filtered_df
+        self.X_df = train_filtered_df
         self.y_df = y_filtered_df
         self.gene_features = gene_features
+
+        assert np.count_nonzero(self.X_df.index.duplicated()) == 0
+        assert np.count_nonzero(self.y_df.index.duplicated()) == 0
 
     def process_data_for_identifiers(self,
                                      train_identifier,
@@ -451,7 +492,8 @@ class TCGADataModel():
             (len(cancer_types_to_add) > 1)
         )
 
-        rnaseq_filtered_df, y_filtered_df, gene_features = filtered_data
+        train_filtered_df, y_filtered_df, gene_features = filtered_data
+
 
         # catch the case where there are no samples for the test cancer
         # after filtering, and raise an error
@@ -474,7 +516,8 @@ class TCGADataModel():
             y_filtered_df.status = np.random.permutation(
                 y_filtered_df.status.values)
 
-        self.X_df = rnaseq_filtered_df
+        self.X_df = train_filtered_df
+
         self.y_df = y_filtered_df
         self.gene_features = gene_features
 
