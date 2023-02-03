@@ -302,6 +302,24 @@ def load_purity(mut_burden_df,
     return purity_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
 
 
+def load_sex_labels():
+
+    clinical_df = (
+        pd.read_excel(cfg.clinical_data,
+                      sheet_name='TCGA-CDR',
+                      index_col='bcr_patient_barcode',
+                      engine='openpyxl')
+          .dropna(subset=['gender'])
+    )[['gender']]
+    clinical_df.index.rename('sample_id', inplace=True)
+
+    # set male = 0, female = 1 (this is totally arbitrary)
+    assert set(clinical_df.gender.unique()) == set(['MALE', 'FEMALE'])
+    clinical_df['is_female'] = (clinical_df.gender == 'FEMALE').astype(int)
+
+    return clinical_df[['is_female']]
+
+
 def load_msi(cancer_type, mut_burden_df, sample_info_df, verbose=False):
     """Load microsatellite instability data.
 

@@ -410,7 +410,7 @@ def check_msi_file(output_dir,
                    lasso_penalty):
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = Path(
-        output_dir, "msi_{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
+        output_dir, "msi_{}_{}_{}_s{}_n{}_c{}_coefficients.tsv.gz".format(
             cancer_type, signal, feature_selection,
             seed, num_features, lasso_penalty
         )).resolve()
