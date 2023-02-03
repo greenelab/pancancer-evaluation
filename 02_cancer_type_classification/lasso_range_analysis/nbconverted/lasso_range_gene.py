@@ -164,7 +164,7 @@ with sns.plotting_context('notebook', font_scale=1.25):
         col_wrap=5, height=4, aspect=1.2
     )
     g.set_xticklabels(rotation=70)
-    plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', y=1.025)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.05)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',

@@ -5,7 +5,7 @@
 # 
 # This script is similar to `02_classify_cancer_type/lasso_range_gene.ipynb`, but for MSI prediction across cancer types. MSI information is only included for SKCM (stomach cancer), COAD/READ (colorectal cancer), and UCEC (uterine endometrical carcinoma).
 
-# In[7]:
+# In[1]:
 
 
 import os
@@ -69,7 +69,7 @@ nz_coefs_df.lasso_param = nz_coefs_df.lasso_param.astype(float)
 nz_coefs_df.head()
 
 
-# In[8]:
+# In[4]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -163,7 +163,7 @@ with sns.plotting_context('notebook', font_scale=1.25):
         col_wrap=3, height=4, aspect=1.2
     )
     g.set_xticklabels(rotation=70)
-    plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction', y=1.025)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
@@ -174,9 +174,9 @@ if output_plots:
 
 
 # try with a float-valued x-axis
-# this is probably more "correct" than treating each lasso parameter
-# as a category (above plot); here the spaces between parameters reflect
-# their actual real-valued distance in log-space
+# this is probably more "correct" than treating each lasso parameter as a
+# category (above plot); here the spaces between parameters reflect their
+# actual real-valued distance in log-space
 sns.set({'figure.figsize': (12, 5)})
 sns.set_style('ticks')
 
@@ -196,8 +196,7 @@ with sns.plotting_context('notebook', font_scale=1.25):
         col_wrap=3, height=4, aspect=1.2
     )
     g.set(xscale='log', xlim=(0, 0.1))
-    # g.set_xticklabels(rotation=70)
-    plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction', y=1.05)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
