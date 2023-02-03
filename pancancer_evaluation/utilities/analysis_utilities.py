@@ -381,6 +381,9 @@ def generate_nonzero_coefficients_fs(results_dir, fs_methods):
             if coefs_file[0] == '.': continue
             if 'signal' not in coefs_file: continue
             if 'coefficients' not in coefs_file: continue
+            # use negative indexing since some feature selection methods
+            # have underscores in them - indexing from the back of the
+            # filename is safer/more consistent
             n_dims = int(coefs_file.split('_')[-2].replace('n', ''))
             fs_method = 'none'
             for method in fs_methods:
@@ -423,6 +426,9 @@ def generate_nonzero_coefficients_lasso_range(results_dir, gene=None):
             if 'signal' not in coefs_file: continue
             if 'coefficients' not in coefs_file: continue
             cancer_type = coefs_file.split('_')[1]
+            # use negative indexing since some feature selection methods
+            # have underscores in them - indexing from the back of the
+            # filename is safer/more consistent
             seed = int(coefs_file.split('_')[-5].replace('s', ''))
             lasso_param = coefs_file.split('_')[-3].replace('c', '')
             full_coefs_file = os.path.join(gene_dir, coefs_file)
@@ -457,6 +463,9 @@ def generate_nonzero_coefficients_lasso_range_msi(results_dir):
         if 'signal' not in coefs_file: continue
         if 'coefficients' not in coefs_file: continue
         cancer_type = coefs_file.split('_')[1]
+        # use negative indexing since some feature selection methods
+        # have underscores in them - indexing from the back of the
+        # filename is safer/more consistent
         seed = int(coefs_file.split('_')[-4].replace('s', ''))
         lasso_param = coefs_file.split('_')[-2].replace('c', '')
         full_coefs_file = os.path.join(results_dir, coefs_file)
@@ -493,6 +502,9 @@ def generate_coefficients_fs_purity(results_dir,
         if 'signal' not in coefs_file: continue
         if 'coefficients' not in coefs_file: continue
         cancer_type = coefs_file.split('_')[1]
+        # use negative indexing since some feature selection methods
+        # have underscores in them - indexing from the back of the
+        # filename is safer/more consistent
         seed = int(coefs_file.split('_')[-4].replace('s', ''))
         n_dims = int(coefs_file.split('_')[-3].replace('n', ''))
         fs_method = 'none'
