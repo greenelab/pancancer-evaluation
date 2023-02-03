@@ -13,6 +13,7 @@ import itertools as it
 
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import seaborn as sns
@@ -79,6 +80,33 @@ sns.boxplot(
     data=nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
     x='cancer_type', y='nz_coefs', hue='lasso_param'
 )
+
+# color the boxplot lines/edges rather than the box fill
+# this makes it easier to discern colors at the extremes; i.e. very many or few nonzero coefs
+# https://stackoverflow.com/a/72333641
+ax = plt.gca()
+box_patches = [patch for patch in ax.patches if type(patch) == matplotlib.patches.PathPatch]
+num_patches = len(box_patches)
+lines_per_boxplot = len(ax.lines) // num_patches
+for i, patch in enumerate(box_patches):
+    # set the linecolor on the patch to the facecolor, and set the facecolor to None
+    col = patch.get_facecolor()
+    patch.set_edgecolor(col)
+    patch.set_facecolor('None')
+
+    # each box has associated Line2D objects (to make the whiskers, fliers, etc.)
+    # loop over them here, and use the same color as above
+    for line in ax.lines[i * lines_per_boxplot: (i + 1) * lines_per_boxplot]:
+        line.set_color(col)
+        line.set_mfc(col)  # facecolor of fliers
+        line.set_mec(col)  # edgecolor of fliers
+
+# also fix the legend to color the edges rather than fill
+for legpatch in ax.legend_.get_patches():
+    col = legpatch.get_facecolor()
+    legpatch.set_edgecolor(col)
+    legpatch.set_facecolor('None')
+
 plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
 plt.tight_layout()
 
@@ -136,7 +164,7 @@ with sns.plotting_context('notebook', font_scale=1.25):
         col_wrap=5, height=4, aspect=1.2
     )
     g.set_xticklabels(rotation=70)
-    plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', y=1.025)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.05)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',
