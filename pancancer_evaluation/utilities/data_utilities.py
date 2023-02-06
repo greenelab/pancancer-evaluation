@@ -334,7 +334,7 @@ def load_sex_labels(mut_burden_df,
     return sex_labels_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
 
 
-def load_sex_labels():
+def load_sex_labels_for_covariate():
 
     clinical_df = (
         pd.read_excel(cfg.clinical_data,

@@ -596,7 +596,7 @@ class TCGADataModel():
                               rnaseq_df,
                               y_df,
                               add_cancertype_covariate,
-                              add_sex_covariate):
+                              add_sex_covariate=False):
         use_samples, rnaseq_df, y_df, gene_features = align_matrices(
             x_file_or_df=rnaseq_df,
             y=y_df,

@@ -3,23 +3,26 @@
 # Run feature selection experiments across a few genes, with selected cancer
 # types held out (either partially or completely)
 
-RESULTS_DIR=./11_sex_prediction/results/sex_prediction_lasso_range
+RESULTS_DIR=./11_sex_prediction/results/sex_prediction_lasso_range_lr
 ERRORS_DIR=./sex_prediction_lasso_range_errors
 
 mkdir -p $ERRORS_DIR
 
 lasso_penalties=(
-  "0.00000001"
-  "0.0000001"
-  "0.000001"
-  "0.00001"
-  "0.0001"
-  "0.0005"
   "0.001"
   "0.005"
   "0.01"
   "0.05"
   "0.1"
+  "1"
+  "10"
+  "100"
+  "250"
+  "500"
+  "750"
+  "1000"
+  "1500"
+  "2000"
 )
 
 for seed in 42 1; do
