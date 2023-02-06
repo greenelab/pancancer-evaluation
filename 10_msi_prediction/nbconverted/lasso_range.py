@@ -116,7 +116,7 @@ plt.tight_layout()
 
 perf_df = au.load_prediction_results_lasso_range_msi(results_dir, training_dataset)
 perf_df.drop(columns=['gene'], inplace=True)
-perf_df.lasso_param = perf_df.lasso_param.astype(float).apply(lambda x: f'{x:.8f}')
+perf_df.lasso_param = perf_df.lasso_param.astype(float)
 
 perf_df.head()
 
@@ -145,34 +145,6 @@ if output_plots:
 # In[7]:
 
 
-sns.set({'figure.figsize': (12, 5)})
-sns.set_style('ticks')
-
-plot_df = (
-    perf_df[(perf_df.signal == 'signal')]
-      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
-      .reset_index(drop=True)
-)
-
-with sns.plotting_context('notebook', font_scale=1.25):
-    g = sns.relplot(
-        data=plot_df,
-        x='lasso_param', y=metric, hue='data_type',
-        hue_order=['train', 'cv', 'test'],
-        kind='line', col='holdout_cancer_type',
-        col_wrap=3, height=4, aspect=1.2
-    )
-    g.set_xticklabels(rotation=70)
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
-
-if output_plots:
-    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
-                dpi=200, bbox_inches='tight')
-
-
-# In[8]:
-
-
 # try with a float-valued x-axis
 # this is probably more "correct" than treating each lasso parameter as a
 # category (above plot); here the spaces between parameters reflect their
@@ -197,6 +169,71 @@ with sns.plotting_context('notebook', font_scale=1.25):
     )
     g.set(xscale='log', xlim=(0, max(plot_df.lasso_param)))
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
+
+if output_plots:
+    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
+                dpi=200, bbox_inches='tight')
+
+
+# In[8]:
+
+
+plot_df = (
+    perf_df[(perf_df.signal == 'signal')]
+      .merge(nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
+             right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
+      .drop(columns=['cancer_type'])
+      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+      .reset_index(drop=True)
+)
+plot_df.lasso_param = plot_df.lasso_param.astype(float)
+plot_df.head()
+
+
+# In[9]:
+
+
+sns.histplot(plot_df.nz_coefs)
+for q in np.linspace(0.1, 0.9, 9):
+    print(f'{q:.3f}', f'{plot_df.nz_coefs.quantile(q):3f}')
+    plt.gca().axvline(x=plot_df.nz_coefs.quantile(q), color='black', linestyle=':')
+
+
+# In[10]:
+
+
+plot_df['nz_quantile'] = pd.qcut(
+    plot_df.nz_coefs,
+    q=np.linspace(0, 1, 11),
+    labels=[f'{q}' for q in range(1, 11)]
+)
+
+print(plot_df.nz_quantile.unique())
+plot_df.head()
+
+
+# In[11]:
+
+
+# try with a float-valued x-axis
+# this is probably more "correct" than treating each lasso parameter as a
+# category (above plot); here the spaces between parameters reflect their
+# actual real-valued distance in log-space
+# sns.set({'figure.figsize': (25, 7)})
+sns.set_style('whitegrid')
+
+with sns.plotting_context('notebook', font_scale=1.25):
+    g = sns.catplot(
+        data=plot_df,
+        x='nz_quantile', y=metric, hue='data_type',
+        hue_order=['train', 'cv', 'test'],
+        kind='box', col='holdout_cancer_type',
+        col_wrap=3, height=4.5, aspect=1.35
+    )
+    g.set_titles('Holdout cancer type: {col_name}')
+    g.set_xlabels('Bin (increasing number of coefs)')
+    g.set_ylabels(f'{metric.upper()}')
+    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, MSI prediction', y=1.05)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
