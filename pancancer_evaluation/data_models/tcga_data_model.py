@@ -194,7 +194,8 @@ class TCGADataModel():
     def process_msi_data(self,
                          cancer_type,
                          output_dir,
-                         add_cancertype_covariate=False):
+                         add_cancertype_covariate=False,
+                         add_sex_covariate=False):
         """Prepare to run experiments predicting microsatellite instability status.
 
         Arguments
@@ -211,7 +212,8 @@ class TCGADataModel():
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
-            add_cancertype_covariate
+            add_cancertype_covariate,
+            add_sex_covariate
         )
         train_filtered_df, y_filtered_df, gene_features = filtered_data
 
@@ -590,12 +592,17 @@ class TCGADataModel():
         )
         return y_df
 
-    def _filter_data_for_gene(self, rnaseq_df, y_df, add_cancertype_covariate):
+    def _filter_data_for_gene(self,
+                              rnaseq_df,
+                              y_df,
+                              add_cancertype_covariate,
+                              add_sex_covariate):
         use_samples, rnaseq_df, y_df, gene_features = align_matrices(
             x_file_or_df=rnaseq_df,
             y=y_df,
             add_cancertype_covariate=add_cancertype_covariate,
-            add_mutation_covariate=True
+            add_mutation_covariate=True,
+            add_sex_covariate=add_sex_covariate
         )
         return rnaseq_df, y_df, gene_features
 

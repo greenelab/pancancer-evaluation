@@ -162,15 +162,28 @@ def train_lasso(X_train,
                 n_folds=5,
                 max_iter=1000):
 
-    estimator = SGDClassifier(
-        random_state=seed,
-        class_weight='balanced',
-        penalty='l1',
-        alpha=lasso_penalty,
-        loss="log_loss",
-        max_iter=max_iter,
-        tol=1e-3,
-    )
+    import pancancer_evaluation.config as cfg
+    if cfg.lasso_sgd:
+        estimator = SGDClassifier(
+            random_state=seed,
+            class_weight='balanced',
+            penalty='l1',
+            alpha=lasso_penalty,
+            loss="log_loss",
+            max_iter=max_iter,
+            tol=1e-3,
+        )
+    else:
+        from sklearn.linear_model import LogisticRegression
+        estimator = LogisticRegression(
+            random_state=seed,
+            class_weight='balanced',
+            penalty='l1',
+            solver='liblinear',
+            C=lasso_penalty,
+            max_iter=max_iter,
+            tol=1e-3,
+        )
 
     from sklearn.model_selection import train_test_split
 

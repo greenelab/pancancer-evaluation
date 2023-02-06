@@ -22,7 +22,6 @@ import pancancer_evaluation.utilities.file_utilities as fu
 
 def process_args():
     p = argparse.ArgumentParser()
-    p.add_argument('--classify', action='store_true')
     p.add_argument('--feature_selection',
                    choices=['mad', 'pancan_f_test', 'median_f_test', 'random'],
                    default='mad',
@@ -47,6 +46,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--sex_covariate', action='store_true')
     p.add_argument('--training_samples',
                    choices=['single_cancer', 'pancancer', 'all_other_cancers'],
                    default='single_cancer',
@@ -76,7 +76,6 @@ if __name__ == '__main__':
 
     # process command line arguments
     args, sample_info_df = process_args()
-    predictor = 'classify' if args.classify else 'regress'
 
     # create results dir if it doesn't exist
     output_dir = fu.make_output_dir(args.results_dir, args.training_samples)
@@ -109,7 +108,8 @@ if __name__ == '__main__':
         tcga_data.process_msi_data(
             'pancancer',
             output_dir,
-            add_cancertype_covariate=(args.training_samples == 'pancancer')
+            add_cancertype_covariate=(args.training_samples == 'pancancer'),
+            add_sex_covariate=args.sex_covariate
         )
 
         progress = tqdm(args.holdout_cancer_types,

@@ -162,7 +162,8 @@ def process_y_matrix_cancertype(
 def align_matrices(x_file_or_df,
                    y,
                    add_cancertype_covariate=True,
-                   add_mutation_covariate=True):
+                   add_mutation_covariate=True,
+                   add_sex_covariate=False):
     """
     Process the x matrix for the given input file and align x and y together
 
@@ -172,6 +173,7 @@ def align_matrices(x_file_or_df,
     y: pandas DataFrame storing status of corresponding samples
     add_cancertype_covariate: if true, add one-hot encoded cancer type as a covariate
     add_mutation_covariate: if true, add log10(mutation burden) as a covariate
+    add_mutation_covariate: if true, add patient sex as a covariate
 
     Returns
     -------
@@ -202,6 +204,19 @@ def align_matrices(x_file_or_df,
         # add covariate for mutation burden
         mutation_covariate_df = pd.DataFrame(y.loc[:, "log10_mut"], index=y.index)
         x_df = x_df.merge(mutation_covariate_df, left_index=True, right_index=True)
+
+    if add_sex_covariate:
+        # add covariate for patient sex
+        from pancancer_evaluation.utilities.data_utilities import load_sex_labels
+        sex_covariate_df = load_sex_labels()
+        # the clinical data has to be merged on the patient ID
+        # (the first 12 characters of the sample ID) rather than
+        # the whole sample ID that the -omics data uses
+        x_df['clinical_id'] = x_df.index.str[:-3]
+        x_df = (x_df
+            .merge(sex_covariate_df, left_on='clinical_id', right_index=True)
+            .drop(columns=['clinical_id'])
+        )
 
     num_added_features = x_df.shape[1] - gene_features.shape[0]
     if num_added_features > 0:
