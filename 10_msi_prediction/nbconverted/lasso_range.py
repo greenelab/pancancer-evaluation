@@ -30,7 +30,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '10_msi_prediction', 'results', 'msi_lasso_range'
+    cfg.repo_root, '10_msi_prediction', 'results', 'msi_lasso_range_sex_covariate_lr'
 )
 
 training_dataset = 'all_other_cancers'
@@ -195,7 +195,7 @@ with sns.plotting_context('notebook', font_scale=1.25):
         kind='line', col='holdout_cancer_type',
         col_wrap=3, height=4, aspect=1.2
     )
-    g.set(xscale='log', xlim=(0, 0.1))
+    g.set(xscale='log', xlim=(0, max(plot_df.lasso_param)))
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
 
 if output_plots:
@@ -203,7 +203,6 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# A few takeaways:
+# Observations:
 # 
-# * Interestingly, MSI prediction doesn't really seem to benefit from regularization. The models with a very small lasso parameter (basically a direct minimization of the log-loss with very little sparsity penalty) perform equally well or better than the regularized models, both within the training cancer types (the "cv" line) and for generalization to unseen cancer types (the "test" line).
-# * Generalizing to UCEC from the other cancer types seems to be the hardest. This isn't too surprising since it only occurs in women, which likely makes it more different from the other carcinomas than they are from each other. Maybe adding a sex covariate to the models would improve generalization in this case, since this could help encourage the model to focus on other female samples.
+# * Generalizing to UCEC from the other cancer types seems to be the hardest. This isn't too surprising since it only occurs in women, which likely makes it more different from the other carcinomas than they are from each other.
