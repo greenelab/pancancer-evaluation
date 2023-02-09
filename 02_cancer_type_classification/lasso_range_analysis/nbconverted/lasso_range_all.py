@@ -27,7 +27,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_valid'
+    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_lr_all_features'
 )
 
 training_dataset = 'all_other_cancers'
@@ -72,6 +72,7 @@ nz_coefs_df = pd.DataFrame(
     nz_coefs_df,
     columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
 )
+nz_coefs_df.lasso_param = nz_coefs_df.lasso_param.astype(float)
 print(nz_coefs_df.shape)
 print(nz_coefs_df.gene.unique())
 nz_coefs_df.head()
@@ -83,6 +84,7 @@ nz_coefs_df.head()
 
 
 perf_df = au.load_prediction_results_lasso_range(results_dir, training_dataset)
+perf_df.lasso_param = perf_df.lasso_param.astype(float)
 
 print(perf_df.shape)
 print(perf_df.gene.unique())
@@ -125,169 +127,109 @@ if quantile_cutoff is not None:
 coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 
 
-# ### Calculate model size/performance correlations for each cancer type individually
-# 
-# In this case, a positive correlation means that more features in the model is associated with better performance.
-
 # In[7]:
 
 
-corr_cancer_type_df = []                                                                              
+def get_top_and_smallest_diff(gene, cancer_type):
+    top_df = (
+        perf_df[(perf_df.gene == gene) &
+                (perf_df.data_type == 'cv') &
+                (perf_df.signal == 'signal') &
+                (perf_df.holdout_cancer_type == cancer_type)]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+          .sort_values(by='mean_aupr', ascending=False)
+    )
+    top_df.index = top_df.index.astype(float)
+    top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
+    top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
+    
+    # get parameter with best validation performance
+    top_lasso_param = top_5_lasso[0]
 
-# apply quantile cutoff if included
-if quantile_cutoff is not None:                                                                       
-    coefs_perf_df = coefs_perf_df[coefs_perf_df.nz_coefs > nz_coefs_cutoff].copy()                    
-                                                                                                      
-for gene in coefs_perf_df.gene.unique():                                                              
-    for cancer_type in coefs_perf_df.holdout_cancer_type.unique():                                    
-        corr_df = coefs_perf_df[                                                                      
-            (coefs_perf_df.gene == gene) &                                                            
-            (coefs_perf_df.holdout_cancer_type == cancer_type) &                                      
-            (coefs_perf_df.data_type == 'test')                                                       
-        ]                                                                                             
-        if corr_df.shape[0] == 0:
-            # this happens when the model wasn't trained on the cancer type                           
-            # for the given gene, just skip                                                           
-            continue
-        if correlation == 'pearson':
-            r, p = pearsonr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
-        elif correlation == 'spearman':
-            r, p = spearmanr(corr_df.nz_coefs.values, corr_df.aupr.values)                             
-        elif correlation == 'ccc':
-            from ccc.coef import ccc
-            r = ccc(corr_df.nz_coefs.values, corr_df.aupr.values)
-            # CCC doesn't have p-values, as far as I know
-            p = 0.0
-        else:
-            raise NotImplementedError
-        corr_cancer_type_df.append(                                                                   
-            [gene, cancer_type, r, p]                                                                 
-        )                                                                                             
-                                                                                                      
-corr_column = f'{correlation}_r'
-pval_column = f'{correlation}_pval'
-corr_cancer_type_df = pd.DataFrame(                                                                   
-    corr_cancer_type_df,                                                                              
-    columns=['gene', 'cancer_type', corr_column, pval_column]                                      
-).sort_values(by=corr_column, ascending=False)                                                        
-                                                                                                      
-print(corr_cancer_type_df.shape)                                                                      
-corr_cancer_type_df.head()
+    # get parameter in top 5 validation performance with least nonzero coefficients
+    smallest_lasso_param = (
+        nz_coefs_df[(nz_coefs_df.gene == gene) & 
+                    (nz_coefs_df.cancer_type == cancer_type) &
+                    (nz_coefs_df.lasso_param.isin(top_5_lasso))]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .sort_values(by='nz_coefs', ascending=True)
+    ).index[0]
+    
+    holdout_df = (
+        perf_df[(perf_df.gene == gene) &
+                (perf_df.data_type == 'test') &
+                (perf_df.signal == 'signal') &
+                (perf_df.holdout_cancer_type == cancer_type)]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+    )
+    
+    top_smallest_diff = (
+        holdout_df.loc[top_lasso_param, 'mean_aupr'] -
+        holdout_df.loc[smallest_lasso_param, 'mean_aupr']
+    )
+    return [gene, cancer_type, top_lasso_param, smallest_lasso_param, top_smallest_diff]
+
+print(get_top_and_smallest_diff('SETD2', 'KIRP'))
 
 
 # In[8]:
 
 
-# save correlation dataframe
-corr_cancer_type_df.to_csv(f'./{correlation}_q{quantile_cutoff}_cancer_type_corrs.tsv', sep='\t', index=False)
+all_top_smallest_diff_df = []
+
+for gene in perf_df.gene.unique():
+    for cancer_type in perf_df[perf_df.gene == gene].holdout_cancer_type.unique():
+        all_top_smallest_diff_df.append(get_top_and_smallest_diff(gene, cancer_type))
+        
+all_top_smallest_diff_df = pd.DataFrame(
+    all_top_smallest_diff_df,
+    columns=['gene', 'cancer_type', 'top_lasso_param',
+             'smallest_lasso_param', 'top_smallest_diff']
+)
+
+all_top_smallest_diff_df.head()
 
 
 # In[9]:
 
 
-# plot test performance vs. number of nonzero features
-sns.set({'figure.figsize': (28, 6)})
-sns.set_style('ticks')
+sns.set({'figure.figsize': (8, 6)})
 
-def print_corr_name(correlation):
-    return correlation.upper() if correlation == 'ccc' else correlation.capitalize()
-
-# order boxes by median pearson per gene
-gene_order = (corr_cancer_type_df
-    .groupby('gene')
-    .agg(np.median)
-    .sort_values(by=corr_column, ascending=False)
-).index.values
-
-with sns.plotting_context('notebook', font_scale=1.5):
-    ax = sns.boxplot(data=corr_cancer_type_df, order=gene_order, x='gene', y=corr_column)
-    ax.axhline(0.0, linestyle='--', color='grey')
-    plt.xticks(rotation=90)
-    plt.title(f'Model size/performance correlations across cancer types, per gene (nonzero cutoff: {nz_coefs_cutoff:.0f})', y=1.02)
-    plt.xlabel('Gene')
-    plt.ylabel(f'{print_corr_name(correlation)} correlation')
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff)
+plt.title('Differences between top and smallest LASSO parameter')
+plt.xlabel('top - smallest')
+plt.gca().axvline(0, color='grey', linestyle='--')
 
 
 # In[10]:
 
 
-mean_corr_gene_df = (corr_cancer_type_df
-    .groupby('gene')
-    .agg(np.mean)
-    .drop(columns=[pval_column])
-)
+sns.set({'figure.figsize': (8, 6)})
 
-mean_corr_gene_df.sort_values(by=corr_column, ascending=False).head()
+sns.histplot(
+    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff
+)
+plt.title('Differences between top and smallest LASSO parameter, without zeroes')
+plt.xlabel('top - smallest')
+plt.gca().axvline(0, color='black', linestyle='--')
 
 
 # In[11]:
 
 
-mean_corr_gene_df.sort_values(by=corr_column, ascending=False).tail()
+all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
 
 
 # In[12]:
 
 
-sns.set(style='ticks', rc={'figure.figsize': (10, 6), 'axes.grid': True, 'axes.grid.axis': 'y'})
+all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
 
-with sns.plotting_context('notebook', font_scale=1.2):
-    plt.xlim(-1.0, 1.0)
-    sns.histplot(data=mean_corr_gene_df, x=corr_column)
-    plt.axvline(0.0, linestyle=':', color='black')
-    plt.axvline(mean_corr_gene_df[corr_column].mean(), linestyle='--', color='blue')
-    plt.title(
-        f'Distribution of average {print_corr_name(correlation)} correlations between model size and performance, per gene',
-        y=1.02
-    )
-    plt.xlabel(f'Mean {print_corr_name(correlation)} correlation')
-    plt.ylabel('Gene count')
-
-print(f'Mean of mean correlations: {mean_corr_gene_df[corr_column].mean():.4f}')
-
-
-# ### Calculate average model size/performance correlations across genes for each cancer type
-# 
-# This is intended to give a coarse-grained idea of which cancer types really benefit from larger models, and which benefit more from regularized/smaller models.
-
-# In[13]:
-
-
-mean_corr_cancer_type_df = (corr_cancer_type_df
-    .groupby('cancer_type')
-    .agg(np.mean)
-    .drop(columns=[pval_column])
-    .merge(corr_cancer_type_df.groupby('cancer_type').count()[pval_column],
-           left_index=True, right_index=True)
-    .rename(columns={pval_column: 'gene_count'})
-)
-
-mean_corr_cancer_type_df.sort_values(by=corr_column, ascending=False).head()
-
-
-# In[14]:
-
-
-mean_corr_cancer_type_df.sort_values(by=corr_column, ascending=False).tail()
-
-
-# In[15]:
-
-
-sns.set(style='ticks', rc={'figure.figsize': (10, 6), 'axes.grid': True, 'axes.grid.axis': 'y'})
-
-with sns.plotting_context('notebook', font_scale=1.2):
-    plt.xlim(-1.0, 1.0)
-    sns.histplot(data=mean_corr_cancer_type_df, x=corr_column)
-    plt.axvline(0.0, linestyle=':', color='black')
-    plt.axvline(mean_corr_cancer_type_df[corr_column].mean(), linestyle='--', color='blue')
-    plt.title(f'Distribution of average {print_corr_name(correlation)} correlations between model size and performance, per cancer type', y=1.02)
-    plt.xlabel(f'Mean {print_corr_name(correlation)} correlation')
-    plt.ylabel('Cancer type count')
-
-print(f'Mean of mean correlations: {mean_corr_cancer_type_df[corr_column].mean():.4f}')
-
-
-# The cancer types with the highest correlations seem to only be included in the models for a small handful of genes. These are likely genes that are commonly pan-cancer mutated, meaning the classifiers tend to be better for those genes than others in the dataset.
-# 
-# Not sure how much this really says about which cancer types are more different, or harder to predict mutation status in - we'd likely have to find an analysis that's less dependent on sample size.
