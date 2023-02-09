@@ -302,9 +302,9 @@ def load_purity(mut_burden_df,
     return purity_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
 
 
-def load_sex_labels(mut_burden_df,
-                    sample_info_df,
-                    verbose=False):
+def load_sex_labels_for_prediction(mut_burden_df,
+                                   sample_info_df,
+                                   verbose=False):
     """Load sex labels for use as target variable."""
 
     if verbose:

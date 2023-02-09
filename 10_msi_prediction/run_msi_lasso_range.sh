@@ -29,17 +29,6 @@ for seed in 42 1; do
 
     for lasso_penalty in "${lasso_penalties[@]}"; do
 
-        # cmd="python 10_msi_prediction/run_msi_prediction.py "
-        # cmd+="--lasso_penalty $lasso_penalty "
-        # cmd+="--num_features 16148 "
-        # cmd+="--results_dir $RESULTS_DIR "
-        # cmd+="--seed $seed "
-        # cmd+="--sex_covariate "
-        # cmd+="--training_samples pancancer "
-        # cmd+="2>$ERRORS_DIR/errors_${seed}_${lasso_penalty}_pancancer.txt"
-        # echo "Running: $cmd"
-        # eval $cmd
-
         cmd="python 10_msi_prediction/run_msi_prediction.py "
         cmd+="--lasso_penalty $lasso_penalty "
         cmd+="--num_features 16148 "

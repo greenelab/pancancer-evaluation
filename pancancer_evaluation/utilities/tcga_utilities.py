@@ -207,7 +207,7 @@ def align_matrices(x_file_or_df,
 
     if add_sex_covariate:
         # add covariate for patient sex
-        from pancancer_evaluation.utilities.data_utilities import load_sex_labels
+        from pancancer_evaluation.utilities.data_utilities import load_sex_labels_for_covariate
         sex_covariate_df = load_sex_labels_for_covariate()
         # the clinical data has to be merged on the patient ID
         # (the first 12 characters of the sample ID) rather than

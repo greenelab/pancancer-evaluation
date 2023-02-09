@@ -174,9 +174,9 @@ class TCGADataModel():
                                          covariate in feature matrix
         """
 
-        y_df_raw = du.load_sex_labels(self.mut_burden_df,
-                                      self.sample_info_df,
-                                      verbose=self.verbose)
+        y_df_raw = du.load_sex_labels_for_prediction(self.mut_burden_df,
+                                                     self.sample_info_df,
+                                                     verbose=self.verbose)
         filtered_data = self._filter_data_for_gene(
             self.rnaseq_df,
             y_df_raw,
