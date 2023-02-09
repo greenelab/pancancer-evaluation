@@ -301,9 +301,11 @@ def load_purity(mut_burden_df,
     )
     return purity_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
 
+
 def load_sex_labels(mut_burden_df,
                     sample_info_df,
                     verbose=False):
+    """Load sex labels for use as target variable."""
 
     if verbose:
         print('Loading patient sex info...', file=sys.stderr)
@@ -335,6 +337,9 @@ def load_sex_labels(mut_burden_df,
 
 
 def load_sex_labels_for_covariate():
+    """Load patient sex labels for use as model covariate (i.e. as a predictor
+       for a different label).
+    """
 
     clinical_df = (
         pd.read_excel(cfg.clinical_data,

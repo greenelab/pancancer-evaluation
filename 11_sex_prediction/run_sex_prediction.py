@@ -1,5 +1,5 @@
 """
-Script to run microsatellite instability prediction experiments.
+Script to run patient sex prediction experiments.
 """
 import sys
 import argparse
