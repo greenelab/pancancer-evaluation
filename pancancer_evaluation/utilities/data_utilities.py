@@ -302,6 +302,61 @@ def load_purity(mut_burden_df,
     return purity_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
 
 
+def load_sex_labels_for_prediction(mut_burden_df,
+                                   sample_info_df,
+                                   verbose=False):
+    """Load sex labels for use as target variable."""
+
+    if verbose:
+        print('Loading patient sex info...', file=sys.stderr)
+
+    clinical_df = (
+        pd.read_excel(cfg.clinical_data,
+                      sheet_name='TCGA-CDR',
+                      index_col='bcr_patient_barcode',
+                      engine='openpyxl')
+          .dropna(subset=['gender'])
+    )[['gender']]
+    clinical_df.index.rename('sample_id', inplace=True)
+
+    # set male = 0, female = 1 (this is totally arbitrary)
+    assert set(clinical_df.gender.unique()) == set(['MALE', 'FEMALE'])
+    clinical_df['status'] = (clinical_df.gender == 'FEMALE').astype(int)
+
+    sample_info_df['clinical_id'] = sample_info_df.index.str[:-3]
+
+    # join mutation burden information and cancer type information
+    # these are necessary to generate non-gene covariates later on
+    sex_labels_df = (clinical_df
+        .merge(sample_info_df, left_index=True, right_on='clinical_id')
+        .merge(mut_burden_df, left_index=True, right_index=True)
+        .drop(columns=['gender', 'clinical_id'])
+        .rename(columns={'cancer_type': 'DISEASE'})
+    )
+    return sex_labels_df.loc[:, ['status', 'DISEASE', 'log10_mut']]
+
+
+def load_sex_labels_for_covariate():
+    """Load patient sex labels for use as model covariate (i.e. as a predictor
+       for a different label).
+    """
+
+    clinical_df = (
+        pd.read_excel(cfg.clinical_data,
+                      sheet_name='TCGA-CDR',
+                      index_col='bcr_patient_barcode',
+                      engine='openpyxl')
+          .dropna(subset=['gender'])
+    )[['gender']]
+    clinical_df.index.rename('sample_id', inplace=True)
+
+    # set male = 0, female = 1 (this is totally arbitrary)
+    assert set(clinical_df.gender.unique()) == set(['MALE', 'FEMALE'])
+    clinical_df['is_female'] = (clinical_df.gender == 'FEMALE').astype(int)
+
+    return clinical_df[['is_female']]
+
+
 def load_msi(cancer_type, mut_burden_df, sample_info_df, verbose=False):
     """Load microsatellite instability data.
 

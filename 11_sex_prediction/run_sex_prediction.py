@@ -1,10 +1,11 @@
 """
-Script to run microsatellite instability prediction experiments.
+Script to run patient sex prediction experiments.
 """
 import sys
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -46,7 +47,6 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
-    p.add_argument('--sex_covariate', action='store_true')
     p.add_argument('--training_samples',
                    choices=['single_cancer', 'pancancer', 'all_other_cancers'],
                    default='single_cancer',
@@ -56,14 +56,14 @@ def process_args():
 
     sample_info_df = du.load_sample_info(args.verbose)
 
-    msi_cancer_types = cfg.msi_cancer_types
+    tcga_cancer_types = list(np.unique(sample_info_df.cancer_type))
     if args.holdout_cancer_types is None:
-        args.holdout_cancer_types = msi_cancer_types
+        args.holdout_cancer_types = tcga_cancer_types
     else:
-        not_in_msi = set(args.holdout_cancer_types) - set(msi_cancer_types)
-        if len(not_in_msi) > 0:
-            parser.error('some cancer types do not have MSI labels: {}'.format(
-                ' '.join(not_in_msi)))
+        not_in_tcga = set(args.holdout_cancer_types) - set(tcga_cancer_types)
+        if len(not_in_tcga) > 0:
+            p.error('some cancer types not present in TCGA: {}'.format(
+                ' '.join(not_in_tcga)))
 
     args.results_dir = Path(args.results_dir).resolve()
 
@@ -105,11 +105,9 @@ if __name__ == '__main__':
         print('training_samples: {}, shuffle_labels: {}'.format(
               args.training_samples, shuffle_labels))
 
-        tcga_data.process_msi_data(
-            'pancancer',
+        tcga_data.process_sex_labels_data(
             output_dir,
-            add_cancertype_covariate=(args.training_samples == 'pancancer'),
-            add_sex_covariate=args.sex_covariate
+            add_cancertype_covariate=(args.training_samples == 'pancancer')
         )
 
         progress = tqdm(args.holdout_cancer_types,
@@ -122,13 +120,14 @@ if __name__ == '__main__':
             cancer_type_log_df = None
 
             try:
-                check_file = fu.check_msi_file(output_dir,
-                                               cancer_type,
-                                               shuffle_labels,
-                                               args.seed,
-                                               args.feature_selection,
-                                               args.num_features,
-                                               lasso_penalty=args.lasso_penalty)
+                check_file = fu.check_cancer_type_file(output_dir,
+                                                       'sex',
+                                                       cancer_type,
+                                                       shuffle_labels,
+                                                       args.seed,
+                                                       args.feature_selection,
+                                                       args.num_features,
+                                                       lasso_penalty=args.lasso_penalty)
                 results = run_cv_cancer_type(tcga_data,
                                              'N/A',
                                              cancer_type,
@@ -179,7 +178,7 @@ if __name__ == '__main__':
                 fu.save_results_lasso_penalty(output_dir,
                                               check_file,
                                               results,
-                                              'msi',
+                                              'sex',
                                               cancer_type,
                                               shuffle_labels,
                                               args.seed,

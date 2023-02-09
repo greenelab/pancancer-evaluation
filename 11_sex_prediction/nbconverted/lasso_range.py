@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### LASSO parameter range experiments: microsatellite instability (MSI) prediction
+# ### LASSO parameter range experiments: sex prediction
 # 
-# This script is similar to `02_classify_cancer_type/lasso_range_gene.ipynb`, but for MSI prediction across cancer types. MSI information is only included for SKCM (stomach cancer), COAD/READ (colorectal cancer), and UCEC (uterine endometrical carcinoma).
+# This script is similar to `02_classify_cancer_type/lasso_range_gene.ipynb`, but for prediction of patient sex across cancer types. This won't work for cancer types that only have samples for one sex (e.g. OV, UCEC, TGCT, PRAD) but it should work for most.
 
 # In[1]:
 
@@ -30,10 +30,11 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '10_msi_prediction', 'results', 'msi_lasso_range_sex_covariate_lr'
+    cfg.repo_root, '11_sex_prediction', 'results', 'sex_prediction_lasso_range_lr'
 )
 
 training_dataset = 'all_other_cancers'
+# training_dataset = 'pancancer'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
 metric = 'aupr'
@@ -72,7 +73,7 @@ nz_coefs_df.head()
 # In[4]:
 
 
-sns.set({'figure.figsize': (12, 5)})
+sns.set({'figure.figsize': (24, 5)})
 
 sns.boxplot(
     data=nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
@@ -124,17 +125,25 @@ perf_df.head()
 # In[6]:
 
 
-sns.set({'figure.figsize': (12, 5)})
+sns.set({'figure.figsize': (24, 5)})
+sns.set_style('whitegrid')
 
-sns.boxplot(
-    data=(
-        perf_df[(perf_df.signal == 'signal') &
-                (perf_df.data_type == 'test')]
-          .sort_values(by=['holdout_cancer_type', 'lasso_param'])
-    ), x='holdout_cancer_type', y=metric, hue='lasso_param'
-)
-plt.title(f'LASSO parameter vs. {metric.upper()}, MSI prediction')
-plt.tight_layout()
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.catplot(
+        data=(
+            perf_df[(perf_df.signal == 'signal') &
+                    (perf_df.data_type == 'test')]
+              .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+        ),
+        x='lasso_param', y=metric,
+        kind='box', col='holdout_cancer_type',
+        col_wrap=6, height=4.5, aspect=1.35
+    )
+    g.set_titles('Holdout cancer type: {col_name}')
+    g.set_xlabels('Lasso parameter \n (higher = less regularization)')
+    g.set_ylabels(f'{metric.upper()}')
+    g.set_xticklabels(rotation=70)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, sex prediction', y=1.02)
 
 if output_plots:
     output_plots_dir.mkdir(exist_ok=True)
@@ -149,7 +158,7 @@ if output_plots:
 # this is probably more "correct" than treating each lasso parameter as a
 # category (above plot); here the spaces between parameters reflect their
 # actual real-valued distance in log-space
-sns.set({'figure.figsize': (12, 5)})
+# sns.set({'figure.figsize': (12, 5)})
 sns.set_style('ticks')
 
 plot_df = (
@@ -159,21 +168,28 @@ plot_df = (
 )
 plot_df.lasso_param = plot_df.lasso_param.astype(float)
 
-with sns.plotting_context('notebook', font_scale=1.25):
+with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.relplot(
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
         kind='line', col='holdout_cancer_type',
-        col_wrap=3, height=4, aspect=1.2
+        col_wrap=6, height=4, aspect=1.2
     )
-    g.set(xscale='log', xlim=(0, max(plot_df.lasso_param)))
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
+    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
+    g.set_titles('Holdout cancer type: {col_name}')
+    g.set_xlabels('Lasso parameter \n (higher = less regularization)')
+    g.set_ylabels(f'{metric.upper()}')
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, sex prediction', y=1.01)
 
 if output_plots:
-    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
+    plt.savefig(output_plots_dir / f'sex_lasso_facets.png',
                 dpi=200, bbox_inches='tight')
 
+
+# ### Plot performance vs. nonzero coefficient count
+# 
+# Since different models (across seeds/folds) have slightly different numbers of nonzero coefficients, the easiest way to do this is to "bin" the models by coefficient count. Here we'll just divide the space of possible feature counts into 10 quantiles, then bin models into those.
 
 # In[8]:
 
@@ -193,10 +209,18 @@ plot_df.head()
 # In[9]:
 
 
+sns.set({'figure.figsize': (15, 6)})
+sns.set_style('whitegrid')
 sns.histplot(plot_df.nz_coefs)
+
+quantiles_df = []
+
 for q in np.linspace(0.1, 0.9, 9):
-    print(f'{q:.3f}', f'{plot_df.nz_coefs.quantile(q):3f}')
-    plt.gca().axvline(x=plot_df.nz_coefs.quantile(q), color='black', linestyle=':')
+    quantiles_df.append([q, plot_df.nz_coefs.quantile(q)])
+    plt.gca().axvline(x=plot_df.nz_coefs.quantile(q), color='black', linestyle='--')
+    
+quantiles_df = pd.DataFrame(quantiles_df, columns=['quantile', 'value'])
+quantiles_df
 
 
 # In[10]:
@@ -215,32 +239,27 @@ plot_df.head()
 # In[11]:
 
 
-# try with a float-valued x-axis
-# this is probably more "correct" than treating each lasso parameter as a
-# category (above plot); here the spaces between parameters reflect their
-# actual real-valued distance in log-space
-# sns.set({'figure.figsize': (25, 7)})
 sns.set_style('whitegrid')
 
-with sns.plotting_context('notebook', font_scale=1.25):
+with sns.plotting_context('notebook', font_scale=1.5):
     g = sns.catplot(
         data=plot_df,
         x='nz_quantile', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
         kind='box', col='holdout_cancer_type',
-        col_wrap=3, height=4.5, aspect=1.35
+        col_wrap=6, height=4.5, aspect=1.35
     )
     g.set_titles('Holdout cancer type: {col_name}')
     g.set_xlabels('Bin (increasing number of coefs)')
     g.set_ylabels(f'{metric.upper()}')
-    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, MSI prediction', y=1.05)
+    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, sex prediction', y=1.01)
 
 if output_plots:
-    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
+    plt.savefig(output_plots_dir / f'sex_lasso_bins_boxes.png',
                 dpi=200, bbox_inches='tight')
 
 
 # Observations:
 # 
-# * Intermediate lasso penalties seem to perform the best for all 3 included cancer types, on both the validation data and the data from the held-out cancer type. These models typically have several hundred features with nonzero weights.
-# * Generalizing to UCEC from the other cancer types seems to be the hardest. This isn't too surprising since it only occurs in women, which likely makes it more different from the other carcinomas than they are from each other. This is true whether or not a sex covariate is included in the model.
+# * Although it varies by cancer type, performance is generally best for models having hundreds to thousands of features. This is a bit surprising since we expected the number of genes that are most predictive of sex prediction to be considerably smaller (i.e. just pick genes on the X/Y chromosomes). We could try only including those genes in the model to see how performance compares.
+# * Performance on the held-out cancer type (green lines above) generally more or less tracks with performance on the validation data (orange lines above), but there are a few examples where for small models validation performance is good but holdout performance is not so good (e.g. BLCA, HNSC, LUSC). This is more or less the opposite of what we would expect if small models tended to generalize better.

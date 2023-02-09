@@ -466,8 +466,8 @@ def generate_nonzero_coefficients_lasso_range_msi(results_dir):
         # use negative indexing since some feature selection methods
         # have underscores in them - indexing from the back of the
         # filename is safer/more consistent
-        seed = int(coefs_file.split('_')[-4].replace('s', ''))
-        lasso_param = coefs_file.split('_')[-2].replace('c', '')
+        seed = int(coefs_file.split('_')[-5].replace('s', ''))
+        lasso_param = coefs_file.split('_')[-3].replace('c', '')
         full_coefs_file = os.path.join(results_dir, coefs_file)
         coefs_df = pd.read_csv(full_coefs_file, sep='\t')
         if all_features is None:
