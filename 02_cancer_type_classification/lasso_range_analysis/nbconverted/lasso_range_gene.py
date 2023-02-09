@@ -30,17 +30,17 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_valid'
+    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_lr_all_features'
 )
 
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-plot_gene = 'CTNNB1'
+plot_gene = 'ARID1A'
 metric = 'aupr'
 nz_cutoff = 5.0
 
-output_plots = True
+output_plots = False
 output_plots_dir = cfg.cancer_type_lasso_range_dir
 
 
@@ -67,6 +67,7 @@ nz_coefs_df = pd.DataFrame(
     nz_coefs_df,
     columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
 )
+nz_coefs_df.lasso_param = nz_coefs_df.lasso_param.astype(float)
 nz_coefs_df = nz_coefs_df[nz_coefs_df.gene == plot_gene].copy()
 nz_coefs_df.head()
 
@@ -116,7 +117,8 @@ plt.tight_layout()
 # In[5]:
 
 
-perf_df = au.load_prediction_results_lasso_range(results_dir, training_dataset,
+perf_df = au.load_prediction_results_lasso_range(results_dir,
+                                                 training_dataset,
                                                  gene=plot_gene)
 perf_df = perf_df[perf_df.gene == plot_gene].copy()
 perf_df.head()
@@ -146,25 +148,33 @@ if output_plots:
 # In[7]:
 
 
-sns.set({'figure.figsize': (12, 5)})
+# try with a float-valued x-axis
+# this is probably more "correct" than treating each lasso parameter as a
+# category (above plot); here the spaces between parameters reflect their
+# actual real-valued distance in log-space
+# sns.set({'figure.figsize': (12, 5)})
 sns.set_style('ticks')
 
 plot_df = (
-    perf_df[(perf_df.signal == 'signal') &
-            (perf_df.data_type.isin(['cv', 'test']))]
+    perf_df[(perf_df.signal == 'signal')]
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
+plot_df.lasso_param = plot_df.lasso_param.astype(float)
 
-with sns.plotting_context('notebook', font_scale=1.25):
+with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.relplot(
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
+        hue_order=['train', 'cv', 'test'],
         kind='line', col='holdout_cancer_type',
-        col_wrap=5, height=4, aspect=1.2
+        col_wrap=6, height=4, aspect=1.2
     )
-    g.set_xticklabels(rotation=70)
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.05)
+    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
+    g.set_titles('Holdout cancer type: {col_name}')
+    g.set_xlabels('Lasso parameter \n (higher = less regularization)')
+    g.set_ylabels(f'{metric.upper()}')
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.01)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',
@@ -172,9 +182,65 @@ if output_plots:
 
 
 # ### Compare feature selection with performance
+# 
+# TODO: this needs to be documented
 
 # In[8]:
 
+
+# get parameters with top 25% of validation performance
+cancer_type = 'BLCA'
+top_df = (
+    perf_df[(perf_df.data_type == 'cv') &
+            (perf_df.signal == 'signal') &
+            (perf_df.holdout_cancer_type == cancer_type)]
+      .groupby(['lasso_param'])
+      .agg(np.mean)
+      .drop(columns=['seed', 'fold'])
+      .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+      .sort_values(by='mean_aupr', ascending=False)
+)
+top_df.index = top_df.index.astype(float)
+top_df.head(10)
+
+
+# In[9]:
+
+
+top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
+top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
+
+top_5_lasso
+
+
+# In[10]:
+
+
+# get parameter with best validation performance
+top_lasso_param = top_5_lasso[0]
+
+# get parameter in top 5 validation performance with least nonzero coefficients
+smallest_lasso_param = (
+    nz_coefs_df[(nz_coefs_df.cancer_type == cancer_type) &
+                (nz_coefs_df.lasso_param.isin(top_lasso))]
+      .groupby(['lasso_param'])
+      .agg(np.mean)
+      .drop(columns=['seed', 'fold'])
+      .sort_values(by='nz_coefs', ascending=True)
+).index[0]
+
+print(smallest_lasso_param, top_lasso_param)
+
+
+# In[ ]:
+
+
+# compare performance
+compare_df = top_df.loc[
+    [smallest_lasso_param, top_lasso_param], :
+]
+compare_df['desc'] = ['smallest', 'best']
+compare_df
 
 coefs_perf_df = (nz_coefs_df
     .rename(columns={'cancer_type': 'holdout_cancer_type'})
@@ -183,13 +249,7 @@ coefs_perf_df = (nz_coefs_df
     .drop(columns=['signal'])
 )
 
-coefs_perf_df.head()
-
-
-# In[9]:
-
-
-# plot test performance vs. number of nonzero features
+coefs_perf_df.head()# plot test performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 
 plot_df = (
@@ -206,13 +266,7 @@ plt.ylabel('Holdout AUPR')
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_holdout_perf.png',
-                dpi=200, bbox_inches='tight')
-
-
-# In[10]:
-
-
-# plot test performance vs. number of nonzero features
+                dpi=200, bbox_inches='tight')# plot test performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 
 plot_df = (
@@ -230,13 +284,7 @@ plt.ylabel('Holdout AUPR')
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_holdout_perf.png',
-                dpi=200, bbox_inches='tight')
-
-
-# In[11]:
-
-
-# look at correlation for each cancer type individually
+                dpi=200, bbox_inches='tight')# look at correlation for each cancer type individually
 # positive correlation => more features, better performance
 corr_cancer_type_df = []
 
@@ -255,13 +303,7 @@ corr_cancer_type_df = pd.DataFrame(
     columns=['gene', 'cancer_type', 'pearson_r', 'pearson_pval']
 ).sort_values(by='pearson_r', ascending=False)
 
-corr_cancer_type_df
-
-
-# In[12]:
-
-
-# plot test performance vs. number of nonzero features
+corr_cancer_type_df# plot test performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 
 top_cancers = corr_cancer_type_df.cancer_type.values[:5]
@@ -281,13 +323,7 @@ plt.ylabel('Holdout AUPR')
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_holdout_perf_top_cancers.png',
-                dpi=200, bbox_inches='tight')
-
-
-# In[13]:
-
-
-coefs_perf_pivot_df = coefs_perf_df.pivot(
+                dpi=200, bbox_inches='tight')coefs_perf_pivot_df = coefs_perf_df.pivot(
     index=['gene', 'holdout_cancer_type', 'seed', 'fold', 'lasso_param', 'nz_coefs'],
     columns='data_type',
     values=['auroc', 'aupr']
@@ -295,13 +331,7 @@ coefs_perf_pivot_df = coefs_perf_df.pivot(
 coefs_perf_pivot_df.columns = ['_'.join(col).strip() for col in coefs_perf_pivot_df.columns.values]
 coefs_perf_pivot_df.reset_index(inplace=True)
 
-coefs_perf_pivot_df
-
-
-# In[14]:
-
-
-# plot validation performance vs. number of nonzero features
+coefs_perf_pivot_df# plot validation performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 r, p = pearsonr(coefs_perf_pivot_df.nz_coefs.values, coefs_perf_pivot_df.aupr_cv.values)
 
@@ -313,13 +343,7 @@ plt.ylabel('Validation AUPR')
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_validation_perf.png',
-                dpi=200, bbox_inches='tight')
-
-
-# In[15]:
-
-
-# plot validation performance vs. number of nonzero features
+                dpi=200, bbox_inches='tight')# plot validation performance vs. number of nonzero features
 sns.set({'figure.figsize': (8, 6)})
 
 coefs_perf_pivot_df['cv_test_aupr_ratio'] = (
@@ -335,9 +359,6 @@ plt.ylabel('(Validation AUPR) / (Holdout AUPR)')
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_features_vs_perf_ratio.png',
-                dpi=200, bbox_inches='tight')
+                dpi=200, bbox_inches='tight')For this limited set of genes/cancer types, there doesn't seem to be much of a relationship between model size and "performance", for any of these three ways of defining performance.
 
-
-# For this limited set of genes/cancer types, there doesn't seem to be much of a relationship between model size and "performance", for any of these three ways of defining performance.
-# 
-# A better way to explore correlation between model size and performance might be to look at the partial correlation while controlling for cancer type - we'll explore this in the future.
+A better way to explore correlation between model size and performance might be to look at the partial correlation while controlling for cancer type - we'll explore this in the future.
