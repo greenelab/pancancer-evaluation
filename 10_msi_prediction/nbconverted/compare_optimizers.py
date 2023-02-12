@@ -24,7 +24,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 
 
-# In[3]:
+# In[2]:
 
 
 ll_base_results_dir = os.path.join(
@@ -49,7 +49,7 @@ output_plots_dir = None
 
 # ### Get coefficient information for each lasso penalty
 
-# In[4]:
+# In[3]:
 
 
 ll_nz_coefs_df = []
@@ -73,7 +73,7 @@ ll_nz_coefs_df.lasso_param = ll_nz_coefs_df.lasso_param.astype(float)
 ll_nz_coefs_df.head()
 
 
-# In[6]:
+# In[4]:
 
 
 sgd_nz_coefs_df = []
@@ -97,7 +97,7 @@ sgd_nz_coefs_df.lasso_param = sgd_nz_coefs_df.lasso_param.astype(float)
 sgd_nz_coefs_df.head()
 
 
-# In[7]:
+# In[5]:
 
 
 sns.set({'figure.figsize': (12, 10)})
@@ -147,4 +147,78 @@ axarr[1].set_title('SGD')
 
 plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction')
 plt.tight_layout()
+
+
+# ### Get performance information for each lasso penalty
+# 
+# TODO: explain quantiles
+
+# In[6]:
+
+
+# load performance information
+ll_perf_df = au.load_prediction_results_lasso_range_msi(ll_results_dir, 'liblinear')
+ll_perf_df.drop(columns=['gene'], inplace=True)
+ll_perf_df.rename(columns={'experiment': 'optimizer'}, inplace=True)
+ll_perf_df.lasso_param = ll_perf_df.lasso_param.astype(float)
+
+ll_perf_df.head()
+
+
+# In[7]:
+
+
+# add nonzero coefficient count
+ll_plot_df = (
+    ll_perf_df[(ll_perf_df.signal == 'signal')]
+      .merge(ll_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
+             right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
+      .drop(columns=['cancer_type'])
+      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+      .reset_index(drop=True)
+)
+ll_plot_df.lasso_param = ll_plot_df.lasso_param.astype(float)
+
+print(ll_plot_df.shape)
+ll_plot_df.head()
+
+
+# In[8]:
+
+
+# load performance information
+sgd_perf_df = au.load_prediction_results_lasso_range_msi(sgd_results_dir, 'sgd')
+sgd_perf_df.drop(columns=['gene'], inplace=True)
+sgd_perf_df.rename(columns={'experiment': 'optimizer'}, inplace=True)
+sgd_perf_df.lasso_param = sgd_perf_df.lasso_param.astype(float)
+
+sgd_perf_df.head()
+
+
+# In[9]:
+
+
+# add nonzero coefficient count
+sgd_plot_df = (
+    sgd_perf_df[(sgd_perf_df.signal == 'signal')]
+      .merge(sgd_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
+             right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
+      .drop(columns=['cancer_type'])
+      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+      .reset_index(drop=True)
+)
+sgd_plot_df.lasso_param = sgd_plot_df.lasso_param.astype(float)
+
+print(sgd_plot_df.shape)
+sgd_plot_df.head()
+
+
+# In[10]:
+
+
+plot_df = pd.concat((ll_plot_df, sgd_plot_df))
+
+print(plot_df.shape)
+print(plot_df.optimizer.unique())
+plot_df.head()
 
