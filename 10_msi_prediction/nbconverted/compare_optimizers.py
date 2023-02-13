@@ -216,9 +216,56 @@ sgd_plot_df.head()
 # In[10]:
 
 
-plot_df = pd.concat((ll_plot_df, sgd_plot_df))
+plot_df = pd.concat((ll_plot_df, sgd_plot_df)).reset_index(drop=True)
 
 print(plot_df.shape)
 print(plot_df.optimizer.unique())
 plot_df.head()
+
+
+# In[11]:
+
+
+sns.histplot(plot_df.nz_coefs)
+for q in np.linspace(0.1, 0.9, 9):
+    print(f'{q:.3f}', f'{plot_df.nz_coefs.quantile(q):3f}')
+    plt.gca().axvline(x=plot_df.nz_coefs.quantile(q), color='black', linestyle=':')
+
+
+# In[12]:
+
+
+plot_df['nz_quantile'] = pd.qcut(
+    plot_df.nz_coefs,
+    q=np.linspace(0, 1, 11),
+    labels=[f'{q}' for q in range(1, 11)]
+)
+
+print(plot_df.nz_quantile.unique())
+plot_df.head()
+
+
+# In[14]:
+
+
+# compare optimizers for MSI prediction on the same plot
+sns.set_style('whitegrid')
+
+with sns.plotting_context('notebook', font_scale=1.25):
+    g = sns.relplot(
+        data=plot_df,
+        x='nz_quantile', y=metric,
+        hue='data_type', hue_order=['train', 'cv', 'test'],
+        style='optimizer', style_order=['liblinear', 'sgd'],
+        kind='line', col='holdout_cancer_type',
+        col_wrap=3, height=4.5, aspect=1.35
+    )
+    g.set_titles('Holdout cancer type: {col_name}')
+    g.set_xlabels('Bin (increasing number of coefs)')
+    g.set_ylabels(f'{metric.upper()}')
+    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, MSI prediction', y=1.05)
+
+if output_plots:
+    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
+                dpi=200, bbox_inches='tight')
 
