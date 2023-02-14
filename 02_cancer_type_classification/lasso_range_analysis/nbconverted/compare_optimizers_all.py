@@ -44,7 +44,6 @@ ll_results_dir = os.path.join(ll_base_results_dir, training_dataset)
 sgd_results_dir = os.path.join(sgd_base_results_dir, training_dataset)
 
 metric = 'aupr'
-test_gene = 'TP53' # TODO: remove after testing
 
 output_plots = False
 output_plots_dir = None
@@ -59,14 +58,12 @@ output_plots_dir = None
 ll_coefs_df_file = './ll_coefficients_df.tsv'
 
 if os.path.exists(ll_coefs_df_file):
-    print('exists')
+    print('df exists')
     ll_nz_coefs_df = pd.read_csv(ll_coefs_df_file, sep='\t', index_col=0)
 else:
-    print('not exists')
     ll_nz_coefs_df = []
     # get coefficient info for training dataset specified above
-    for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir,
-                                                                  gene=test_gene):
+    for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir):
         (gene,
          cancer_type,
          seed,
@@ -93,14 +90,12 @@ ll_nz_coefs_df.head()
 sgd_coefs_df_file = './sgd_coefficients_df.tsv'
 
 if os.path.exists(sgd_coefs_df_file):
-    print('exists')
+    print('df exists')
     sgd_nz_coefs_df = pd.read_csv(sgd_coefs_df_file, sep='\t', index_col=0)
 else:
-    print('not exists')
     sgd_nz_coefs_df = []
     # get coefficient info for training dataset specified above
-    for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir,
-                                                                  gene=test_gene):
+    for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir):
         (gene,
          cancer_type,
          seed,
@@ -129,13 +124,11 @@ sgd_nz_coefs_df.head()
 ll_perf_df_file = './ll_perf_df.tsv'
 
 if os.path.exists(ll_perf_df_file):
-    print('exists')
+    print('df exists')
     ll_perf_df = pd.read_csv(ll_perf_df_file, sep='\t', index_col=0)
 else:
-    print('not exists')
     ll_perf_df = au.load_prediction_results_lasso_range(ll_results_dir,
-                                                        'liblinear',
-                                                        gene=test_gene)
+                                                        'liblinear')
     ll_perf_df.rename(columns={'experiment': 'optimizer'}, inplace=True)
     ll_perf_df.lasso_param = ll_perf_df.lasso_param.astype(float)
     ll_perf_df.to_csv(ll_perf_df_file, sep='\t')
@@ -169,13 +162,11 @@ ll_plot_df.head()
 sgd_perf_df_file = './sgd_perf_df.tsv'
 
 if os.path.exists(sgd_perf_df_file):
-    print('exists')
+    print('df exists')
     sgd_perf_df = pd.read_csv(sgd_perf_df_file, sep='\t', index_col=0)
 else:
-    print('not exists')
     sgd_perf_df = au.load_prediction_results_lasso_range(sgd_results_dir,
-                                                        'sgd',
-                                                        gene=test_gene)
+                                                        'sgd')
     sgd_perf_df.rename(columns={'experiment': 'optimizer'}, inplace=True)
     sgd_perf_df.lasso_param = sgd_perf_df.lasso_param.astype(float)
     sgd_perf_df.to_csv(sgd_perf_df_file, sep='\t')
@@ -286,10 +277,33 @@ optimizer_diff_df.head()
 # In[13]:
 
 
-sns.set({'figure.figsize': (8, 5)})
+sns.set({'figure.figsize': (11, 6)})
 
 sns.histplot(optimizer_diff_df.ll_sgd_diff)
 plt.title('Distribution of (liblinear - SGD) performance differences')
 plt.xlabel('AUPR(liblinear) - AUPR(SGD)')
 plt.gca().axvline(x=0, color='black', linestyle='--')
+
+
+# In[14]:
+
+
+# plot test performance vs. number of nonzero features
+sns.set({'figure.figsize': (28, 6)})
+sns.set_style('ticks')
+
+# order boxes by mean diff per gene
+gene_order = (optimizer_diff_df
+    .groupby('gene')
+    .agg(np.mean)
+    .sort_values(by='ll_sgd_diff', ascending=False)
+).index.values
+
+with sns.plotting_context('notebook', font_scale=1.5):
+    ax = sns.boxplot(data=optimizer_diff_df, order=gene_order, x='gene', y='ll_sgd_diff')
+    ax.axhline(0.0, linestyle='--', color='grey')
+    plt.xticks(rotation=90)
+    plt.title('Top validation set performance difference between liblinear and SGD optimizers, per gene', y=1.02)
+    plt.xlabel('Gene')
+    plt.ylabel('AUPR(liblinear) - AUPR(SGD)')
 
