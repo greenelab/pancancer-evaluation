@@ -44,6 +44,7 @@ ll_results_dir = os.path.join(ll_base_results_dir, training_dataset)
 sgd_results_dir = os.path.join(sgd_base_results_dir, training_dataset)
 
 metric = 'aupr'
+test_gene = 'EGFR' # TODO: remove after testing
 
 output_plots = False
 output_plots_dir = None
@@ -65,7 +66,7 @@ else:
     ll_nz_coefs_df = []
     # get coefficient info for training dataset specified above
     for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir,
-                                                                  gene='TP53'):
+                                                                  gene=test_gene):
         (gene,
          cancer_type,
          seed,
@@ -99,7 +100,7 @@ else:
     sgd_nz_coefs_df = []
     # get coefficient info for training dataset specified above
     for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir,
-                                                                  gene='TP53'):
+                                                                  gene=test_gene):
         (gene,
          cancer_type,
          seed,
@@ -134,7 +135,7 @@ else:
     print('not exists')
     ll_perf_df = au.load_prediction_results_lasso_range(ll_results_dir,
                                                         'liblinear',
-                                                        gene='TP53')
+                                                        gene=test_gene)
     ll_perf_df.rename(columns={'experiment': 'optimizer'}, inplace=True)
     ll_perf_df.lasso_param = ll_perf_df.lasso_param.astype(float)
     ll_perf_df.to_csv(ll_perf_df_file, sep='\t')
@@ -150,7 +151,8 @@ ll_plot_df = (
     ll_perf_df[(ll_perf_df.signal == 'signal')]
       .merge(ll_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
              right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
-      .drop(columns=['cancer_type'])
+      .drop(columns=['cancer_type', 'gene_y'])
+      .rename(columns={'gene_x': 'gene'})
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
@@ -172,8 +174,8 @@ if os.path.exists(sgd_perf_df_file):
 else:
     print('not exists')
     sgd_perf_df = au.load_prediction_results_lasso_range(sgd_results_dir,
-                                                        'liblinear',
-                                                        gene='TP53')
+                                                        'sgd',
+                                                        gene=test_gene)
     sgd_perf_df.rename(columns={'experiment': 'optimizer'}, inplace=True)
     sgd_perf_df.lasso_param = sgd_perf_df.lasso_param.astype(float)
     sgd_perf_df.to_csv(sgd_perf_df_file, sep='\t')
@@ -189,7 +191,8 @@ sgd_plot_df = (
     sgd_perf_df[(sgd_perf_df.signal == 'signal')]
       .merge(sgd_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
              right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
-      .drop(columns=['cancer_type'])
+      .drop(columns=['cancer_type', 'gene_y'])
+      .rename(columns={'gene_x': 'gene'})
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
@@ -199,7 +202,69 @@ print(sgd_plot_df.shape)
 sgd_plot_df.head()
 
 
-# ### Compare feature selection with performance
+# In[9]:
+
+
+all_perf_df = pd.concat((ll_plot_df, sgd_plot_df)).reset_index(drop=True)
+
+print(all_perf_df.shape)
+print(all_perf_df.optimizer.unique())
+all_perf_df.head()
+
+
+# ### Select best lasso parameter for each optimizer
+# 
+# We'll do this for both CV (validation) datasets and test (holdout cancer type) datasets.
+
+# In[10]:
+
+
+# get mean AUPR values across folds/seeds
+ll_mean_aupr_df = (
+    all_perf_df[(all_perf_df.data_type == 'cv') &
+                (all_perf_df.optimizer == 'liblinear')]
+      .drop(columns=['data_type', 'optimizer'])
+      .groupby(['gene', 'holdout_cancer_type', 'lasso_param'])
+      .agg(np.mean)
+      .reset_index()
+      .drop(columns=['seed', 'fold', 'auroc', 'nz_coefs'])
+)
+
+# get best LASSO parameter by mean AUPR, across all the ones we tried for this optimizer
+ll_max_lasso_ix = (ll_mean_aupr_df
+      .groupby(['gene', 'holdout_cancer_type'])
+      .aupr.idxmax()
+)
+ll_max_lasso_param_df = ll_mean_aupr_df.loc[ll_max_lasso_ix, :]
+
+print(ll_max_lasso_param_df.shape)
+ll_max_lasso_param_df.head(8)
+
+
+# In[11]:
+
+
+# get mean AUPR values across folds/seeds
+sgd_mean_aupr_df = (
+    all_perf_df[(all_perf_df.data_type == 'cv') &
+                (all_perf_df.optimizer == 'sgd')]
+      .drop(columns=['data_type', 'optimizer'])
+      .groupby(['gene', 'holdout_cancer_type', 'lasso_param'])
+      .agg(np.mean)
+      .reset_index()
+      .drop(columns=['seed', 'fold', 'auroc', 'nz_coefs'])
+)
+
+# get best LASSO parameter by mean AUPR, across all the ones we tried for this optimizer
+sgd_max_lasso_ix = (sgd_mean_aupr_df
+      .groupby(['gene', 'holdout_cancer_type'])
+      .aupr.idxmax()
+)
+sgd_max_lasso_param_df = sgd_mean_aupr_df.loc[sgd_max_lasso_ix, :]
+
+print(sgd_max_lasso_param_df.shape)
+sgd_max_lasso_param_df.head(8)
+
 sns.set({'figure.figsize': (8, 6)})
 
 sns.histplot(coefs_perf_df.nz_coefs)
