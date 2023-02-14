@@ -44,7 +44,7 @@ ll_results_dir = os.path.join(ll_base_results_dir, training_dataset)
 sgd_results_dir = os.path.join(sgd_base_results_dir, training_dataset)
 
 metric = 'aupr'
-test_gene = 'EGFR' # TODO: remove after testing
+test_gene = 'TP53' # TODO: remove after testing
 
 output_plots = False
 output_plots_dir = None
@@ -265,89 +265,31 @@ sgd_max_lasso_param_df = sgd_mean_aupr_df.loc[sgd_max_lasso_ix, :]
 print(sgd_max_lasso_param_df.shape)
 sgd_max_lasso_param_df.head(8)
 
-sns.set({'figure.figsize': (8, 6)})
 
-sns.histplot(coefs_perf_df.nz_coefs)
-plt.title('Distribution of feature count across cancer types/folds')
-plt.xlabel('Number of nonzero features')
+# In[12]:
 
-# calculate quantile cutoff if included
-# models below the cutoff get filtered out in the next cell, here we'll visualize the
-# distribution and a few of the filtered rows
-if quantile_cutoff is not None:
-    nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=quantile_cutoff)
-    plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
-    print('cutoff:', nz_coefs_cutoff)
-    
-coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]def get_top_and_smallest_diff(gene, cancer_type):
-    top_df = (
-        perf_df[(perf_df.gene == gene) &
-                (perf_df.data_type == 'cv') &
-                (perf_df.signal == 'signal') &
-                (perf_df.holdout_cancer_type == cancer_type)]
-          .groupby(['lasso_param'])
-          .agg(np.mean)
-          .drop(columns=['seed', 'fold'])
-          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
-          .sort_values(by='mean_aupr', ascending=False)
-    )
-    top_df.index = top_df.index.astype(float)
-    top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
-    top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
-    
-    # get parameter with best validation performance
-    top_lasso_param = top_5_lasso[0]
 
-    # get parameter in top 5 validation performance with least nonzero coefficients
-    smallest_lasso_param = (
-        nz_coefs_df[(nz_coefs_df.gene == gene) & 
-                    (nz_coefs_df.cancer_type == cancer_type) &
-                    (nz_coefs_df.lasso_param.isin(top_5_lasso))]
-          .groupby(['lasso_param'])
-          .agg(np.mean)
-          .drop(columns=['seed', 'fold'])
-          .sort_values(by='nz_coefs', ascending=True)
-    ).index[0]
-    
-    holdout_df = (
-        perf_df[(perf_df.gene == gene) &
-                (perf_df.data_type == 'test') &
-                (perf_df.signal == 'signal') &
-                (perf_df.holdout_cancer_type == cancer_type)]
-          .groupby(['lasso_param'])
-          .agg(np.mean)
-          .drop(columns=['seed', 'fold'])
-          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
-    )
-    
-    top_smallest_diff = (
-        holdout_df.loc[top_lasso_param, 'mean_aupr'] -
-        holdout_df.loc[smallest_lasso_param, 'mean_aupr']
-    )
-    return [gene, cancer_type, top_lasso_param, smallest_lasso_param, top_smallest_diff]
-
-print(get_top_and_smallest_diff('SETD2', 'KIRP'))all_top_smallest_diff_df = []
-
-for gene in perf_df.gene.unique():
-    for cancer_type in perf_df[perf_df.gene == gene].holdout_cancer_type.unique():
-        all_top_smallest_diff_df.append(get_top_and_smallest_diff(gene, cancer_type))
-        
-all_top_smallest_diff_df = pd.DataFrame(
-    all_top_smallest_diff_df,
-    columns=['gene', 'cancer_type', 'top_lasso_param',
-             'smallest_lasso_param', 'top_smallest_diff']
+optimizer_diff_df = (ll_max_lasso_param_df
+    .merge(sgd_max_lasso_param_df,
+           left_on=['gene', 'holdout_cancer_type'],
+           right_on=['gene', 'holdout_cancer_type'])
+    .rename({'lasso_param_x': 'lasso_param_ll',
+             'lasso_param_y': 'lasso_param_sgd'})
+)
+optimizer_diff_df['ll_sgd_diff'] = (
+    optimizer_diff_df['aupr_x'] - optimizer_diff_df['aupr_y']
 )
 
-all_top_smallest_diff_df.head()sns.set({'figure.figsize': (8, 6)})
+optimizer_diff_df.head()
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff)
-plt.title('Differences between top and smallest LASSO parameter')
-plt.xlabel('top - smallest')
-plt.gca().axvline(0, color='grey', linestyle='--')sns.set({'figure.figsize': (8, 6)})
 
-sns.histplot(
-    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff
-)
-plt.title('Differences between top and smallest LASSO parameter, without zeroes')
-plt.xlabel('top - smallest')
-plt.gca().axvline(0, color='black', linestyle='--')all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
+# In[13]:
+
+
+sns.set({'figure.figsize': (8, 5)})
+
+sns.histplot(optimizer_diff_df.ll_sgd_diff)
+plt.title('Distribution of (liblinear - SGD) performance differences')
+plt.xlabel('AUPR(liblinear) - AUPR(SGD)')
+plt.gca().axvline(x=0, color='black', linestyle='--')
+
