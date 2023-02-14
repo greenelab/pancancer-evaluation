@@ -41,10 +41,6 @@ ll_results_dir = os.path.join(ll_base_results_dir, training_dataset)
 sgd_results_dir = os.path.join(sgd_base_results_dir, training_dataset)
 
 metric = 'aupr'
-nz_cutoff = 5.0
-
-output_plots = False
-output_plots_dir = None
 
 
 # ### Get coefficient information for each lasso penalty
@@ -144,7 +140,6 @@ sns.boxplot(
 color_boxplot_edges(axarr[1])
 axarr[1].set_title('SGD')
 
-
 plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction')
 plt.tight_layout()
 
@@ -223,8 +218,11 @@ print(plot_df.optimizer.unique())
 plot_df.head()
 
 
-# In[11]:
+# In[18]:
 
+
+sns.set({'figure.figsize': (11, 5)})
+sns.set_style('whitegrid')
 
 sns.histplot(plot_df.nz_coefs)
 for q in np.linspace(0.1, 0.9, 9):
@@ -264,8 +262,4 @@ with sns.plotting_context('notebook', font_scale=1.25):
     g.set_xlabels('Bin (increasing number of coefs)')
     g.set_ylabels(f'{metric.upper()}')
     plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, MSI prediction', y=1.05)
-
-if output_plots:
-    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
-                dpi=200, bbox_inches='tight')
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### LASSO parameter range experiments
+# ### Comparison of optimizers for LASSO parameter range experiments
+# 
+# sklearn has 2 ways to fit logistic regression models with a LASSO penalty: [LogisticRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html) (using the liblinear optimizer; i.e. coordinate descent), and [SGDClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html) (which uses stochastic gradient descent). 
+# 
+# Here, we want to compare mutation prediction results between the two optimizers, for a single gene.
 
 # In[1]:
 
@@ -42,10 +46,6 @@ sgd_results_dir = os.path.join(sgd_base_results_dir, training_dataset)
 
 plot_gene = 'EGFR'
 metric = 'aupr'
-nz_cutoff = 5.0
-
-output_plots = False
-output_plots_dir = None
 
 
 # ### Get coefficient information for each lasso penalty
@@ -149,8 +149,7 @@ sns.boxplot(
 color_boxplot_edges(axarr[1])
 axarr[1].set_title('SGD')
 
-
-plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction')
+plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene} mutation prediction')
 plt.tight_layout()
 
 
@@ -273,5 +272,5 @@ with sns.plotting_context('notebook', font_scale=1.25):
     g.set_titles('Holdout cancer type: {col_name}')
     g.set_xlabels('Bin (increasing number of coefs)')
     g.set_ylabels(f'{metric.upper()}')
-    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, MSI prediction', y=1.05)
+    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, {plot_gene} mutation prediction', y=1.05)
 

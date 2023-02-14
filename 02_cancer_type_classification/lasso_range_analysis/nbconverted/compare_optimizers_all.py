@@ -44,9 +44,7 @@ ll_results_dir = os.path.join(ll_base_results_dir, training_dataset)
 sgd_results_dir = os.path.join(sgd_base_results_dir, training_dataset)
 
 metric = 'aupr'
-
-output_plots = False
-output_plots_dir = None
+data_type = 'cv'
 
 
 # ### Get coefficient information for each lasso penalty
@@ -212,7 +210,7 @@ all_perf_df.head()
 
 # get mean AUPR values across folds/seeds
 ll_mean_aupr_df = (
-    all_perf_df[(all_perf_df.data_type == 'cv') &
+    all_perf_df[(all_perf_df.data_type == data_type) &
                 (all_perf_df.optimizer == 'liblinear')]
       .drop(columns=['data_type', 'optimizer'])
       .groupby(['gene', 'holdout_cancer_type', 'lasso_param'])
@@ -237,7 +235,7 @@ ll_max_lasso_param_df.head(8)
 
 # get mean AUPR values across folds/seeds
 sgd_mean_aupr_df = (
-    all_perf_df[(all_perf_df.data_type == 'cv') &
+    all_perf_df[(all_perf_df.data_type == data_type) &
                 (all_perf_df.optimizer == 'sgd')]
       .drop(columns=['data_type', 'optimizer'])
       .groupby(['gene', 'holdout_cancer_type', 'lasso_param'])
@@ -280,7 +278,7 @@ optimizer_diff_df.head()
 sns.set({'figure.figsize': (11, 6)})
 
 sns.histplot(optimizer_diff_df.ll_sgd_diff)
-plt.title('Distribution of (liblinear - SGD) performance differences')
+plt.title(f'Distribution of (liblinear - SGD) performance differences, {data_type} data')
 plt.xlabel('AUPR(liblinear) - AUPR(SGD)')
 plt.gca().axvline(x=0, color='black', linestyle='--')
 
@@ -303,7 +301,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
     ax = sns.boxplot(data=optimizer_diff_df, order=gene_order, x='gene', y='ll_sgd_diff')
     ax.axhline(0.0, linestyle='--', color='grey')
     plt.xticks(rotation=90)
-    plt.title('Top validation set performance difference between liblinear and SGD optimizers, per gene', y=1.02)
+    plt.title(f'Top {data_type} set performance difference between liblinear and SGD optimizers, per gene', y=1.02)
     plt.xlabel('Gene')
     plt.ylabel('AUPR(liblinear) - AUPR(SGD)')
 
