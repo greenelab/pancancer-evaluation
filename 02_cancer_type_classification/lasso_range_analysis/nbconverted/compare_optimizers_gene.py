@@ -49,6 +49,8 @@ metric = 'aupr'
 
 
 # ### Get coefficient information for each lasso penalty
+# 
+# We'll do this separately for each optimizer, and combine them later.
 
 # In[3]:
 
@@ -155,7 +157,9 @@ plt.tight_layout()
 
 # ### Get performance information for each lasso penalty
 # 
-# TODO: explain quantiles
+# Once we load the performance information for each gene/cancer type/lasso penalty, we'll join it with the feature information.
+# 
+# At the end, we'll merge the liblinear and SGD dataframes into one large dataframe, with an "optimizer" column specifying liblinear or SGD.
 
 # In[6]:
 
@@ -174,7 +178,7 @@ ll_perf_df.head()
 
 
 # add nonzero coefficient count
-ll_plot_df = (
+ll_perf_coefs_df = (
     ll_perf_df[(ll_perf_df.signal == 'signal')]
       .merge(ll_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
              right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
@@ -182,10 +186,10 @@ ll_plot_df = (
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
-ll_plot_df.lasso_param = ll_plot_df.lasso_param.astype(float)
+ll_perf_coefs_df.lasso_param = ll_perf_coefs_df.lasso_param.astype(float)
 
-print(ll_plot_df.shape)
-ll_plot_df.head()
+print(ll_perf_coefs_df.shape)
+ll_perf_coefs_df.head()
 
 
 # In[8]:
@@ -205,7 +209,7 @@ sgd_perf_df.head()
 
 
 # add nonzero coefficient count
-sgd_plot_df = (
+sgd_perf_coefs_df = (
     sgd_perf_df[(sgd_perf_df.signal == 'signal')]
       .merge(sgd_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
              right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
@@ -213,20 +217,20 @@ sgd_plot_df = (
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
-sgd_plot_df.lasso_param = sgd_plot_df.lasso_param.astype(float)
+sgd_perf_coefs_df.lasso_param = sgd_perf_coefs_df.lasso_param.astype(float)
 
-print(sgd_plot_df.shape)
-sgd_plot_df.head()
+print(sgd_perf_coefs_df.shape)
+sgd_perf_coefs_df.head()
 
 
 # In[10]:
 
 
-plot_df = pd.concat((ll_plot_df, sgd_plot_df)).reset_index(drop=True)
+all_perf_df = pd.concat((ll_perf_coefs_df, sgd_perf_coefs_df)).reset_index(drop=True)
 
-print(plot_df.shape)
-print(plot_df.optimizer.unique())
-plot_df.head()
+print(all_perf_df.shape)
+print(all_perf_df.optimizer.unique())
+all_perf_df.head()
 
 
 # In[11]:
@@ -235,23 +239,23 @@ plot_df.head()
 sns.set({'figure.figsize': (11, 5)})
 sns.set_style('whitegrid')
 
-sns.histplot(plot_df.nz_coefs)
+sns.histplot(all_perf_df.nz_coefs)
 for q in np.linspace(0.1, 0.9, 9):
-    print(f'{q:.3f}', f'{plot_df.nz_coefs.quantile(q):3f}')
-    plt.gca().axvline(x=plot_df.nz_coefs.quantile(q), color='black', linestyle=':')
+    print(f'{q:.3f}', f'{all_perf_df.nz_coefs.quantile(q):3f}')
+    plt.gca().axvline(x=all_perf_df.nz_coefs.quantile(q), color='black', linestyle=':')
 
 
 # In[12]:
 
 
-plot_df['nz_quantile'] = pd.qcut(
-    plot_df.nz_coefs,
+all_perf_df['nz_quantile'] = pd.qcut(
+    all_perf_df.nz_coefs,
     q=np.linspace(0, 1, 11),
     labels=[f'{q}' for q in range(1, 11)]
 )
 
-print(plot_df.nz_quantile.unique())
-plot_df.head()
+print(all_perf_df.nz_quantile.unique())
+all_perf_df.head()
 
 
 # In[13]:
@@ -262,7 +266,7 @@ sns.set_style('whitegrid')
 
 with sns.plotting_context('notebook', font_scale=1.25):
     g = sns.relplot(
-        data=plot_df,
+        data=all_perf_df,
         x='nz_quantile', y=metric,
         hue='data_type', hue_order=['train', 'cv', 'test'],
         style='optimizer', style_order=['liblinear', 'sgd'],
