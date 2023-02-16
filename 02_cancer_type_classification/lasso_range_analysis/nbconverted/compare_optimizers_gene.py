@@ -104,7 +104,7 @@ sgd_nz_coefs_df.lasso_param = sgd_nz_coefs_df.lasso_param.astype(float)
 sgd_nz_coefs_df.head()
 
 
-# In[5]:
+# In[8]:
 
 
 sns.set({'figure.figsize': (12, 10)})
@@ -143,6 +143,7 @@ sns.boxplot(
 )
 color_boxplot_edges(axarr[0])
 axarr[0].set_title('liblinear')
+sns.move_legend(axarr[0], "upper left", bbox_to_anchor=(1, 1))
 
 sns.boxplot(
     data=sgd_nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
@@ -150,6 +151,7 @@ sns.boxplot(
 )
 color_boxplot_edges(axarr[1])
 axarr[1].set_title('SGD')
+sns.move_legend(axarr[1], "upper left", bbox_to_anchor=(1, 1))
 
 plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene} mutation prediction')
 plt.tight_layout()

@@ -50,81 +50,11 @@ metric = 'aupr'
 data_type = 'cv'
 
 
-# ### Get coefficient information for each lasso penalty
-# 
-# We'll do this separately for each optimizer, and combine them later.
-
-# In[3]:
-
-
-# these are generated from results files pretty slowly so it helps to cache them
-ll_coefs_df_file = './ll_coefficients_df.tsv'
-
-if os.path.exists(ll_coefs_df_file):
-    print('df exists')
-    ll_nz_coefs_df = pd.read_csv(ll_coefs_df_file, sep='\t', index_col=0)
-else:
-    ll_nz_coefs_df = []
-    # get coefficient info for training dataset specified above
-    for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir):
-        (gene,
-         cancer_type,
-         seed,
-         lasso_param,
-         coefs_list) = coef_info
-        for fold_no, coefs in enumerate(coefs_list):
-            ll_nz_coefs_df.append(
-                [gene, cancer_type, lasso_param, seed, fold_no, len(coefs)]
-            )
-    ll_nz_coefs_df = pd.DataFrame(
-        ll_nz_coefs_df,
-        columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
-    )
-    ll_nz_coefs_df.lasso_param = ll_nz_coefs_df.lasso_param.astype(float)
-    ll_nz_coefs_df.to_csv(ll_coefs_df_file, sep='\t')
-                                                                  
-ll_nz_coefs_df.head()
-
-
-# In[4]:
-
-
-# these are generated from results files pretty slowly so it helps to cache them
-sgd_coefs_df_file = './sgd_coefficients_df.tsv'
-
-if os.path.exists(sgd_coefs_df_file):
-    print('df exists')
-    sgd_nz_coefs_df = pd.read_csv(sgd_coefs_df_file, sep='\t', index_col=0)
-else:
-    sgd_nz_coefs_df = []
-    # get coefficient info for training dataset specified above
-    for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir):
-        (gene,
-         cancer_type,
-         seed,
-         lasso_param,
-         coefs_list) = coef_info
-        for fold_no, coefs in enumerate(coefs_list):
-            sgd_nz_coefs_df.append(
-                [gene, cancer_type, lasso_param, seed, fold_no, len(coefs)]
-            )
-    sgd_nz_coefs_df = pd.DataFrame(
-        sgd_nz_coefs_df,
-        columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
-    )
-    sgd_nz_coefs_df.lasso_param = sgd_nz_coefs_df.lasso_param.astype(float)
-    sgd_nz_coefs_df.to_csv(sgd_coefs_df_file, sep='\t')
-                                                                  
-sgd_nz_coefs_df.head()
-
-
 # ### Get performance information for each lasso penalty
 # 
-# Once we load the performance information for each gene/cancer type/lasso penalty, we'll join it with the feature information.
-# 
-# At the end, we'll merge the liblinear and SGD dataframes into one large dataframe, with an "optimizer" column specifying liblinear or SGD.
+# Load the performance information for each gene/cancer type/lasso penalty, then merge the liblinear and SGD dataframes into one large dataframe, with an "optimizer" column specifying liblinear or SGD.
 
-# In[5]:
+# In[3]:
 
 
 # load performance information
@@ -143,16 +73,12 @@ else:
 ll_perf_df.head()
 
 
-# In[6]:
+# In[4]:
 
 
 # add nonzero coefficient count
 ll_perf_coefs_df = (
     ll_perf_df[(ll_perf_df.signal == 'signal')]
-      .merge(ll_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
-             right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
-      .drop(columns=['cancer_type', 'gene_y'])
-      .rename(columns={'gene_x': 'gene'})
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
@@ -162,7 +88,7 @@ print(ll_perf_coefs_df.shape)
 ll_perf_coefs_df.head()
 
 
-# In[7]:
+# In[5]:
 
 
 # load performance information
@@ -181,16 +107,12 @@ else:
 sgd_perf_df.head()
 
 
-# In[8]:
+# In[6]:
 
 
 # add nonzero coefficient count
 sgd_perf_coefs_df = (
     sgd_perf_df[(sgd_perf_df.signal == 'signal')]
-      .merge(sgd_nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
-             right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
-      .drop(columns=['cancer_type', 'gene_y'])
-      .rename(columns={'gene_x': 'gene'})
       .sort_values(by=['holdout_cancer_type', 'lasso_param'])
       .reset_index(drop=True)
 )
@@ -200,7 +122,7 @@ print(sgd_perf_coefs_df.shape)
 sgd_perf_coefs_df.head()
 
 
-# In[9]:
+# In[7]:
 
 
 all_perf_df = pd.concat((ll_perf_coefs_df, sgd_perf_coefs_df)).reset_index(drop=True)
@@ -214,7 +136,7 @@ all_perf_df.head()
 # 
 # We'll do this for both CV (validation) datasets and test (holdout cancer type) datasets.
 
-# In[10]:
+# In[8]:
 
 
 # get mean AUPR values across folds/seeds
@@ -225,7 +147,7 @@ ll_mean_aupr_df = (
       .groupby(['gene', 'holdout_cancer_type', 'lasso_param'])
       .agg(np.mean)
       .reset_index()
-      .drop(columns=['seed', 'fold', 'auroc', 'nz_coefs'])
+      .drop(columns=['seed', 'fold', 'auroc'])
 )
 
 # get best LASSO parameter by mean AUPR, across all the ones we tried for this optimizer
@@ -239,7 +161,7 @@ print(ll_max_lasso_param_df.shape)
 ll_max_lasso_param_df.head(8)
 
 
-# In[11]:
+# In[9]:
 
 
 # get mean AUPR values across folds/seeds
@@ -250,7 +172,7 @@ sgd_mean_aupr_df = (
       .groupby(['gene', 'holdout_cancer_type', 'lasso_param'])
       .agg(np.mean)
       .reset_index()
-      .drop(columns=['seed', 'fold', 'auroc', 'nz_coefs'])
+      .drop(columns=['seed', 'fold', 'auroc'])
 )
 
 # get best LASSO parameter by mean AUPR, across all the ones we tried for this optimizer
@@ -264,7 +186,7 @@ print(sgd_max_lasso_param_df.shape)
 sgd_max_lasso_param_df.head(8)
 
 
-# In[12]:
+# In[10]:
 
 
 optimizer_diff_df = (ll_max_lasso_param_df
@@ -281,7 +203,7 @@ optimizer_diff_df['ll_sgd_diff'] = (
 optimizer_diff_df.head()
 
 
-# In[13]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (11, 6)})
@@ -292,7 +214,7 @@ plt.xlabel('AUPR(liblinear) - AUPR(SGD)')
 plt.gca().axvline(x=0, color='black', linestyle='--')
 
 
-# In[14]:
+# In[12]:
 
 
 # plot test performance vs. number of nonzero features
@@ -310,9 +232,11 @@ with sns.plotting_context('notebook', font_scale=1.5):
     ax = sns.boxplot(data=optimizer_diff_df, order=gene_order, x='gene', y='ll_sgd_diff')
     ax.axhline(0.0, linestyle='--', color='grey')
     plt.xticks(rotation=90)
-    plt.title(f'Top {data_type} set performance difference between liblinear and SGD optimizers, per gene', y=1.02)
+    plt.title(f'Top {data_type} dataset performance difference between liblinear and SGD optimizers, per gene', y=1.02)
     plt.xlabel('Gene')
     plt.ylabel('AUPR(liblinear) - AUPR(SGD)')
 
 
+# We can look at the above plot both for "cv" which is the validation set with the same cancer types as the training data, and "test" which is the test/held out cancer type. Then the boxes are the median/IQR performance over all held-out cancer types and all CV folds for that gene. The "top performing" part of the plot refers to the LASSO parameters; we take the top-performing parameter for each optimizer in each gene/cancer type.
+# 
 # In general, it looks like the difference is positive (liblinear optimizer has better best-case performance) for almost every gene, especially in the validation set that has the same cancer type composition as the training data. The differences are less skewed to the positive side in the held-out cancer types, but still mostly positive or around zero, very rarely negative (which would indicate better SGD performance).

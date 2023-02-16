@@ -108,6 +108,7 @@ for legpatch in ax.legend_.get_patches():
     legpatch.set_edgecolor(col)
     legpatch.set_facecolor('None')
 
+sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
 plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
 plt.tight_layout()
 
@@ -180,9 +181,14 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# ### Compare feature selection with performance
+# ### Visualize "best" LASSO parameters for the given gene
 # 
-# TODO: this needs to be documented
+# We want to use two different strategies to pick the "best" LASSO parameter:
+# 
+# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "parsimonious" approach that assumes that smaller models will generalize better.
+# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "non-parsimonious" approach.
+# 
+# We'll plot the results of both strategies (which sometimes select the same parameter, but usually they're different) for the given gene below.
 
 # In[8]:
 

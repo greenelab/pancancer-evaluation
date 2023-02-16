@@ -132,6 +132,7 @@ sns.boxplot(
 )
 color_boxplot_edges(axarr[0])
 axarr[0].set_title('liblinear')
+sns.move_legend(axarr[0], "upper left", bbox_to_anchor=(1, 1))
 
 sns.boxplot(
     data=sgd_nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
@@ -139,6 +140,7 @@ sns.boxplot(
 )
 color_boxplot_edges(axarr[1])
 axarr[1].set_title('SGD')
+sns.move_legend(axarr[1], "upper left", bbox_to_anchor=(1, 1))
 
 plt.suptitle(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction')
 plt.tight_layout()
@@ -218,7 +220,7 @@ print(plot_df.optimizer.unique())
 plot_df.head()
 
 
-# In[18]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (11, 5)})
@@ -243,7 +245,7 @@ print(plot_df.nz_quantile.unique())
 plot_df.head()
 
 
-# In[14]:
+# In[13]:
 
 
 # compare optimizers for MSI prediction on the same plot

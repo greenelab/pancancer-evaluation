@@ -127,6 +127,15 @@ if quantile_cutoff is not None:
 coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 
 
+# ### Get "best" LASSO parameters and compare performance across all genes
+# 
+# We want to use two different strategies to pick the "best" LASSO parameter:
+# 
+# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "parsimonious" approach that assumes that smaller models will generalize better.
+# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "non-parsimonious" approach.
+# 
+# We'll do this for each gene/cancer type in the dataset below, and plot the distribution of differences between the two strategies, as a way to quantify which strategy is "better" for generalization across cancer types.
+
 # In[7]:
 
 
