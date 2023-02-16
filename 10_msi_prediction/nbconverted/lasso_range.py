@@ -105,6 +105,7 @@ for legpatch in ax.legend_.get_patches():
     legpatch.set_edgecolor(col)
     legpatch.set_facecolor('None')
 
+sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
 plt.title(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction')
 plt.tight_layout()
 
