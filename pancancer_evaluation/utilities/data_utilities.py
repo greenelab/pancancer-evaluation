@@ -418,6 +418,31 @@ def _load_msi_cancer_type(cancer_type):
                        sep='\t', index_col=0)
 
 
+def merge_features(tcga_data_model, ccle_data_model):
+    """Merge expression features between TCGA and CCLE."""
+    # use entrez id for ccle columns
+    ccle_data_model.rnaseq_df.columns = (
+        ccle_data_model.rnaseq_df.columns.str.split(' ', expand=True)
+          .get_level_values(1)
+          .str.replace(r'[()]', '')
+    )
+    # select columns in common to both datasets
+    merge_columns = tcga_data_model.rnaseq_df.columns.intersection(
+        ccle_data_model.rnaseq_df.columns)
+    tcga_data_model.rnaseq_df = (
+        tcga_data_model.rnaseq_df.loc[:, merge_columns].copy()
+    )
+    ccle_data_model.rnaseq_df = (ccle_data_model.rnaseq_df
+          .loc[:, merge_columns]
+    )
+    # remove duplicate entrez ids from CCLE data, just take the first one
+    ccle_data_model.rnaseq_df = (ccle_data_model.rnaseq_df
+          .loc[:, ~ccle_data_model.rnaseq_df.columns.duplicated()]
+          .copy()
+    )
+    return tcga_data_model, ccle_data_model
+
+
 def split_stratified(rnaseq_df, sample_info_df, num_folds=4, fold_no=1,
                      seed=cfg.default_seed):
     """Split expression data into train and test sets.
