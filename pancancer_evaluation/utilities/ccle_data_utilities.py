@@ -82,10 +82,15 @@ def drop_liquid_samples(drug_df, sample_info_df):
     )
 
 
-def load_mutation_data(verbose=False):
+def load_pancancer_data(verbose=False):
     if verbose:
         print('Loading CCLE mutation data...', file=sys.stderr)
-    return pd.read_csv(cfg.ccle_mutation_binary, index_col='DepMap_ID')
+    return (
+        pd.read_csv(cfg.ccle_mutation_binary, index_col='DepMap_ID'),
+        pd.read_csv(cfg.ccle_cnv_gain, sep='\t', index_col=0),
+        pd.read_csv(cfg.ccle_cnv_loss, sep='\t', index_col=0),
+        pd.read_csv(cfg.ccle_mutation_burden, index_col=0)
+    )
 
 
 def load_drug_response_data(verbose=False, predictor='classify'):

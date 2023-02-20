@@ -422,7 +422,7 @@ def merge_features(tcga_data_model, ccle_data_model):
     """Merge expression features between TCGA and CCLE."""
     # use entrez id for ccle columns
     ccle_data_model.rnaseq_df.columns = (
-        ccle_data_model.rnaseq_df.columns.str.split(' ', expand=True)
+        ccle_data_model.rnaseq_df.columns.str.split(' ', regex=False, expand=True)
           .get_level_values(1)
           .str.replace(r'[()]', '')
     )

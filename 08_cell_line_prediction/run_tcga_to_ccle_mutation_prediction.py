@@ -110,13 +110,41 @@ if __name__ == '__main__':
                               seed=args.seed,
                               verbose=args.verbose)
 
-    print(tcga_data.rnaseq_df.shape, ccle_data.rnaseq_df.shape)
-    print(tcga_data.mutation_df.shape, ccle_data.mutation_df.shape)
-
     if args.verbose:
         print('Merging features between TCGA and CCLE expression data...')
     tcga_data, ccle_data = merge_features(tcga_data, ccle_data)
 
-    print(tcga_data.rnaseq_df.shape, ccle_data.rnaseq_df.shape)
-    print(tcga_data.rnaseq_df.head())
-    print(ccle_data.rnaseq_df.head())
+    genes_df = load_custom_genes(args.genes)
+
+    print('shuffle_labels: {}'.format(args.shuffle_labels))
+
+    outer_progress = tqdm(genes_df.iterrows(),
+                          total=genes_df.shape[0],
+                          ncols=100,
+                          file=sys.stdout)
+
+    for gene_idx, gene_series in outer_progress:
+        gene = gene_series.gene
+        classification = gene_series.classification
+        outer_progress.set_description('gene: {}'.format(gene))
+
+        gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
+        tcga_data.process_data_for_gene(
+            gene,
+            classification,
+            gene_dir,
+            add_cancertype_covariate=False
+        )
+        ccle_data.process_data_for_gene(
+            gene,
+            classification,
+            gene_dir,
+            add_cancertype_covariate=False
+        )
+        print(tcga_data.X_df.shape, tcga_data.y_df.shape)
+        print(ccle_data.X_df.shape, ccle_data.y_df.shape)
+        print(tcga_data.y_df.head())
+        print(ccle_data.y_df.head())
+        print(tcga_data.y_df.status.value_counts())
+        print(ccle_data.y_df.status.value_counts())
+

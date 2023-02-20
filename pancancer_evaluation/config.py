@@ -24,6 +24,7 @@ num_features_raw = 8000
 
 # hyperparameters for classification experiments
 shuffle_by_cancer_type = True
+hyper_filter = 2
 filter_prop = 0.05
 filter_count = 15
 folds = 3

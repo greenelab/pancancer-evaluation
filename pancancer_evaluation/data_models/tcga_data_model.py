@@ -587,7 +587,7 @@ class TCGADataModel():
             filter_count=cfg.filter_count,
             filter_prop=cfg.filter_prop,
             output_directory=gene_dir,
-            hyper_filter=5,
+            hyper_filter=cfg.hyper_filter,
             test=self.test
         )
         return y_df
