@@ -145,6 +145,6 @@ if __name__ == '__main__':
         print(ccle_data.X_df.shape, ccle_data.y_df.shape)
         print(tcga_data.y_df.head())
         print(ccle_data.y_df.head())
-        print(tcga_data.y_df.status.value_counts())
-        print(ccle_data.y_df.status.value_counts())
+
+        fu.save_label_counts(gene_dir, gene, tcga_data, ccle_data)
 

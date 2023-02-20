@@ -309,6 +309,25 @@ def write_counts_file(counts_df, counts_file):
         counts_df.to_csv(counts_file, mode='a', sep='\t')
 
 
+def save_label_counts(results_dir, gene, tcga_data, ccle_data):
+    tcga_counts = pd.DataFrame(
+        pd.DataFrame(tcga_data.y_df.status.value_counts())
+          .reset_index()
+          .rename(columns={'index': 'label', 'status': 'count'})
+    )
+    ccle_counts = (
+        pd.DataFrame(ccle_data.y_df.status.value_counts())
+          .reset_index()
+          .rename(columns={'index': 'label', 'status': 'count'})
+    )
+    tcga_counts.to_csv(
+        Path(results_dir, '{}_tcga_label_counts.tsv'.format(gene)), sep='\t'
+    )
+    ccle_counts.to_csv(
+        Path(results_dir, '{}_ccle_label_counts.tsv'.format(gene)), sep='\t'
+    )
+
+
 def make_gene_dir(results_dir,
                   gene,
                   dirname='gene',
