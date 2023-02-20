@@ -254,6 +254,6 @@ class CCLEDataModel():
             x_file_or_df=rnaseq_df,
             y=y_df,
             add_cancertype_covariate=add_cancertype_covariate,
-            add_mutation_covariate=False
+            add_mutation_covariate=True
         )
         return rnaseq_df, y_df, gene_features

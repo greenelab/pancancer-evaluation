@@ -20,7 +20,7 @@ from pancancer_evaluation.exceptions import (
     OneClassError,
     ResultsFileExistsError
 )
-# from pancancer_evaluation.utilities.classify_utilities import run_cv_cancer_type
+from pancancer_evaluation.utilities.classify_utilities import run_cv_tcga_ccle
 import pancancer_evaluation.utilities.ccle_data_utilities as cdu
 import pancancer_evaluation.utilities.data_utilities as tdu
 from pancancer_evaluation.utilities.data_utilities import (
@@ -83,7 +83,6 @@ if __name__ == '__main__':
     # create empty log file if it doesn't exist
     log_columns = [
         'gene',
-        'training_samples',
         'shuffle_labels',
         'skip_reason'
     ]
@@ -128,23 +127,89 @@ if __name__ == '__main__':
         classification = gene_series.classification
         outer_progress.set_description('gene: {}'.format(gene))
 
-        gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
-        tcga_data.process_data_for_gene(
-            gene,
-            classification,
-            gene_dir,
-            add_cancertype_covariate=False
-        )
-        ccle_data.process_data_for_gene(
-            gene,
-            classification,
-            gene_dir,
-            add_cancertype_covariate=False
-        )
-        print(tcga_data.X_df.shape, tcga_data.y_df.shape)
-        print(ccle_data.X_df.shape, ccle_data.y_df.shape)
-        print(tcga_data.y_df.head())
-        print(ccle_data.y_df.head())
+        try:
+            gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
+            check_file = fu.check_gene_file(gene_dir,
+                                            gene,
+                                            args.shuffle_labels,
+                                            args.seed,
+                                            args.feature_selection,
+                                            args.num_features,
+                                            args.lasso_penalty)
+            tcga_data.process_data_for_gene(
+                gene,
+                classification,
+                gene_dir,
+                add_cancertype_covariate=False
+            )
+            ccle_data.process_data_for_gene(
+                gene,
+                classification,
+                gene_dir,
+                add_cancertype_covariate=False
+            )
+            fu.save_label_counts(gene_dir, gene, tcga_data, ccle_data)
+        except ResultsFileExistsError:
+            # this happens if cross-validation for this gene has already been
+            # run (i.e. the results file already exists)
+            if args.verbose:
+                print('Skipping because results file exists already: gene {}'.format(
+                    gene), file=sys.stderr)
+            gene_log_df = fu.generate_log_df(
+                log_columns,
+                [gene, args.shuffle_labels, 'file_exists']
+            )
+            fu.write_log_file(gene_log_df, args.log_file)
+            continue
+        except KeyError:
+            # this might happen if the given gene isn't in the mutation data
+            # (or has a different alias)
+            print('Gene {} not found in mutation data, skipping'.format(gene),
+                  file=sys.stderr)
+            gene_log_df = fu.generate_log_df(
+                log_columns,
+                [gene, args.shuffle_labels, 'gene_not_found']
+            )
+            fu.write_log_file(gene_log_df, args.log_file)
+            continue
 
-        fu.save_label_counts(gene_dir, gene, tcga_data, ccle_data)
+        try:
+            results = run_cv_tcga_ccle(tcga_data,
+                                       ccle_data,
+                                       gene,
+                                       args.num_folds,
+                                       args.shuffle_labels,
+                                       lasso=True,
+                                       lasso_penalty=args.lasso_penalty)
+        except NoTestSamplesError:
+            if args.verbose:
+                print('Skipping due to no test samples: gene {}'.format(
+                    gene), file=sys.stderr)
+            gene_log_df = fu.generate_log_df(
+                log_columns,
+                [gene, args.shuffle_labels, 'no_test_samples']
+            )
+        except OneClassError:
+            if args.verbose:
+                print('Skipping due to one holdout class: gene {}'.format(
+                    gene), file=sys.stderr)
+            gene_log_df = fu.generate_log_df(
+                log_columns,
+                [gene, args.shuffle_labels, 'one_class']
+            )
+        else:
+            # only save results if no exceptions
+            fu.save_results_lasso_penalty(gene_dir,
+                                          check_file,
+                                          results,
+                                          gene,
+                                          None,
+                                          args.shuffle_labels,
+                                          args.seed,
+                                          args.feature_selection,
+                                          args.num_features,
+                                          args.lasso_penalty)
+
+        if gene_log_df is not None:
+            fu.write_log_file(gene_log_df, args.log_file)
 
