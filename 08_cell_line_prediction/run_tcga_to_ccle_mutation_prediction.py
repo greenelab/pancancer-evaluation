@@ -126,6 +126,7 @@ if __name__ == '__main__':
         gene = gene_series.gene
         classification = gene_series.classification
         outer_progress.set_description('gene: {}'.format(gene))
+        gene_log_df = None
 
         try:
             gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
