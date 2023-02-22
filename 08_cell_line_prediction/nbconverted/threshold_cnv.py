@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ### Threshold CCLE CNV log-ratios into binary gain/loss calls
+
 # In[1]:
 
 
@@ -48,10 +50,14 @@ g.set_yscale('log')
 # In[4]:
 
 
-# log_2(5/2)
+# we're using both of these just as rough thresholds that seem to work well
+# (i.e. give a decent number of samples labeled as 0/1), since observed
+# log-ratios are dependent on tumor purity even in full CN gain/loss situations
+
+# log_2(5/2) = log_2(1 + 3/2), or a full copy gain
 gain_threshold = 1.322
 
-# log_2(3/2)
+# log_2(3/2) = log_2(1 + 1/2), or a full copy loss
 loss_threshold = 0.585
 
 copy_loss_df = (ccle_cnv_df
@@ -92,7 +98,7 @@ copy_gain_df = (ccle_cnv_df
     .astype(int)
 )
 
-# just use gene symbols as column names
+# get rid of entrez IDs and just use gene symbols as column names 
 copy_gain_df.columns = copy_gain_df.columns.str.split(' ', expand=True).get_level_values(0)
 
 print(np.unique(copy_gain_df.values.flatten(), return_counts=True))

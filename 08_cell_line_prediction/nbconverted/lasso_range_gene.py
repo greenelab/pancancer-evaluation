@@ -2,6 +2,10 @@
 # coding: utf-8
 
 # ### TCGA to CCLE mutation prediction: LASSO parameter range experiments
+# 
+# Here, we're interested in training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines). This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
+# 
+# This script plots the detailed results of varying regularization strength (LASSO parameter) for a single gene.
 
 # In[1]:
 
@@ -34,8 +38,6 @@ results_dir = os.path.join(
 
 plot_gene = 'KRAS'
 metric = 'aupr'
-
-output_plots = False
 
 
 # ### Get coefficient information for each lasso penalty
@@ -140,10 +142,10 @@ if output_plots:
 # In[7]:
 
 
-# try with a float-valued x-axis
-# this is probably more "correct" than treating each lasso parameter as a
-# category (above plot); here the spaces between parameters reflect their
-# actual real-valued distance in log-space
+# plot LASSO parameter vs. AUPR, for all 3 datasets
+# "train" = data used to train model
+# "cv" = validation set from TCGA (not used to train model)
+# "test" = CCLE data (not used to train model)
 sns.set({'figure.figsize': (8, 5)})
 sns.set_style('ticks')
 

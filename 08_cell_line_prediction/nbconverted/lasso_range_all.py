@@ -2,6 +2,10 @@
 # coding: utf-8
 
 # ### TCGA to CCLE mutation prediction: LASSO parameter range experiments, summary across all genes
+# 
+# Here, we're interested in training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines). This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
+# 
+# This script plots the summarized results of varying regularization strength (LASSO parameter) across all genes in our cancer driver gene set.
 
 # In[1]:
 
