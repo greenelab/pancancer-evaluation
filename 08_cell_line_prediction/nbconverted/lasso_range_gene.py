@@ -32,7 +32,7 @@ results_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
 )
 
-plot_gene = 'NF1'
+plot_gene = 'KRAS'
 metric = 'aupr'
 
 output_plots = False
@@ -165,9 +165,12 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_title('Holdout cancer type: {col_name}')
     g.set_xlabel('LASSO parameter (higher = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
+    
+    ax = plt.gca()
     legend_handles, legend_labels = ax.get_legend_handles_labels()
     ax.legend(legend_handles, legend_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1))
+    
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
 
 

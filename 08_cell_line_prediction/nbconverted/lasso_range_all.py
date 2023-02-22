@@ -180,27 +180,30 @@ all_top_smallest_diff_df = pd.DataFrame(
 all_top_smallest_diff_df.head()
 
 
-# In[9]:
+# In[20]:
 
 
 sns.set({'figure.figsize': (8, 6)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff)
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=19)
+plt.xlim(-0.2, 0.2)
 plt.title('Differences between top and smallest LASSO parameter')
 plt.xlabel('top - smallest')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
-# In[10]:
+# In[19]:
 
 
 sns.set({'figure.figsize': (8, 6)})
 sns.set_style('whitegrid')
 
 sns.histplot(
-    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff
+    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
+    bins=19
 )
+plt.xlim(-0.2, 0.2)
 plt.title('Differences between top and smallest LASSO parameter, without zeroes')
 plt.xlabel('top - smallest')
 plt.gca().axvline(0, color='black', linestyle='--')
