@@ -32,7 +32,7 @@ results_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
 )
 
-plot_gene = 'CDKN2A'
+plot_gene = 'NF1'
 metric = 'aupr'
 
 output_plots = False
@@ -159,6 +159,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
+        marker='o'
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_title('Holdout cancer type: {col_name}')
@@ -267,10 +268,4 @@ with sns.plotting_context('notebook', font_scale=1.6):
     ax.legend(legend_handles, legend_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
-
-
-# In[ ]:
-
-
-
 
