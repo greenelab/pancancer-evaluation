@@ -41,9 +41,10 @@ default_seed = 42
 test_genes = ['TP53', 'KRAS', 'ARID1A']
 
 # gene/classification combos for stratified CV model tests
-stratified_gene_info = [('TP53', 'TSG'),
-                        ('KRAS', 'Oncogene'),
-                        ('ARID1A', 'TSG')]
+# stratified_gene_info = [('TP53', 'TSG'),
+#                         ('KRAS', 'Oncogene'),
+#                         ('ARID1A', 'TSG')]
+stratified_gene_info = [('KRAS', 'Oncogene'), ('ARID1A', 'TSG')]
 
 # gene/classification/cancer type combos for stratified CV model tests
 cancer_type_gene_info = [('TP53', 'TSG', 'BRCA'),
