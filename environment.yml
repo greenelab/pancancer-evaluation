@@ -8,7 +8,7 @@ dependencies:
   - jupyter_core=4.10.0
   - matplotlib=3.5.1
   - matplotlib-venn=0.11.5
-  - numpy=1.19.2
+  - numpy=1.21.6
   - pandas=1.4.3
   - papermill=2.3.4
   - pytest=7.1.2
