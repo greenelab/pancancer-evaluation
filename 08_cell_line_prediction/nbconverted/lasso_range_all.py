@@ -83,7 +83,7 @@ print(perf_df.gene.unique())
 perf_df.head()
 
 
-# ### Compare feature selection with performance
+# ### Distribution of model sizes (number of nonzero coefficients)
 
 # In[5]:
 
@@ -105,7 +105,7 @@ sns.set({'figure.figsize': (8, 6)})
 
 sns.histplot(coefs_perf_df.nz_coefs)
 plt.title('Distribution of feature count across cancer types/folds')
-plt.xlabel('Number of nonzero features')
+plt.xlabel('Number of nonzero coefficients')
 
 
 # ### Get "best" LASSO parameters and compare performance across all genes
@@ -184,7 +184,7 @@ all_top_smallest_diff_df = pd.DataFrame(
 all_top_smallest_diff_df.head()
 
 
-# In[20]:
+# In[9]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -197,7 +197,7 @@ plt.xlabel('top - smallest')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
-# In[19]:
+# In[10]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -225,14 +225,11 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).he
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
 
 
-# ### Which genes/mutations are "hard to predict"
+# ### Compare TCGA and CCLE performance for each gene
 # 
-# We want to identify genes for which:
+# Given the "best" LASSO parameter (in terms of validation performance) for each gene, we want to look at relative performance on the TCGA validation set and on the held-out CCLE data.
 # 
-# * We can't predict mutation status at all ("cv" performance is poor)
-# * We can predict mutation status well within TCGA, but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor)
-# 
-# For now, we'll just take the "best" model (by validation performance) for these analyses, we could do it with the "smallest" model too but the results will probably be similar.
+# We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
 # In[13]:
 
@@ -240,7 +237,7 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).hea
 cv_perf_df = (
     perf_df[(perf_df.data_type == 'cv') &
             (perf_df.signal == 'signal')]
-      .drop(columns=['experiment', 'data_type', 'signal'])
+      .drop(columns=['experiment', 'signal'])
 ).copy()
 cv_perf_df.lasso_param = cv_perf_df.lasso_param.astype(float)
 
@@ -254,7 +251,7 @@ cv_perf_df.head()
 test_perf_df = (
     perf_df[(perf_df.data_type == 'test') &
             (perf_df.signal == 'signal')]
-      .drop(columns=['experiment', 'data_type', 'signal'])
+      .drop(columns=['experiment', 'signal'])
 ).copy()
 test_perf_df.lasso_param = test_perf_df.lasso_param.astype(float)
 
@@ -265,6 +262,7 @@ test_perf_df.head()
 # In[15]:
 
 
+# TODO: describe what is this doing
 best_perf_df = (
     all_top_smallest_diff_df.loc[:, ['gene', 'top_lasso_param']]
       .merge(cv_perf_df,
@@ -292,6 +290,64 @@ best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
 # In[16]:
+
+
+plot_df = (best_perf_df
+    .drop(columns=['cv_test_auroc_diff', 'cv_test_aupr_diff', 'cv_auroc', 'test_auroc'])
+    .melt(id_vars=['gene', 'top_lasso_param', 'seed', 'fold'],
+          value_vars=['cv_aupr', 'test_aupr'],
+          var_name=['dataset_metric'])
+)
+plot_df.head()
+
+
+# In[17]:
+
+
+# plot cv/test performance distribution for each gene
+sns.set({'figure.figsize': (28, 10)})
+sns.set_style('ticks')
+
+fig, axarr = plt.subplots(2, 1)
+
+# order boxes by median of cv/test performance per gene
+cv_gene_order = (plot_df[plot_df.dataset_metric == 'cv_aupr']
+    .groupby(['gene', 'top_lasso_param'])
+    .agg(np.median)
+    .sort_values(by='value', ascending=False)
+).index.get_level_values(0).values
+
+# order boxes by median of cv/test performance per gene
+test_gene_order = (plot_df[plot_df.dataset_metric == 'test_aupr']
+    .groupby(['gene', 'top_lasso_param'])
+    .agg(np.median)
+    .sort_values(by='value', ascending=False)
+).index.get_level_values(0).values
+
+with sns.plotting_context('notebook', font_scale=1.5):
+    sns.boxplot(data=plot_df, order=cv_gene_order,
+                x='gene', y='value', hue='dataset_metric', ax=axarr[0])
+    axarr[0].axhline(0.0, linestyle='--', color='grey')
+    axarr[0].tick_params(axis='x', rotation=90, labelsize=16)
+    axarr[0].tick_params(axis='y', labelsize=16)
+    axarr[0].set_xlabel('Gene (sorted by validation set performance)', size=18)
+    axarr[0].set_ylabel('AUPR', size=18)
+    
+    sns.boxplot(data=plot_df, order=test_gene_order,
+                x='gene', y='value', hue='dataset_metric', ax=axarr[1])
+    axarr[1].legend([], [], frameon=False)
+    axarr[1].axhline(0.0, linestyle='--', color='grey')
+    axarr[1].tick_params(axis='x', rotation=90, labelsize=16)
+    axarr[1].tick_params(axis='y', labelsize=16)
+    axarr[1].set_xlabel('Gene (sorted by test set performance)', size=18)
+    axarr[1].set_ylabel('AUPR', size=18)
+    
+    plt.suptitle(f'Mutation prediction performance on validation/test sets, by gene', y=1.0025)
+    
+plt.tight_layout()
+
+
+# In[18]:
 
 
 # plot test performance vs. number of nonzero features
