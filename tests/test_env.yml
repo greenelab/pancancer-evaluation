@@ -3,9 +3,9 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - numpy
+  - numpy=1.19.2
   - pandas=1.4.3
-  - pytest
-  - python
+  - pytest=7.1.2
+  - python=3.8.13
   - scikit-learn=1.1.1
 
