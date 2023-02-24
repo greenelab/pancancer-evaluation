@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python=3.9.15
   - numpy=1.19.2
   - pandas=1.4.3
   - pytest=7.1.2
