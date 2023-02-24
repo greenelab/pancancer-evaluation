@@ -435,7 +435,9 @@ def merge_features(tcga_data_model, ccle_data_model):
     ccle_data_model.rnaseq_df = (ccle_data_model.rnaseq_df
           .loc[:, merge_columns]
     )
-    # remove duplicate entrez ids from CCLE data, just take the first one
+    # remove duplicate entrez ids from CCLE data, some map to multiple symbols
+    # just take the first one, there aren't many duplicates so it shouldn't
+    # matter too much
     ccle_data_model.rnaseq_df = (ccle_data_model.rnaseq_df
           .loc[:, ~ccle_data_model.rnaseq_df.columns.duplicated()]
           .copy()

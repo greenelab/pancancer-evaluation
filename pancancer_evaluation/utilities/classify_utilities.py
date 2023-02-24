@@ -559,8 +559,18 @@ def run_cv_tcga_ccle(tcga_data,
                      shuffle_labels,
                      lasso=False,
                      lasso_penalty=None):
-    """TODO document"""
+    """Train a model on TCGA data, and test on CCLE data.
 
+    Arguments
+    ---------
+    tcga_data (TCGADataModel): class containing preprocessed TCGA data
+    ccle_data (CCLEDataModel): class containing preprocessed CCLE data
+    identifier (str): identifier to run experiments for
+    num_folds (int): number of cross-validation folds to run
+    shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    lasso (bool): use LASSO with a specified penalty rather than elastic net
+    lasso_penalty (float): LASSO regularization penalty
+    """
     results = {
         'gene_metrics': [],
         'gene_auc': [],
@@ -571,7 +581,7 @@ def run_cv_tcga_ccle(tcga_data,
 
     # the "folds" here refer to choosing different validation datasets,
     # the test dataset is the same (all valid CCLE cell lines)
-    # validation splitting happens in the lasso code
+    # the validation splitting happens in the LASSO code
     for fold_no in range(num_folds):
 
         # train on TCGA data, test on CCLE data
@@ -604,7 +614,8 @@ def run_cv_tcga_ccle(tcga_data,
         X_train_df, X_test_df = tu.preprocess_data(
             X_train_raw_df,
             X_test_raw_df,
-            tcga_data.gene_features, # gene_features should be the same
+            # gene_features should be the same for TCGA and CCLE
+            tcga_data.gene_features,
             y_df=y_train_df,
             feature_selection=tcga_data.feature_selection,
             num_features=tcga_data.num_features,
@@ -613,7 +624,6 @@ def run_cv_tcga_ccle(tcga_data,
         )
 
         try:
-        # also ignore warnings here, same deal as above
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
@@ -651,7 +661,6 @@ def run_cv_tcga_ccle(tcga_data,
         coef_df = coef_df.assign(fold=fold_no)
 
         try:
-            # also ignore warnings here, same deal as above
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(

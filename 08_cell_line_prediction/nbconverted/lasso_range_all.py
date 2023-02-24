@@ -262,7 +262,8 @@ test_perf_df.head()
 # In[15]:
 
 
-# TODO: describe what is this doing
+# get performance using "best" lasso parameter, across all seeds and folds
+# (so we can plot the distribution/visualize the variance across CV splits)
 best_perf_df = (
     all_top_smallest_diff_df.loc[:, ['gene', 'top_lasso_param']]
       .merge(cv_perf_df,
@@ -310,14 +311,14 @@ sns.set_style('ticks')
 
 fig, axarr = plt.subplots(2, 1)
 
-# order boxes by median of cv/test performance per gene
+# order boxes by cv performance per gene
 cv_gene_order = (plot_df[plot_df.dataset_metric == 'cv_aupr']
     .groupby(['gene', 'top_lasso_param'])
     .agg(np.median)
     .sort_values(by='value', ascending=False)
 ).index.get_level_values(0).values
 
-# order boxes by median of cv/test performance per gene
+# order boxes by test performance per gene
 test_gene_order = (plot_df[plot_df.dataset_metric == 'test_aupr']
     .groupby(['gene', 'top_lasso_param'])
     .agg(np.median)
@@ -350,11 +351,11 @@ plt.tight_layout()
 # In[18]:
 
 
-# plot test performance vs. number of nonzero features
+# plot difference in validation and test performance for each gene
 sns.set({'figure.figsize': (28, 6)})
 sns.set_style('ticks')
 
-# order boxes by median diff per gene
+# order boxes by median (cv - test) diff per gene
 gene_order = (best_perf_df
     .groupby(['gene', 'top_lasso_param'])
     .agg(np.median)
