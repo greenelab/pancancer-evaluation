@@ -30,9 +30,10 @@ lasso_penalties=(
   "1000"
 )
 
+# just run these genes locally, can run the rest on the cluster
 genes=(
-  # "KRAS"
-  # "TP53"
+  "KRAS"
+  "TP53"
   "EGFR"
   "ERBB2"
   "SETD2"

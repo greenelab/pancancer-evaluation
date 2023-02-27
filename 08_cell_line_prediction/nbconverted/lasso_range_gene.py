@@ -36,7 +36,7 @@ results_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
 )
 
-plot_gene = 'KRAS'
+plot_gene = 'RB1'
 metric = 'aupr'
 
 
@@ -132,11 +132,6 @@ sns.boxplot(
 )
 plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
 plt.tight_layout()
-
-if output_plots:
-    output_plots_dir.mkdir(exist_ok=True)
-    plt.savefig(output_plots_dir / f'{plot_gene}_lasso_boxes.png',
-                dpi=200, bbox_inches='tight')
 
 
 # In[7]:
