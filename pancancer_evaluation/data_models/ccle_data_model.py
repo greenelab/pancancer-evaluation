@@ -143,7 +143,11 @@ class CCLEDataModel():
             self.sample_info_df = sample_info
 
         if labels == 'mutation':
-            self.mutation_df = du.load_mutation_data(verbose=self.verbose)
+            pancan_data = du.load_pancancer_data(verbose=self.verbose)
+            (self.mutation_df,
+             self.copy_gain_df,
+             self.copy_loss_df,
+             self.mut_burden_df) = pancan_data
         elif labels == 'drug':
             self.drugs_df, self.egfri_df = (
                 du.load_drug_response_data(verbose=self.verbose,
@@ -151,6 +155,7 @@ class CCLEDataModel():
             )
         else:
             raise NotImplementedError('labels {} not implemented'.format(labels))
+
 
     def _generate_gene_labels(self, gene, classification, gene_dir):
         # process the y matrix for the given gene or pathway
@@ -165,20 +170,33 @@ class CCLEDataModel():
         sample_freeze_df.index.name = 'SAMPLE_BARCODE'
         sample_freeze_df.reset_index(inplace=True)
 
+        # include copy number gains for oncogenes
+        # and copy number loss for tumor suppressor genes (TSG)
+        include_copy = True
+        if classification == "Oncogene":
+            y_copy_number_df = self.copy_gain_df.loc[:, gene]
+        elif classification == "TSG":
+            y_copy_number_df = self.copy_loss_df.loc[:, gene]
+        else:
+            y_copy_number_df = pd.DataFrame()
+            include_copy = False
+
         # construct labels from mutation information, and filter for
         # cancer types without an extreme label imbalance
         y_df = process_y_matrix(
             y_mutation=y_mutation_df,
-            y_copy=None,
+            y_copy=y_copy_number_df,
             # currently we're not using CNV data for the cell lines
-            include_copy=False,
+            include_copy=include_copy,
             identifier=gene,
             sample_freeze=sample_freeze_df,
-            mutation_burden=None,
+            mutation_burden=self.mut_burden_df,
             filter_count=cfg.ccle_filter_count,
             filter_prop=cfg.ccle_filter_prop,
+            dataset_name='ccle',
             output_directory=gene_dir,
-            include_mut_burden=False,
+            hyper_filter=cfg.hyper_filter,
+            include_mut_burden=True,
         )
         return y_df
 
@@ -236,6 +254,6 @@ class CCLEDataModel():
             x_file_or_df=rnaseq_df,
             y=y_df,
             add_cancertype_covariate=add_cancertype_covariate,
-            add_mutation_covariate=False
+            add_mutation_covariate=True
         )
         return rnaseq_df, y_df, gene_features

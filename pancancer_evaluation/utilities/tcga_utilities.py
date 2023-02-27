@@ -28,6 +28,7 @@ def process_y_matrix(
     filter_count,
     filter_prop,
     output_directory,
+    dataset_name='tcga',
     include_mut_burden=True,
     hyper_filter=5,
     test=False,
@@ -56,6 +57,8 @@ def process_y_matrix(
     """
     if include_copy:
         y_df = y_copy + y_mutation
+        if y_df.isna().sum() > 0:
+            y_df = y_df.loc[~y_df.isna()].astype(int).copy()
     else:
         y_df = y_mutation
 
@@ -72,7 +75,8 @@ def process_y_matrix(
             .merge(mutation_burden, left_index=True, right_index=True)
         )
         # Filter to remove hyper-mutated samples
-        burden_filter = y_df["log10_mut"] < hyper_filter * y_df["log10_mut"].std()
+        burden_cutoff = y_df.log10_mut.mean() + (hyper_filter * y_df.log10_mut.std())
+        burden_filter = y_df.log10_mut < burden_cutoff
         y_df = y_df.loc[burden_filter, :]
     else:
         y_df = (
@@ -86,6 +90,7 @@ def process_y_matrix(
                                identifier,
                                filter_count,
                                filter_prop,
+                               dataset_name=dataset_name,
                                output_directory=output_directory,
                                test=test)
 
@@ -94,6 +99,7 @@ def filter_cancer_types(y_df,
                         identifier,
                         filter_count,
                         filter_prop,
+                        dataset_name='tcga',
                         output_directory=None,
                         test=False):
 
@@ -117,7 +123,7 @@ def filter_cancer_types(y_df,
     ).merge(filter_disease_df, left_index=True, right_index=True)
 
     if (not test) and (output_directory is not None):
-        filter_file = "{}_filtered_cancertypes.tsv".format(identifier)
+        filter_file = "{}_{}_filtered_cancertypes.tsv".format(identifier, dataset_name)
         filter_file = os.path.join(output_directory, filter_file)
         disease_stats_df.to_csv(filter_file, sep="\t")
 

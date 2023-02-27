@@ -142,12 +142,20 @@ def save_results_lasso_penalty(results_dir,
         float_format="%.5g"
     )
 
-    output_file = Path(
-        results_dir, "{}_{}_{}_{}_s{}_n{}_c{}_{}_metrics.tsv.gz".format(
-            identifier, cancer_type, signal, feature_selection,
-            seed, num_features, lasso_penalty, predictor
-        )
-    ).resolve()
+    if cancer_type is None:
+        output_file = Path(
+            results_dir, "{}_{}_{}_s{}_n{}_c{}_{}_metrics.tsv.gz".format(
+                identifier, signal, feature_selection,
+                seed, num_features, lasso_penalty, predictor
+            )
+        ).resolve()
+    else:
+        output_file = Path(
+            results_dir, "{}_{}_{}_{}_s{}_n{}_c{}_{}_metrics.tsv.gz".format(
+                identifier, cancer_type, signal, feature_selection,
+                seed, num_features, lasso_penalty, predictor
+            )
+        ).resolve()
     metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -309,6 +317,25 @@ def write_counts_file(counts_df, counts_file):
         counts_df.to_csv(counts_file, mode='a', sep='\t')
 
 
+def save_label_counts(results_dir, gene, tcga_data, ccle_data):
+    tcga_counts = pd.DataFrame(
+        pd.DataFrame(tcga_data.y_df.status.value_counts())
+          .reset_index()
+          .rename(columns={'index': 'label', 'status': 'count'})
+    )
+    ccle_counts = (
+        pd.DataFrame(ccle_data.y_df.status.value_counts())
+          .reset_index()
+          .rename(columns={'index': 'label', 'status': 'count'})
+    )
+    tcga_counts.to_csv(
+        Path(results_dir, '{}_tcga_label_counts.tsv'.format(gene)), sep='\t'
+    )
+    ccle_counts.to_csv(
+        Path(results_dir, '{}_ccle_label_counts.tsv'.format(gene)), sep='\t'
+    )
+
+
 def make_gene_dir(results_dir,
                   gene,
                   dirname='gene',
@@ -337,11 +364,19 @@ def check_gene_file(gene_dir,
                     seed,
                     feature_selection,
                     num_features,
+                    lasso_penalty=None,
                     predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    check_file = Path(
-        gene_dir, "{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
-            gene, signal, feature_selection, seed, num_features, predictor)).resolve()
+    if lasso_penalty is not None:
+        check_file = Path(
+            gene_dir, "{}_{}_{}_s{}_n{}_c{}_{}_coefficients.tsv.gz".format(
+                gene, signal, feature_selection, seed,
+                num_features, lasso_penalty, predictor
+            )).resolve()
+    else:
+        check_file = Path(
+            gene_dir, "{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
+                gene, signal, feature_selection, seed, num_features, predictor)).resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for gene: {}\n'.format(gene)

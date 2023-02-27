@@ -552,6 +552,134 @@ def run_cv_stratified(data_model,
     return results
 
 
+def run_cv_tcga_ccle(tcga_data,
+                     ccle_data,
+                     identifier,
+                     num_folds,
+                     shuffle_labels,
+                     lasso=False,
+                     lasso_penalty=None):
+    """Train a model on TCGA data, and test on CCLE data.
+
+    Arguments
+    ---------
+    tcga_data (TCGADataModel): class containing preprocessed TCGA data
+    ccle_data (CCLEDataModel): class containing preprocessed CCLE data
+    identifier (str): identifier to run experiments for
+    num_folds (int): number of cross-validation folds to run
+    shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    lasso (bool): use LASSO with a specified penalty rather than elastic net
+    lasso_penalty (float): LASSO regularization penalty
+    """
+    results = {
+        'gene_metrics': [],
+        'gene_auc': [],
+        'gene_aupr': [],
+        'gene_coef': []
+    }
+    signal = 'shuffled' if shuffle_labels else 'signal'
+
+    # the "folds" here refer to choosing different validation datasets,
+    # the test dataset is the same (all valid CCLE cell lines)
+    # the validation splitting happens in the LASSO code
+    for fold_no in range(num_folds):
+
+        # train on TCGA data, test on CCLE data
+        X_train_raw_df = tcga_data.X_df
+        X_test_raw_df = ccle_data.X_df
+        y_train_df = tcga_data.y_df
+        y_test_df = ccle_data.y_df
+
+        if shuffle_labels:
+            if cfg.shuffle_by_cancer_type:
+                # in this case we want to shuffle labels independently for each cancer type
+                # (i.e. preserve the total number of mutated samples in each)
+                original_ones = y_train_df.groupby('DISEASE').sum()['status']
+                y_train_df.status = shuffle_by_cancer_type(y_train_df, tcga_data.seed)
+                y_test_df.status = shuffle_by_cancer_type(y_test_df, ccle_data.seed)
+                new_ones = y_train_df.groupby('DISEASE').sum()['status']
+                # label distribution per cancer type should be the same before
+                # and after shuffling (or approximately the same in the case of
+                # continuous labels)
+                assert (original_ones.equals(new_ones) or
+                        np.all(np.isclose(original_ones.values, new_ones.values)))
+            else:
+                # we set a temp seed here to make sure this shuffling order
+                # is the same for each gene between data types, otherwise
+                # it might be slightly different depending on the global state
+                with temp_seed(tcga_data.seed):
+                    y_train_df.status = np.random.permutation(y_train_df.status.values)
+                    y_test_df.status = np.random.permutation(y_test_df.status.values)
+
+        X_train_df, X_test_df = tu.preprocess_data(
+            X_train_raw_df,
+            X_test_raw_df,
+            # gene_features should be the same for TCGA and CCLE
+            tcga_data.gene_features,
+            y_df=y_train_df,
+            feature_selection=tcga_data.feature_selection,
+            num_features=tcga_data.num_features,
+            mad_preselect=tcga_data.mad_preselect,
+            seed=tcga_data.seed,
+        )
+
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # set the hyperparameters
+                train_model_params = apply_model_params(clf.train_classifier,
+                                                        lasso=True,
+                                                        lasso_penalty=lasso_penalty)
+                model_results = train_model_params(
+                    X_train=X_train_df,
+                    X_test=X_test_df,
+                    y_train=y_train_df,
+                    seed=tcga_data.seed,
+                    n_folds=cfg.folds,
+                    max_iter=cfg.max_iter
+                )
+                (cv_pipeline, labels, preds) = model_results
+                (y_train_df,
+                 y_cv_df) = labels
+                (y_pred_train,
+                 y_pred_cv,
+                 y_pred_test) = preds
+        except ValueError:
+            raise OneClassError(
+                'Only one class present in test set for identifier: {}\n'.format(identifier)
+            )
+
+        # get coefficients
+        coef_df = extract_coefficients(
+            cv_pipeline=cv_pipeline,
+            feature_names=X_train_df.columns,
+            signal=signal,
+            seed=tcga_data.seed,
+            name='classify'
+        )
+        coef_df = coef_df.assign(identifier=identifier)
+        coef_df = coef_df.assign(fold=fold_no)
+
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
+                    y_train_df, y_test_df, y_pred_cv, y_pred_train,
+                    y_pred_test, identifier, 'N/A', signal,
+                    tcga_data.seed, fold_no, y_cv_df
+                )
+            results['gene_metrics'].append(metric_df)
+            results['gene_auc'].append(gene_auc_df)
+            results['gene_aupr'].append(gene_aupr_df)
+            results['gene_coef'].append(coef_df)
+        except ValueError:
+            raise OneClassError(
+                'Only one class present in test set for identifier: {}\n'.format(identifier)
+            )
+
+    return results
+
+
 def extract_coefficients(cv_pipeline,
                          feature_names,
                          signal,

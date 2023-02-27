@@ -9,6 +9,7 @@
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -160,9 +161,35 @@ ccle_mutation_binary_df.sum(axis='index').sort_values(ascending=False).head(10)
 ccle_mutation_binary_df.to_csv(cfg.ccle_mutation_binary)
 
 
+# In[11]:
+
+
+# generate mutation burden variable: log10(total deleterious mutations per sample)
+ccle_mutation_burden_df = (sample_mutations
+    .groupby('DepMap_ID')
+    .agg(sum)
+)
+ccle_mutation_burden_df = np.log10(ccle_mutation_burden_df)
+
+# fill samples with no mutations
+ccle_mutation_burden_df = (ccle_mutation_burden_df
+    .loc[ccle_mutation_binary_df.index, :]
+    .fillna(0)
+    .rename(columns={'mutation': 'log10_mut'})
+)
+
+ccle_mutation_burden_df.head()
+
+
+# In[12]:
+
+
+ccle_mutation_burden_df.to_csv(cfg.ccle_mutation_burden)
+
+
 # ### Visualize distribution of samples across cancer types/tissues
 
-# In[11]:
+# In[13]:
 
 
 all_index = (ccle_sample_info_df.index
@@ -172,7 +199,7 @@ all_index = (ccle_sample_info_df.index
 print(all_index.shape)
 
 
-# In[12]:
+# In[14]:
 
 
 ccle_cancer_types = (ccle_sample_info_df
@@ -187,7 +214,7 @@ ccle_cancer_types = (ccle_sample_info_df
 ccle_cancer_types.head()
 
 
-# In[13]:
+# In[15]:
 
 
 ccle_tissues = (ccle_sample_info_df
@@ -202,7 +229,7 @@ ccle_tissues = (ccle_sample_info_df
 ccle_tissues.head()
 
 
-# In[14]:
+# In[16]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -230,7 +257,7 @@ if output_plots:
 # 
 # This should help us with setting sensible thresholds for building classifiers, since the dataset overall is considerably smaller than TCGA.
 
-# In[15]:
+# In[17]:
 
 
 gene_index = (ccle_sample_info_df.index
@@ -240,7 +267,7 @@ gene_index = (ccle_sample_info_df.index
 print(gene_index.shape)
 
 
-# In[16]:
+# In[18]:
 
 
 ccle_gene_cancer_types = (ccle_sample_info_df
@@ -261,7 +288,7 @@ ccle_gene_cancer_types['{}_proportion'.format(gene)] = (
 ccle_gene_cancer_types.head()
 
 
-# In[17]:
+# In[19]:
 
 
 ccle_gene_tissues = (ccle_sample_info_df
@@ -281,7 +308,7 @@ ccle_gene_tissues['{}_proportion'.format(gene)] = (
 ccle_gene_tissues.head()
 
 
-# In[18]:
+# In[20]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -311,7 +338,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[19]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (18, 10)})
@@ -343,7 +370,7 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[20]:
+# In[22]:
 
 
 # how many cancer types would be valid for the given gene with the given cutoffs
@@ -363,7 +390,7 @@ ccle_gene_cancer_types['both_thresholds'] = (
 ccle_gene_cancer_types.head()
 
 
-# In[21]:
+# In[23]:
 
 
 print('{} cancer types included for {}: {}'.format(
