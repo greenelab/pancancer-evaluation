@@ -36,7 +36,7 @@ results_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
 )
 
-plot_gene = 'RB1'
+plot_gene = 'NF1'
 metric = 'aupr'
 
 
@@ -69,10 +69,11 @@ nz_coefs_df = nz_coefs_df[nz_coefs_df.gene == plot_gene].copy()
 nz_coefs_df.head()
 
 
-# In[4]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (12, 5)})
+sns.set_style('whitegrid')
 
 sns.boxplot(
     data=nz_coefs_df.sort_values(by=['lasso_param']),
@@ -99,7 +100,13 @@ for i, patch in enumerate(box_patches):
         line.set_mfc(col)  # facecolor of fliers
         line.set_mec(col)  # edgecolor of fliers
 
-plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', size=16)
+plt.xlabel('LASSO parameter (higher = less regularization)', size=14)
+plt.ylabel('Number of nonzero coefficients', size=14)
+_, xlabels = plt.xticks()
+_ = ax.set_xticklabels(xlabels, size=12)
+ax.set_yticks(ax.get_yticks()[1:])
+_ = ax.set_yticklabels(ax.get_yticks(), size=12)
 plt.tight_layout()
 
 
@@ -134,14 +141,14 @@ plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
 plt.tight_layout()
 
 
-# In[7]:
+# In[11]:
 
 
 # plot LASSO parameter vs. AUPR, for all 3 datasets
 # "train" = data used to train model
 # "cv" = validation set from TCGA (not used to train model)
 # "test" = CCLE data (not used to train model)
-sns.set({'figure.figsize': (8, 5)})
+sns.set({'figure.figsize': (9, 5)})
 sns.set_style('ticks')
 
 plot_df = (
@@ -156,7 +163,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
-        marker='o'
+        marker='o',
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_title('Holdout cancer type: {col_name}')
@@ -165,7 +172,9 @@ with sns.plotting_context('notebook', font_scale=1.6):
     
     ax = plt.gca()
     legend_handles, legend_labels = ax.get_legend_handles_labels()
-    ax.legend(legend_handles, legend_labels, title='Dataset')
+    ax.legend(legend_handles,
+              ['TCGA (train)', 'TCGA (holdout)', 'CCLE'], 
+              title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1))
     
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
@@ -259,13 +268,15 @@ with sns.plotting_context('notebook', font_scale=1.6):
         Line2D([0], [0], label='asdf', color='black', linestyle='--'),
         Line2D([0], [0], label='fdsa', color='red', linestyle='--'),
     ]
-    legend_labels = ['best', 'smallest']
+    legend_labels = ['"best"', '"smallest good"']
     l = ax.legend(legend_handles, legend_labels, title='Model choice',
                   loc='lower left', bbox_to_anchor=(1.01, 0))
     ax.add_artist(l)
     
     legend_handles, legend_labels = ax.get_legend_handles_labels()
-    ax.legend(legend_handles, legend_labels, title='Dataset')
+    ax.legend(legend_handles,
+              ['TCGA (train)', 'TCGA (holdout)', 'CCLE'], 
+              title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
 

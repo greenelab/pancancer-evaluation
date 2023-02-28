@@ -36,7 +36,7 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-plot_gene = 'ERBB2'
+plot_gene = 'PTEN'
 metric = 'aupr'
 nz_cutoff = 5.0
 
@@ -167,14 +167,20 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
+        marker='o',
         kind='line', col='holdout_cancer_type',
-        col_wrap=6, height=4, aspect=1.2
+        col_wrap=4, height=4, aspect=1.2
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_titles('Holdout cancer type: {col_name}')
     g.set_xlabels('Lasso parameter \n (higher = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.01)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.5], frameon=True)
+    g._legend.set_title('Dataset')
+    new_labels = ['Train', 'Holdout \n(same cancer type)', 'Test \n(unseen cancer type)']
+    for t, l in zip(g._legend.texts, new_labels):
+        t.set_text(l)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',
@@ -266,13 +272,18 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
+        marker='o',
         kind='line', col='holdout_cancer_type',
-        col_wrap=6, height=4, aspect=1.2
+        col_wrap=5, height=4, aspect=1.2
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.set_titles('Holdout cancer type: {col_name}')
     g.set_xlabels('Lasso parameter \n (higher = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
+    sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.5], frameon=True)
+    g._legend.set_title('Dataset')
+    new_labels = ['Train', 'Holdout \n(same cancer type)', 'Test \n(unseen cancer type)']
+    for t, l in zip(g._legend.texts, new_labels):
+        t.set_text(l)
     
     def add_best_vline(data, **kws):
         ax = plt.gca()
@@ -287,6 +298,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         
     g.map_dataframe(add_best_vline)
     g.map_dataframe(add_smallest_vline)
+    g.set_titles('Holdout cancer type: {col_name}')
      
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.01)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
 

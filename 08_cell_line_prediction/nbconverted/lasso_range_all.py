@@ -13,7 +13,6 @@
 import os
 import itertools as it
 
-from adjustText import adjust_text
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -168,7 +167,7 @@ def get_top_and_smallest_diff(gene):
 print(get_top_and_smallest_diff('SETD2'))
 
 
-# In[8]:
+# In[21]:
 
 
 all_top_smallest_diff_df = []
@@ -181,8 +180,15 @@ all_top_smallest_diff_df = pd.DataFrame(
     columns=['gene', 'top_lasso_param',
              'smallest_lasso_param', 'top_smallest_diff']
 )
+all_top_smallest_diff_df['best'] = 'top'
+all_top_smallest_diff_df.loc[
+    all_top_smallest_diff_df.top_smallest_diff < 0, 'best'
+] = 'smallest'
+all_top_smallest_diff_df.loc[
+    all_top_smallest_diff_df.top_smallest_diff == 0, 'best'
+] = 'zero'
 
-print(all_top_smallest_diff_df.shape)
+print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
 
 
@@ -194,8 +200,8 @@ sns.set_style('whitegrid')
 
 sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=19)
 plt.xlim(-0.2, 0.2)
-plt.title('Differences between top and smallest LASSO parameter')
-plt.xlabel('top - smallest')
+plt.title('Differences between "best" and "smallest good" LASSO parameter')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
@@ -210,8 +216,8 @@ sns.histplot(
     bins=19
 )
 plt.xlim(-0.2, 0.2)
-plt.title('Differences between top and smallest LASSO parameter, without zeroes')
-plt.xlabel('top - smallest')
+plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
@@ -373,112 +379,4 @@ with sns.plotting_context('notebook', font_scale=1.5):
     plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
     plt.xlabel('Gene')
     plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
-
-
-# In[19]:
-
-
-plot_df = (best_perf_df
-    .drop(columns=['cv_test_auroc_diff', 'cv_auroc', 'data_type_x', 'data_type_y'])
-    .groupby(['gene', 'top_lasso_param'])
-    .agg(np.median)
-    .loc[:, ['cv_aupr', 'test_aupr', 'cv_test_aupr_diff']]
-    .reset_index()
-)
-
-print(plot_df.shape)
-plot_df.head()
-
-
-# In[20]:
-
-
-# plot mean valid performance vs. difference in valid/test performance
-sns.set({'figure.figsize': (12, 6)})
-sns.set_style('whitegrid')
-
-def _label_points(x, y, labels, ax):
-    text_labels = []
-    pts = pd.DataFrame({'x': x, 'y': y, 'label': labels})
-    for i, point in pts.iterrows():
-        text_labels.append(
-            ax.text(point['x'] + 0.01, point['y'] + 0.01, str(point['label']))
-        )
-    return text_labels
-
-with sns.plotting_context('notebook', font_scale=1.5):
-    ax = sns.scatterplot(data=plot_df, x='cv_test_aupr_diff', y='cv_aupr')
-    ax.axvline(0.0, linestyle='--', color='grey')
-    plt.xlim(-1., 1.)
-    plt.title(f'TCGA and CCLE difference vs. TCGA performance', y=1.02)
-    plt.xlabel('AUPR(TCGA) - AUPR(CCLE)')
-    plt.ylabel('AUPR(TCGA)')
-    
-text_labels = _label_points(
-    plot_df['cv_test_aupr_diff'],
-    plot_df['cv_aupr'],
-    plot_df['gene'],
-    ax
-)
-
-adjust_text(text_labels,
-            ax=ax,
-            expand_text=(0.25, 0.25),
-            lim=1)
-
-
-# In[21]:
-
-
-plot_df = (best_perf_df
-    .drop(columns=['cv_test_auroc_diff', 'cv_auroc', 'data_type_x', 'data_type_y'])
-    .groupby(['gene', 'top_lasso_param'])
-    .agg(np.median)
-    .loc[:, ['cv_aupr', 'test_aupr', 'cv_test_aupr_diff']]
-    .reset_index()
-    .merge(all_top_smallest_diff_df,
-           left_on=['gene', 'top_lasso_param'],
-           right_on=['gene', 'top_lasso_param'])
-)
-
-print(plot_df.shape)
-plot_df.head()
-
-
-# In[22]:
-
-
-# plot mean valid performance vs. difference in valid/test performance
-sns.set({'figure.figsize': (12, 6)})
-sns.set_style('whitegrid')
-
-def _label_points(x, y, labels, ax):
-    text_labels = []
-    pts = pd.DataFrame({'x': x, 'y': y, 'label': labels})
-    for i, point in pts.iterrows():
-        if (x[i] > 0.01) or (x[i] < -0.01):
-            text_labels.append(
-                ax.text(point['x']+0.001, point['y']+0.01, str(point['label']))
-            )
-    return text_labels
-
-with sns.plotting_context('notebook', font_scale=1.5):
-    ax = sns.scatterplot(data=plot_df, x='top_smallest_diff', y='cv_aupr')
-    ax.axvline(0.0, linestyle='--', color='grey')
-    plt.xlim(-0.2, 0.2)
-    plt.title(f'Top/smallest difference vs. TCGA performance', y=1.02)
-    plt.xlabel('top - smallest')
-    plt.ylabel('AUPR(TCGA)')
-    
-text_labels = _label_points(
-    plot_df['top_smallest_diff'],
-    plot_df['cv_aupr'],
-    plot_df['gene'],
-    ax
-)
-
-adjust_text(text_labels,
-            ax=ax,
-            expand_text=(0.25, 0.25),
-            lim=1)
 

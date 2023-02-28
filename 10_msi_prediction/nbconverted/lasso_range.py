@@ -143,15 +143,15 @@ if output_plots:
                 dpi=200, bbox_inches='tight')
 
 
-# In[7]:
+# In[41]:
 
 
 # try with a float-valued x-axis
 # this is probably more "correct" than treating each lasso parameter as a
 # category (above plot); here the spaces between parameters reflect their
 # actual real-valued distance in log-space
-sns.set({'figure.figsize': (12, 5)})
-sns.set_style('ticks')
+sns.set({'figure.figsize': (13, 5)})
+sns.set_style('ticks', {'legend.frameon': True})
 
 plot_df = (
     perf_df[(perf_df.signal == 'signal')]
@@ -165,11 +165,17 @@ with sns.plotting_context('notebook', font_scale=1.25):
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
+        marker='o',
         kind='line', col='holdout_cancer_type',
         col_wrap=3, height=4, aspect=1.2
     )
     g.set(xscale='log', xlim=(0, max(plot_df.lasso_param)))
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.5], frameon=True)
+    g._legend.set_title('Dataset')
+    new_labels = ['Train', 'Holdout \n (same cancer type)', 'Test \n (unseen cancer type)']
+    for t, l in zip(g._legend.texts, new_labels):
+        t.set_text(l)
 
 if output_plots:
     plt.savefig(output_plots_dir / f'msi_lasso_facets.png',

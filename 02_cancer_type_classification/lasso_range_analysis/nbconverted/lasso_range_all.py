@@ -136,7 +136,7 @@ coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 # 
 # We'll do this for each gene/cancer type in the dataset below, and plot the distribution of differences between the two strategies, as a way to quantify which strategy is "better" for generalization across cancer types.
 
-# In[7]:
+# In[8]:
 
 
 def get_top_and_smallest_diff(gene, cancer_type):
@@ -189,7 +189,7 @@ def get_top_and_smallest_diff(gene, cancer_type):
 print(get_top_and_smallest_diff('SETD2', 'KIRP'))
 
 
-# In[8]:
+# In[9]:
 
 
 all_top_smallest_diff_df = []
@@ -204,40 +204,52 @@ all_top_smallest_diff_df = pd.DataFrame(
              'smallest_lasso_param', 'top_smallest_diff']
 )
 
+all_top_smallest_diff_df['best'] = 'top'
+all_top_smallest_diff_df.loc[
+    all_top_smallest_diff_df.top_smallest_diff < 0, 'best'
+] = 'smallest'
+all_top_smallest_diff_df.loc[
+    all_top_smallest_diff_df.top_smallest_diff == 0, 'best'
+] = 'zero'
+
+print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
-
-
-# In[9]:
-
-
-sns.set({'figure.figsize': (8, 6)})
-
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff)
-plt.title('Differences between top and smallest LASSO parameter')
-plt.xlabel('top - smallest')
-plt.gca().axvline(0, color='grey', linestyle='--')
 
 
 # In[10]:
 
 
 sns.set({'figure.figsize': (8, 6)})
+sns.set_style('whitegrid')
 
-sns.histplot(
-    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff
-)
-plt.title('Differences between top and smallest LASSO parameter, without zeroes')
-plt.xlabel('top - smallest')
-plt.gca().axvline(0, color='black', linestyle='--')
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff)
+plt.title('Differences between "best" and "smallest good" LASSO parameter')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
+plt.gca().axvline(0, color='grey', linestyle='--')
 
 
 # In[11]:
 
 
-all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
+sns.set({'figure.figsize': (8, 6)})
+sns.set_style('whitegrid')
+
+sns.histplot(
+    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff
+)
+plt.xlim(-0.2, 0.2)
+plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
+plt.gca().axvline(0, color='black', linestyle='--')
 
 
 # In[12]:
+
+
+all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
+
+
+# In[13]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
