@@ -167,7 +167,7 @@ def get_top_and_smallest_diff(gene):
 print(get_top_and_smallest_diff('SETD2'))
 
 
-# In[21]:
+# In[8]:
 
 
 all_top_smallest_diff_df = []
@@ -231,6 +231,67 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).he
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
+
+
+# In[28]:
+
+
+all_compare_df = []
+for lasso_param in perf_df.lasso_param.unique():
+    compare_df = au.compare_results(perf_df[perf_df.lasso_param == lasso_param],
+                                    metric='aupr',
+                                    data_type='cv',
+                                    verbose=True,
+                                    correction=True,
+                                    correction_alpha=0.001)
+    compare_df['lasso_param'] = lasso_param
+    all_compare_df.append(compare_df)
+
+all_compare_df = pd.concat(all_compare_df)
+
+print(all_compare_df.shape)
+print(all_compare_df.reject_null.value_counts())
+all_compare_df.head()
+
+
+# In[29]:
+
+
+top_compare_df = (all_compare_df
+    .merge(all_top_smallest_diff_df.loc[:, ['gene', 'top_lasso_param']],
+           left_on=['identifier', 'lasso_param'],
+           right_on=['gene', 'top_lasso_param'])
+    .drop(columns=['identifier', 'delta_mean', 'p_value', 'lasso_param'])
+)
+
+smallest_compare_df = (all_compare_df
+    .merge(all_top_smallest_diff_df.loc[:, ['gene', 'smallest_lasso_param']],
+           left_on=['identifier', 'lasso_param'],
+           right_on=['gene', 'smallest_lasso_param'])
+    .drop(columns=['identifier', 'delta_mean', 'p_value', 'lasso_param'])
+)
+
+top_smallest_compare_df = (top_compare_df
+    .merge(smallest_compare_df,
+           left_on=['gene'], right_on=['gene'])
+    .rename(columns={
+        'corr_pval_x': 'top_corr_pval',
+        'reject_null_x': 'top_reject_null',
+        'corr_pval_y': 'smallest_corr_pval',
+        'reject_null_y': 'smallest_reject_null'
+    })
+)
+top_smallest_compare_df['reject_either'] = (
+    top_smallest_compare_df.top_reject_null | top_smallest_compare_df.smallest_reject_null
+)
+top_smallest_compare_df['reject_both'] = (
+    top_smallest_compare_df.top_reject_null & top_smallest_compare_df.smallest_reject_null
+)
+
+print(top_compare_df.shape, smallest_compare_df.shape)
+print(top_smallest_compare_df.reject_either.value_counts())
+print(top_smallest_compare_df.reject_both.value_counts())
+top_smallest_compare_df.head()
 
 
 # ### Compare TCGA and CCLE performance for each gene

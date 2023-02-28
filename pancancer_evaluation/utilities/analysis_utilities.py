@@ -574,6 +574,7 @@ def process_coefs(coefs_df, nonzero_only=True):
 def compare_results(single_cancer_df,
                     pancancer_df=None,
                     identifier='gene',
+                    data_type='test',
                     metric='auroc',
                     correction=False,
                     correction_method='fdr_bh',
@@ -609,10 +610,11 @@ def compare_results(single_cancer_df,
     results_df (pd.DataFrame): identifiers and results of statistical test
     """
     if pancancer_df is None:
-        results_df = compare_control(single_cancer_df, identifier, metric, verbose)
+        results_df = compare_control(single_cancer_df, identifier, data_type,
+                                     metric, verbose)
     else:
         results_df = compare_experiment(single_cancer_df, pancancer_df,
-                                        identifier, metric, verbose)
+                                        identifier, data_type, metric, verbose)
     if correction:
         from statsmodels.stats.multitest import multipletests
         corr = multipletests(results_df['p_value'],
@@ -625,6 +627,7 @@ def compare_results(single_cancer_df,
 
 def compare_control(results_df,
                     identifier='gene',
+                    data_type='test',
                     metric='auroc',
                     verbose=False):
 
@@ -634,12 +637,12 @@ def compare_control(results_df,
     for id_str in unique_identifiers:
 
         conditions = ((results_df[identifier] == id_str) &
-                      (results_df.data_type == 'test') &
+                      (results_df.data_type == data_type) &
                       (results_df.signal == 'signal'))
         signal_results = results_df[conditions][metric].values
 
         conditions = ((results_df[identifier] == id_str) &
-                      (results_df.data_type == 'test') &
+                      (results_df.data_type == data_type) &
                      (results_df.signal == 'shuffled'))
         shuffled_results = results_df[conditions][metric].values
 
@@ -669,6 +672,7 @@ def compare_control(results_df,
 def compare_experiment(single_cancer_df,
                        pancancer_df,
                        identifier='gene',
+                       data_type='test',
                        metric='auroc',
                        verbose=False):
 
@@ -680,12 +684,12 @@ def compare_experiment(single_cancer_df,
     for id_str in unique_identifiers:
 
         conditions = ((single_cancer_df[identifier] == id_str) &
-                      (single_cancer_df.data_type == 'test') &
+                      (single_cancer_df.data_type == data_type) &
                       (single_cancer_df.signal == 'signal'))
         single_cancer_results = single_cancer_df[conditions][metric].values
 
         conditions = ((pancancer_df[identifier] == id_str) &
-                      (pancancer_df.data_type == 'test') &
+                      (pancancer_df.data_type == data_type) &
                       (pancancer_df.signal == 'signal'))
         pancancer_results = pancancer_df[conditions][metric].values
 
