@@ -31,7 +31,8 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 results_dir = os.path.join(
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
 )
 
 # 'aupr' or 'auroc'
@@ -198,7 +199,7 @@ all_top_smallest_diff_df.head()
 sns.set({'figure.figsize': (8, 6)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=19)
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=24)
 plt.xlim(-0.2, 0.2)
 plt.title('Differences between "best" and "smallest good" LASSO parameter')
 plt.xlabel('AUPR(best) - AUPR(smallest good)')
@@ -213,7 +214,7 @@ sns.set_style('whitegrid')
 
 sns.histplot(
     all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
-    bins=19
+    bins=24
 )
 plt.xlim(-0.2, 0.2)
 plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
@@ -233,7 +234,7 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).he
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
 
 
-# In[28]:
+# In[13]:
 
 
 all_compare_df = []
@@ -254,7 +255,7 @@ print(all_compare_df.reject_null.value_counts())
 all_compare_df.head()
 
 
-# In[29]:
+# In[14]:
 
 
 top_compare_df = (all_compare_df
@@ -294,13 +295,41 @@ print(top_smallest_compare_df.reject_both.value_counts())
 top_smallest_compare_df.head()
 
 
+# In[23]:
+
+
+reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values
+plot_df = (all_top_smallest_diff_df
+    [all_top_smallest_diff_df.gene.isin(reject_both_genes)]
+)
+
+print(plot_df.shape)
+print(plot_df.best.value_counts())
+plot_df.head()
+
+
+# In[16]:
+
+
+sns.set({'figure.figsize': (8, 6)})
+sns.set_style('whitegrid')
+
+sns.histplot(
+    plot_df.top_smallest_diff, bins=24
+)
+plt.xlim(-0.2, 0.2)
+plt.title('Differences between "best" and "smallest good" LASSO parameter, well-performing models')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
+plt.gca().axvline(0, color='black', linestyle='--')
+
+
 # ### Compare TCGA and CCLE performance for each gene
 # 
 # Given the "best" LASSO parameter (in terms of validation performance) for each gene, we want to look at relative performance on the TCGA validation set and on the held-out CCLE data.
 # 
 # We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
-# In[13]:
+# In[17]:
 
 
 cv_perf_df = (
@@ -314,7 +343,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[14]:
+# In[18]:
 
 
 test_perf_df = (
@@ -328,7 +357,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[15]:
+# In[19]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -359,7 +388,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[16]:
+# In[20]:
 
 
 plot_df = (best_perf_df
@@ -371,7 +400,7 @@ plot_df = (best_perf_df
 plot_df.head()
 
 
-# In[17]:
+# In[21]:
 
 
 # plot cv/test performance distribution for each gene
@@ -417,7 +446,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[18]:
+# In[22]:
 
 
 # plot difference in validation and test performance for each gene

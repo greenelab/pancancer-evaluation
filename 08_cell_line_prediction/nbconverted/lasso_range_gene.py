@@ -33,10 +33,15 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 results_dir = os.path.join(
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
 )
+if 'sgd' in results_dir:
+    param_orientation = 'lower'
+else:
+    param_orientation = 'higher'
 
-plot_gene = 'NF1'
+plot_gene = 'BAP1'
 metric = 'aupr'
 
 
@@ -69,7 +74,7 @@ nz_coefs_df = nz_coefs_df[nz_coefs_df.gene == plot_gene].copy()
 nz_coefs_df.head()
 
 
-# In[21]:
+# In[4]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -101,7 +106,7 @@ for i, patch in enumerate(box_patches):
         line.set_mec(col)  # edgecolor of fliers
 
 plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', size=16)
-plt.xlabel('LASSO parameter (higher = less regularization)', size=14)
+plt.xlabel(f'LASSO parameter ({param_orientation} = less regularization)', size=14)
 plt.ylabel('Number of nonzero coefficients', size=14)
 _, xlabels = plt.xticks()
 _ = ax.set_xticklabels(xlabels, size=12)
@@ -141,7 +146,7 @@ plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
 plt.tight_layout()
 
 
-# In[11]:
+# In[7]:
 
 
 # plot LASSO parameter vs. AUPR, for all 3 datasets
@@ -168,6 +173,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_title('Holdout cancer type: {col_name}')
     g.set_xlabel('LASSO parameter (higher = less regularization)')
+    g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()
@@ -254,7 +260,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         marker='o'
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.set_xlabel('LASSO parameter (higher = less regularization)')
+    g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()

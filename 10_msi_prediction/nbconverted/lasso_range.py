@@ -37,10 +37,6 @@ training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
 metric = 'aupr'
-nz_cutoff = 5.0
-
-output_plots = False
-output_plots_dir = None
 
 
 # ### Get coefficient information for each lasso penalty
@@ -137,13 +133,8 @@ sns.boxplot(
 plt.title(f'LASSO parameter vs. {metric.upper()}, MSI prediction')
 plt.tight_layout()
 
-if output_plots:
-    output_plots_dir.mkdir(exist_ok=True)
-    plt.savefig(output_plots_dir / f'msi_lasso_boxes.png',
-                dpi=200, bbox_inches='tight')
 
-
-# In[41]:
+# In[7]:
 
 
 # try with a float-valued x-axis
@@ -169,7 +160,8 @@ with sns.plotting_context('notebook', font_scale=1.25):
         kind='line', col='holdout_cancer_type',
         col_wrap=3, height=4, aspect=1.2
     )
-    g.set(xscale='log', xlim=(0, max(plot_df.lasso_param)))
+    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
+    g.set_titles('Holdout cancer type: {col_name}')
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
     sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.5], frameon=True)
     g._legend.set_title('Dataset')
@@ -177,74 +169,156 @@ with sns.plotting_context('notebook', font_scale=1.25):
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
 
-if output_plots:
-    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
-                dpi=200, bbox_inches='tight')
 
+# ### Visualize "best" LASSO parameters for the given gene
+# 
+# We want to use two different strategies to pick the "best" LASSO parameter:
+# 
+# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "parsimonious" approach that assumes that smaller models will generalize better.
+# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "non-parsimonious" approach.
+# 
+# We'll plot the results of both strategies (which sometimes select the same parameter, but usually they're different) for the given gene below.
 
 # In[8]:
 
 
-plot_df = (
-    perf_df[(perf_df.signal == 'signal')]
-      .merge(nz_coefs_df, left_on=['holdout_cancer_type', 'lasso_param', 'seed', 'fold'],
-             right_on=['cancer_type', 'lasso_param', 'seed', 'fold'])
-      .drop(columns=['cancer_type'])
-      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
-      .reset_index(drop=True)
-)
-plot_df.lasso_param = plot_df.lasso_param.astype(float)
-plot_df.head()
+def get_top_and_smallest_lasso_params(cancer_type):
+    top_df = (
+        perf_df[(perf_df.data_type == 'cv') &
+                (perf_df.signal == 'signal') &
+                (perf_df.holdout_cancer_type == cancer_type)]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+          .sort_values(by='mean_aupr', ascending=False)
+    )
+    top_df.index = top_df.index.astype(float)
+    top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
+    top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
+    
+    # get parameter with best validation performance
+    top_lasso_param = top_5_lasso[0]
+
+    # get parameter in top 5 validation performance with least nonzero coefficients
+    smallest_lasso_param = (
+        nz_coefs_df[(nz_coefs_df.cancer_type == cancer_type) &
+                    (nz_coefs_df.lasso_param.isin(top_5_lasso))]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .sort_values(by='nz_coefs', ascending=True)
+    ).index[0]
+    
+    compare_df = top_df.loc[
+        [smallest_lasso_param, top_lasso_param], :
+    ]
+    compare_df['cancer_type'] = cancer_type
+    compare_df['desc'] = ['smallest', 'best']
+    return compare_df
 
 
 # In[9]:
 
 
-sns.histplot(plot_df.nz_coefs)
-for q in np.linspace(0.1, 0.9, 9):
-    print(f'{q:.3f}', f'{plot_df.nz_coefs.quantile(q):3f}')
-    plt.gca().axvline(x=plot_df.nz_coefs.quantile(q), color='black', linestyle=':')
+get_top_and_smallest_lasso_params(perf_df.holdout_cancer_type.unique()[0])
 
 
 # In[10]:
 
 
-plot_df['nz_quantile'] = pd.qcut(
-    plot_df.nz_coefs,
-    q=np.linspace(0, 1, 11),
-    labels=[f'{q}' for q in range(1, 11)]
-)
-
-print(plot_df.nz_quantile.unique())
-plot_df.head()
+compare_all_df = []
+for cancer_type in perf_df.holdout_cancer_type.unique():
+    compare_all_df.append(
+        get_top_and_smallest_lasso_params(cancer_type)
+    )
+    
+compare_all_df = pd.concat(compare_all_df).reset_index()
 
 
 # In[11]:
 
 
-# try with a float-valued x-axis
-# this is probably more "correct" than treating each lasso parameter as a
-# category (above plot); here the spaces between parameters reflect their
-# actual real-valued distance in log-space
-# sns.set({'figure.figsize': (25, 7)})
-sns.set_style('whitegrid')
+test_df = (
+    perf_df[(perf_df.data_type == 'test') &
+            (perf_df.signal == 'signal')]
+      .groupby(['holdout_cancer_type', 'lasso_param'])
+      .agg(np.mean)
+      .drop(columns=['seed', 'fold'])
+      .rename(columns={'auroc': 'mean_test_auroc', 'aupr': 'mean_test_aupr'})
+      .reset_index()
+)
 
-with sns.plotting_context('notebook', font_scale=1.25):
-    g = sns.catplot(
+compare_all_df = (compare_all_df
+    .merge(test_df, 
+           left_on=['cancer_type', 'lasso_param'],
+           right_on=['holdout_cancer_type', 'lasso_param'])
+    .drop(columns=['holdout_cancer_type'])
+    .sort_values(by=['mean_test_aupr'])
+)
+
+compare_all_df
+
+
+# In[12]:
+
+
+# same plot as before but with the "best"/"smallest" parameters marked
+sns.set_style('ticks')
+
+plot_df = (
+    perf_df[(perf_df.signal == 'signal')]
+      .sort_values(by=['holdout_cancer_type', 'lasso_param'])
+      .reset_index(drop=True)
+)
+plot_df.lasso_param = plot_df.lasso_param.astype(float)
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.relplot(
         data=plot_df,
-        x='nz_quantile', y=metric, hue='data_type',
+        x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
-        kind='box', col='holdout_cancer_type',
-        col_wrap=3, height=4.5, aspect=1.35
+        marker='o',
+        kind='line', col='holdout_cancer_type',
+        height=4, aspect=1.2
     )
-    g.set_titles('Holdout cancer type: {col_name}')
-    g.set_xlabels('Bin (increasing number of coefs)')
+    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
+    g.set_xlabels('LASSO parameter \n (higher = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
-    plt.suptitle(f'Number of nonzero coefficients vs. {metric.upper()}, MSI prediction', y=1.05)
-
-if output_plots:
-    plt.savefig(output_plots_dir / f'msi_lasso_facets.png',
-                dpi=200, bbox_inches='tight')
+    sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.8], frameon=True)
+    g._legend.set_title('Dataset')
+    new_labels = ['Train', 'Holdout \n(same cancer type)', 'Test \n(unseen cancer type)']
+    for t, l in zip(g._legend.texts, new_labels):
+        t.set_text(l)
+    
+    def add_best_vline(data, **kws):
+        ax = plt.gca()
+        cancer_type = data.holdout_cancer_type.unique()[0]
+        ax.axvline(x=compare_all_df[(compare_all_df.cancer_type == cancer_type) & (compare_all_df.desc == 'best')].lasso_param.values[0],
+                   color='black', linestyle='--')
+    def add_smallest_vline(data, **kws):
+        ax = plt.gca()
+        cancer_type = data.holdout_cancer_type.unique()[0]
+        ax.axvline(x=compare_all_df[(compare_all_df.cancer_type == cancer_type) & (compare_all_df.desc == 'smallest')].lasso_param.values[0],
+                   color='red', linestyle='--')
+        
+    g.map_dataframe(add_best_vline)
+    g.map_dataframe(add_smallest_vline)
+    g.set_titles('Holdout cancer type: {col_name}')
+    
+    # create custom legend for best models lines
+    ax = plt.gca()
+    from matplotlib.lines import Line2D
+    legend_handles = [
+        Line2D([0], [0], label='asdf', color='black', linestyle='--'),
+        Line2D([0], [0], label='fdsa', color='red', linestyle='--'),
+    ]
+    legend_labels = ['"best"', '"smallest good"']
+    l = ax.legend(legend_handles, legend_labels, title='Model choice',
+                  loc='lower left', bbox_to_anchor=(1.11, -0.3))
+    ax.add_artist(l)
+     
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, MSI prediction', y=1.05)
 
 
 # Observations:

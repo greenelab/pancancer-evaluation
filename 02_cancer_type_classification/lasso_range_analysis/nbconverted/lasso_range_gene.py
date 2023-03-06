@@ -173,7 +173,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_titles('Holdout cancer type: {col_name}')
-    g.set_xlabels('Lasso parameter \n (higher = less regularization)')
+    g.set_xlabels('LASSO parameter \n (higher = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
     sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.5], frameon=True)
