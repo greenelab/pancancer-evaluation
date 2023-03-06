@@ -76,6 +76,7 @@ nz_coefs_df.head()
 
 
 sns.set({'figure.figsize': (12, 5)})
+sns.set_style('whitegrid')
 
 sns.boxplot(
     data=nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
@@ -109,7 +110,14 @@ for legpatch in ax.legend_.get_patches():
     legpatch.set_facecolor('None')
 
 sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
-plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}',
+          size=16)
+plt.xlabel('Cancer type', size=14)
+plt.ylabel('Number of nonzero coefficients', size=14)
+_, xlabels = plt.xticks()
+_ = ax.set_xticklabels(xlabels, size=12)
+ax.set_yticks(ax.get_yticks()[1:])
+_ = ax.set_yticklabels(ax.get_yticks(), size=12)
 plt.tight_layout()
 
 
@@ -279,7 +287,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_xlabels('Lasso parameter \n (higher = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.02, 0.5], frameon=True)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.015, 0.6], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['Train', 'Holdout \n(same cancer type)', 'Test \n(unseen cancer type)']
     for t, l in zip(g._legend.texts, new_labels):
@@ -299,6 +307,18 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.map_dataframe(add_best_vline)
     g.map_dataframe(add_smallest_vline)
     g.set_titles('Holdout cancer type: {col_name}')
+    
+    # create custom legend for best models lines
+    ax = plt.gca()
+    from matplotlib.lines import Line2D
+    legend_handles = [
+        Line2D([0], [0], color='black', linestyle='--'),
+        Line2D([0], [0], color='red', linestyle='--'),
+    ]
+    legend_labels = ['"best"', '"smallest good"']
+    l = ax.legend(legend_handles, legend_labels, title='Model choice',
+                  loc='lower left', bbox_to_anchor=(2.28, 1.3))
+    ax.add_artist(l)
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
 

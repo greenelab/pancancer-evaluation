@@ -271,8 +271,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
         
     # create custom legend for best models lines
     legend_handles = [
-        Line2D([0], [0], label='asdf', color='black', linestyle='--'),
-        Line2D([0], [0], label='fdsa', color='red', linestyle='--'),
+        Line2D([0], [0], color='black', linestyle='--'),
+        Line2D([0], [0], color='red', linestyle='--'),
     ]
     legend_labels = ['"best"', '"smallest good"']
     l = ax.legend(legend_handles, legend_labels, title='Model choice',

@@ -69,6 +69,7 @@ nz_coefs_df.head()
 
 
 sns.set({'figure.figsize': (12, 5)})
+sns.set_style('whitegrid')
 
 sns.boxplot(
     data=nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
@@ -102,7 +103,14 @@ for legpatch in ax.legend_.get_patches():
     legpatch.set_facecolor('None')
 
 sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
-plt.title(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction')
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, MSI prediction',
+          size=16)
+plt.xlabel('Cancer type', size=14)
+plt.ylabel('Number of nonzero coefficients', size=14)
+_, xlabels = plt.xticks()
+_ = ax.set_xticklabels(xlabels, size=12)
+ax.set_yticks(ax.get_yticks()[1:])
+_ = ax.set_yticklabels(ax.get_yticks(), size=12)
 plt.tight_layout()
 
 
@@ -310,8 +318,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
     ax = plt.gca()
     from matplotlib.lines import Line2D
     legend_handles = [
-        Line2D([0], [0], label='asdf', color='black', linestyle='--'),
-        Line2D([0], [0], label='fdsa', color='red', linestyle='--'),
+        Line2D([0], [0], color='black', linestyle='--'),
+        Line2D([0], [0], color='red', linestyle='--'),
     ]
     legend_labels = ['"best"', '"smallest good"']
     l = ax.legend(legend_handles, legend_labels, title='Model choice',
