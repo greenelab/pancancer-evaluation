@@ -31,8 +31,8 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 results_dir = os.path.join(
-    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
+    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
 )
 
 # 'aupr' or 'auroc'
@@ -295,7 +295,7 @@ print(top_smallest_compare_df.reject_both.value_counts())
 top_smallest_compare_df.head()
 
 
-# In[23]:
+# In[15]:
 
 
 reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values

@@ -285,7 +285,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         col_wrap=5, height=4, aspect=1.2
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.set_xlabels('Lasso parameter \n (higher = less regularization)')
+    g.set_xlabels('LASSO parameter \n (higher = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.015, 0.6], frameon=True)
     g._legend.set_title('Dataset')
