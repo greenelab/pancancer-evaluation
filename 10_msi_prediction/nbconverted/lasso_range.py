@@ -178,12 +178,12 @@ with sns.plotting_context('notebook', font_scale=1.25):
         t.set_text(l)
 
 
-# ### Visualize "best" LASSO parameters for the given gene
+# ### Visualize LASSO model selection for the given gene
 # 
 # We want to use two different strategies to pick the "best" LASSO parameter:
 # 
-# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "parsimonious" approach that assumes that smaller models will generalize better.
-# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "non-parsimonious" approach.
+# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "smallest good" model approach, that assumes that smaller models will generalize better (conditional on decent validation performance).
+# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "best" approach.
 # 
 # We'll plot the results of both strategies (which sometimes select the same parameter, but usually they're different) for the given gene below.
 
