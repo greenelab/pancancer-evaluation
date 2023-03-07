@@ -34,9 +34,14 @@ get_ipython().run_line_magic('autoreload', '2')
 
 results_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
 )
+if 'sgd' in results_dir:
+    param_orientation = 'lower'
+else:
+    param_orientation = 'higher'
 
-plot_gene = 'RB1'
+plot_gene = 'EGFR'
 metric = 'aupr'
 
 
@@ -73,6 +78,7 @@ nz_coefs_df.head()
 
 
 sns.set({'figure.figsize': (12, 5)})
+sns.set_style('whitegrid')
 
 sns.boxplot(
     data=nz_coefs_df.sort_values(by=['lasso_param']),
@@ -99,7 +105,13 @@ for i, patch in enumerate(box_patches):
         line.set_mfc(col)  # facecolor of fliers
         line.set_mec(col)  # edgecolor of fliers
 
-plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}')
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', size=16)
+plt.xlabel(f'LASSO parameter ({param_orientation} = less regularization)', size=14)
+plt.ylabel('Number of nonzero coefficients', size=14)
+_, xlabels = plt.xticks()
+_ = ax.set_xticklabels(xlabels, size=12)
+ax.set_yticks(ax.get_yticks()[1:])
+_ = ax.set_yticklabels(ax.get_yticks(), size=12)
 plt.tight_layout()
 
 
@@ -141,7 +153,7 @@ plt.tight_layout()
 # "train" = data used to train model
 # "cv" = validation set from TCGA (not used to train model)
 # "test" = CCLE data (not used to train model)
-sns.set({'figure.figsize': (8, 5)})
+sns.set({'figure.figsize': (9, 5)})
 sns.set_style('ticks')
 
 plot_df = (
@@ -156,27 +168,32 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
-        marker='o'
+        marker='o',
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.set_title('Holdout cancer type: {col_name}')
     g.set_xlabel('LASSO parameter (higher = less regularization)')
+    g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()
     legend_handles, legend_labels = ax.get_legend_handles_labels()
-    ax.legend(legend_handles, legend_labels, title='Dataset')
+    ax.legend(legend_handles,
+              ['TCGA (train)', 'TCGA (holdout)', 'CCLE'], 
+              title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1))
     
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
+    
+plt.savefig(f'{plot_gene}_tcga_ccle_param_curve.png', dpi=200, bbox_inches='tight')
 
 
-# ### Visualize "best" LASSO parameters for the given gene
+# ### Visualize LASSO model selection for the given gene
 # 
 # We want to use two different strategies to pick the "best" LASSO parameter:
 # 
-# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "parsimonious" approach that assumes that smaller models will generalize better.
-# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "non-parsimonious" approach.
+# 1. Choose the top 25% of LASSO parameters based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "smallest good" model approach, that assumes that smaller models will generalize better (conditional on decent validation performance).
+# 2. Choose the top LASSO parameter based solely on validation set AUPR, without considering model size. This is the "best" approach.
 # 
 # We'll plot the results of both strategies (which sometimes select the same parameter, but usually they're different) for the given gene below.
 
@@ -245,7 +262,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         marker='o'
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.set_xlabel('LASSO parameter (higher = less regularization)')
+    g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()
@@ -256,16 +273,18 @@ with sns.plotting_context('notebook', font_scale=1.6):
         
     # create custom legend for best models lines
     legend_handles = [
-        Line2D([0], [0], label='asdf', color='black', linestyle='--'),
-        Line2D([0], [0], label='fdsa', color='red', linestyle='--'),
+        Line2D([0], [0], color='black', linestyle='--'),
+        Line2D([0], [0], color='red', linestyle='--'),
     ]
-    legend_labels = ['best', 'smallest']
+    legend_labels = ['"best"', '"smallest good"']
     l = ax.legend(legend_handles, legend_labels, title='Model choice',
                   loc='lower left', bbox_to_anchor=(1.01, 0))
     ax.add_artist(l)
     
     legend_handles, legend_labels = ax.get_legend_handles_labels()
-    ax.legend(legend_handles, legend_labels, title='Dataset')
+    ax.legend(legend_handles,
+              ['TCGA (train)', 'TCGA (holdout)', 'CCLE'], 
+              title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
 

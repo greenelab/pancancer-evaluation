@@ -13,7 +13,6 @@
 import os
 import itertools as it
 
-from adjustText import adjust_text
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -33,6 +32,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 results_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
 )
 
 # 'aupr' or 'auroc'
@@ -181,8 +181,15 @@ all_top_smallest_diff_df = pd.DataFrame(
     columns=['gene', 'top_lasso_param',
              'smallest_lasso_param', 'top_smallest_diff']
 )
+all_top_smallest_diff_df['best'] = 'top'
+all_top_smallest_diff_df.loc[
+    all_top_smallest_diff_df.top_smallest_diff < 0, 'best'
+] = 'smallest'
+all_top_smallest_diff_df.loc[
+    all_top_smallest_diff_df.top_smallest_diff == 0, 'best'
+] = 'zero'
 
-print(all_top_smallest_diff_df.shape)
+print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
 
 
@@ -192,10 +199,10 @@ all_top_smallest_diff_df.head()
 sns.set({'figure.figsize': (8, 6)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=19)
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=24)
 plt.xlim(-0.2, 0.2)
-plt.title('Differences between top and smallest LASSO parameter')
-plt.xlabel('top - smallest')
+plt.title('Differences between "best" and "smallest good" LASSO parameter')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
@@ -207,11 +214,11 @@ sns.set_style('whitegrid')
 
 sns.histplot(
     all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
-    bins=19
+    bins=24
 )
 plt.xlim(-0.2, 0.2)
-plt.title('Differences between top and smallest LASSO parameter, without zeroes')
-plt.xlabel('top - smallest')
+plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
@@ -227,13 +234,102 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).he
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
 
 
+# In[13]:
+
+
+all_compare_df = []
+for lasso_param in perf_df.lasso_param.unique():
+    compare_df = au.compare_results(perf_df[perf_df.lasso_param == lasso_param],
+                                    metric='aupr',
+                                    data_type='cv',
+                                    verbose=True,
+                                    correction=True,
+                                    correction_alpha=0.001)
+    compare_df['lasso_param'] = lasso_param
+    all_compare_df.append(compare_df)
+
+all_compare_df = pd.concat(all_compare_df)
+
+print(all_compare_df.shape)
+print(all_compare_df.reject_null.value_counts())
+all_compare_df.head()
+
+
+# In[14]:
+
+
+top_compare_df = (all_compare_df
+    .merge(all_top_smallest_diff_df.loc[:, ['gene', 'top_lasso_param']],
+           left_on=['identifier', 'lasso_param'],
+           right_on=['gene', 'top_lasso_param'])
+    .drop(columns=['identifier', 'delta_mean', 'p_value', 'lasso_param'])
+)
+
+smallest_compare_df = (all_compare_df
+    .merge(all_top_smallest_diff_df.loc[:, ['gene', 'smallest_lasso_param']],
+           left_on=['identifier', 'lasso_param'],
+           right_on=['gene', 'smallest_lasso_param'])
+    .drop(columns=['identifier', 'delta_mean', 'p_value', 'lasso_param'])
+)
+
+top_smallest_compare_df = (top_compare_df
+    .merge(smallest_compare_df,
+           left_on=['gene'], right_on=['gene'])
+    .rename(columns={
+        'corr_pval_x': 'top_corr_pval',
+        'reject_null_x': 'top_reject_null',
+        'corr_pval_y': 'smallest_corr_pval',
+        'reject_null_y': 'smallest_reject_null'
+    })
+)
+top_smallest_compare_df['reject_either'] = (
+    top_smallest_compare_df.top_reject_null | top_smallest_compare_df.smallest_reject_null
+)
+top_smallest_compare_df['reject_both'] = (
+    top_smallest_compare_df.top_reject_null & top_smallest_compare_df.smallest_reject_null
+)
+
+print(top_compare_df.shape, smallest_compare_df.shape)
+print(top_smallest_compare_df.reject_either.value_counts())
+print(top_smallest_compare_df.reject_both.value_counts())
+top_smallest_compare_df.head()
+
+
+# In[15]:
+
+
+reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values
+plot_df = (all_top_smallest_diff_df
+    [all_top_smallest_diff_df.gene.isin(reject_both_genes)]
+)
+
+print(plot_df.shape)
+print(plot_df.best.value_counts())
+plot_df.head()
+
+
+# In[16]:
+
+
+sns.set({'figure.figsize': (8, 6)})
+sns.set_style('whitegrid')
+
+sns.histplot(
+    plot_df.top_smallest_diff, bins=24
+)
+plt.xlim(-0.2, 0.2)
+plt.title('Differences between "best" and "smallest good" LASSO parameter, well-performing models')
+plt.xlabel('AUPR(best) - AUPR(smallest good)')
+plt.gca().axvline(0, color='black', linestyle='--')
+
+
 # ### Compare TCGA and CCLE performance for each gene
 # 
 # Given the "best" LASSO parameter (in terms of validation performance) for each gene, we want to look at relative performance on the TCGA validation set and on the held-out CCLE data.
 # 
 # We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
-# In[13]:
+# In[17]:
 
 
 cv_perf_df = (
@@ -247,7 +343,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[14]:
+# In[18]:
 
 
 test_perf_df = (
@@ -261,7 +357,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[15]:
+# In[19]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -292,7 +388,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[16]:
+# In[20]:
 
 
 plot_df = (best_perf_df
@@ -304,7 +400,7 @@ plot_df = (best_perf_df
 plot_df.head()
 
 
-# In[17]:
+# In[21]:
 
 
 # plot cv/test performance distribution for each gene
@@ -350,7 +446,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[18]:
+# In[22]:
 
 
 # plot difference in validation and test performance for each gene
@@ -373,112 +469,4 @@ with sns.plotting_context('notebook', font_scale=1.5):
     plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
     plt.xlabel('Gene')
     plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
-
-
-# In[19]:
-
-
-plot_df = (best_perf_df
-    .drop(columns=['cv_test_auroc_diff', 'cv_auroc', 'data_type_x', 'data_type_y'])
-    .groupby(['gene', 'top_lasso_param'])
-    .agg(np.median)
-    .loc[:, ['cv_aupr', 'test_aupr', 'cv_test_aupr_diff']]
-    .reset_index()
-)
-
-print(plot_df.shape)
-plot_df.head()
-
-
-# In[20]:
-
-
-# plot mean valid performance vs. difference in valid/test performance
-sns.set({'figure.figsize': (12, 6)})
-sns.set_style('whitegrid')
-
-def _label_points(x, y, labels, ax):
-    text_labels = []
-    pts = pd.DataFrame({'x': x, 'y': y, 'label': labels})
-    for i, point in pts.iterrows():
-        text_labels.append(
-            ax.text(point['x'] + 0.01, point['y'] + 0.01, str(point['label']))
-        )
-    return text_labels
-
-with sns.plotting_context('notebook', font_scale=1.5):
-    ax = sns.scatterplot(data=plot_df, x='cv_test_aupr_diff', y='cv_aupr')
-    ax.axvline(0.0, linestyle='--', color='grey')
-    plt.xlim(-1., 1.)
-    plt.title(f'TCGA and CCLE difference vs. TCGA performance', y=1.02)
-    plt.xlabel('AUPR(TCGA) - AUPR(CCLE)')
-    plt.ylabel('AUPR(TCGA)')
-    
-text_labels = _label_points(
-    plot_df['cv_test_aupr_diff'],
-    plot_df['cv_aupr'],
-    plot_df['gene'],
-    ax
-)
-
-adjust_text(text_labels,
-            ax=ax,
-            expand_text=(0.25, 0.25),
-            lim=1)
-
-
-# In[21]:
-
-
-plot_df = (best_perf_df
-    .drop(columns=['cv_test_auroc_diff', 'cv_auroc', 'data_type_x', 'data_type_y'])
-    .groupby(['gene', 'top_lasso_param'])
-    .agg(np.median)
-    .loc[:, ['cv_aupr', 'test_aupr', 'cv_test_aupr_diff']]
-    .reset_index()
-    .merge(all_top_smallest_diff_df,
-           left_on=['gene', 'top_lasso_param'],
-           right_on=['gene', 'top_lasso_param'])
-)
-
-print(plot_df.shape)
-plot_df.head()
-
-
-# In[22]:
-
-
-# plot mean valid performance vs. difference in valid/test performance
-sns.set({'figure.figsize': (12, 6)})
-sns.set_style('whitegrid')
-
-def _label_points(x, y, labels, ax):
-    text_labels = []
-    pts = pd.DataFrame({'x': x, 'y': y, 'label': labels})
-    for i, point in pts.iterrows():
-        if (x[i] > 0.01) or (x[i] < -0.01):
-            text_labels.append(
-                ax.text(point['x']+0.001, point['y']+0.01, str(point['label']))
-            )
-    return text_labels
-
-with sns.plotting_context('notebook', font_scale=1.5):
-    ax = sns.scatterplot(data=plot_df, x='top_smallest_diff', y='cv_aupr')
-    ax.axvline(0.0, linestyle='--', color='grey')
-    plt.xlim(-0.2, 0.2)
-    plt.title(f'Top/smallest difference vs. TCGA performance', y=1.02)
-    plt.xlabel('top - smallest')
-    plt.ylabel('AUPR(TCGA)')
-    
-text_labels = _label_points(
-    plot_df['top_smallest_diff'],
-    plot_df['cv_aupr'],
-    plot_df['gene'],
-    ax
-)
-
-adjust_text(text_labels,
-            ax=ax,
-            expand_text=(0.25, 0.25),
-            lim=1)
 
