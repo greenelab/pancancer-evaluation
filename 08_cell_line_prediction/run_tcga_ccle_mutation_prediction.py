@@ -1,6 +1,6 @@
 """
 Script to train pan-cancer mutation classification models on TCGA data and
-evaluate them on CCLE.
+evaluate them on CCLE, or train on CCLE and evaluate on TCGA.
 """
 import sys
 import argparse
@@ -57,6 +57,9 @@ def process_args():
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--shuffle_labels', action='store_true')
+    p.add_argument('--training_dataset', choices=['tcga', 'ccle'], default='tcga',
+                   help='use either TCGA or CCLE as training set, the other will '
+                        'be used for testing')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
 
@@ -175,8 +178,15 @@ if __name__ == '__main__':
             continue
 
         try:
-            results = run_cv_tcga_ccle(tcga_data,
-                                       ccle_data,
+            if args.training_dataset == 'tcga':
+                train_data_model = tcga_data
+                test_data_model = ccle_data
+            else:
+                train_data_model = ccle_data
+                test_data_model = tcga_data
+
+            results = run_cv_tcga_ccle(train_data_model,
+                                       test_data_model,
                                        gene,
                                        args.num_folds,
                                        args.shuffle_labels,

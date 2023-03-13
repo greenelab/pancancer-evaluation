@@ -552,19 +552,23 @@ def run_cv_stratified(data_model,
     return results
 
 
-def run_cv_tcga_ccle(tcga_data,
-                     ccle_data,
+def run_cv_tcga_ccle(train_data_model,
+                     test_data_model,
                      identifier,
                      num_folds,
                      shuffle_labels,
                      lasso=False,
                      lasso_penalty=None):
-    """Train a model on TCGA data, and test on CCLE data.
+    """Train a model using one data model, and test on another.
+
+    This can either be used to train on TCGA data and test on CCLE (passing a
+    TCGADataModel as train_data_model and a CCLEDataModel as test_data_model),
+    or vice-versa to train on CCLE data and test on TCGA.
 
     Arguments
     ---------
-    tcga_data (TCGADataModel): class containing preprocessed TCGA data
-    ccle_data (CCLEDataModel): class containing preprocessed CCLE data
+    train_data_model (TCGADataModel or CCLEDataModel): class containing preprocessed train data
+    test_data_model (TCGADataModel or CCLEDataModel): class containing preprocessed test data
     identifier (str): identifier to run experiments for
     num_folds (int): number of cross-validation folds to run
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
@@ -585,18 +589,18 @@ def run_cv_tcga_ccle(tcga_data,
     for fold_no in range(num_folds):
 
         # train on TCGA data, test on CCLE data
-        X_train_raw_df = tcga_data.X_df
-        X_test_raw_df = ccle_data.X_df
-        y_train_df = tcga_data.y_df
-        y_test_df = ccle_data.y_df
+        X_train_raw_df = train_data_model.X_df
+        X_test_raw_df = test_data_model.X_df
+        y_train_df = train_data_model.y_df
+        y_test_df = test_data_model.y_df
 
         if shuffle_labels:
             if cfg.shuffle_by_cancer_type:
                 # in this case we want to shuffle labels independently for each cancer type
                 # (i.e. preserve the total number of mutated samples in each)
                 original_ones = y_train_df.groupby('DISEASE').sum()['status']
-                y_train_df.status = shuffle_by_cancer_type(y_train_df, tcga_data.seed)
-                y_test_df.status = shuffle_by_cancer_type(y_test_df, ccle_data.seed)
+                y_train_df.status = shuffle_by_cancer_type(y_train_df, train_data_model.seed)
+                y_test_df.status = shuffle_by_cancer_type(y_test_df, test_data_model.seed)
                 new_ones = y_train_df.groupby('DISEASE').sum()['status']
                 # label distribution per cancer type should be the same before
                 # and after shuffling (or approximately the same in the case of
@@ -607,21 +611,23 @@ def run_cv_tcga_ccle(tcga_data,
                 # we set a temp seed here to make sure this shuffling order
                 # is the same for each gene between data types, otherwise
                 # it might be slightly different depending on the global state
-                with temp_seed(tcga_data.seed):
+                with temp_seed(train_data_model.seed):
                     y_train_df.status = np.random.permutation(y_train_df.status.values)
                     y_test_df.status = np.random.permutation(y_test_df.status.values)
 
         X_train_df, X_test_df = tu.preprocess_data(
             X_train_raw_df,
             X_test_raw_df,
-            # gene_features should be the same for TCGA and CCLE
-            tcga_data.gene_features,
+            # gene_features should be the same for TCGA and CCLE,
+            # just use the training data features
+            train_data_model.gene_features,
             y_df=y_train_df,
-            feature_selection=tcga_data.feature_selection,
-            num_features=tcga_data.num_features,
-            mad_preselect=tcga_data.mad_preselect,
-            seed=tcga_data.seed,
+            feature_selection=train_data_model.feature_selection,
+            num_features=train_data_model.num_features,
+            mad_preselect=train_data_model.mad_preselect,
+            seed=train_data_model.seed,
         )
+        print(X_train_df.shape, X_test_df.shape)
 
         try:
             with warnings.catch_warnings():
@@ -634,7 +640,7 @@ def run_cv_tcga_ccle(tcga_data,
                     X_train=X_train_df,
                     X_test=X_test_df,
                     y_train=y_train_df,
-                    seed=tcga_data.seed,
+                    seed=train_data_model.seed,
                     n_folds=cfg.folds,
                     max_iter=cfg.max_iter
                 )
@@ -654,7 +660,7 @@ def run_cv_tcga_ccle(tcga_data,
             cv_pipeline=cv_pipeline,
             feature_names=X_train_df.columns,
             signal=signal,
-            seed=tcga_data.seed,
+            seed=train_data_model.seed,
             name='classify'
         )
         coef_df = coef_df.assign(identifier=identifier)
@@ -666,7 +672,7 @@ def run_cv_tcga_ccle(tcga_data,
                 metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
                     y_train_df, y_test_df, y_pred_cv, y_pred_train,
                     y_pred_test, identifier, 'N/A', signal,
-                    tcga_data.seed, fold_no, y_cv_df
+                    train_data_model.seed, fold_no, y_cv_df
                 )
             results['gene_metrics'].append(metric_df)
             results['gene_auc'].append(gene_auc_df)
