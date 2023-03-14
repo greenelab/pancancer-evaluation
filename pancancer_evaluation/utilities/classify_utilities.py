@@ -627,7 +627,6 @@ def run_cv_tcga_ccle(train_data_model,
             mad_preselect=train_data_model.mad_preselect,
             seed=train_data_model.seed,
         )
-        print(X_train_df.shape, X_test_df.shape)
 
         try:
             with warnings.catch_warnings():
