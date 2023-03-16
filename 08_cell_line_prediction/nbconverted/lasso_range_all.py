@@ -246,6 +246,10 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).hea
 
 
 # Here, we want to filter out models that don't significantly outperform a baseline with shuffled labels. (Note that this requires the shuffled baseline data to be generated, which isn't yet the case for the CCLE -> TCGA experiments)
+
+# In[ ]:
+
+
 all_compare_df = []
 for lasso_param in perf_df.lasso_param.unique():
     print(lasso_param)
@@ -263,7 +267,13 @@ all_compare_df = pd.concat(all_compare_df)
 
 print(all_compare_df.shape)
 print(all_compare_df.reject_null.value_counts())
-all_compare_df.head()top_compare_df = (all_compare_df
+all_compare_df.head()
+
+
+# In[ ]:
+
+
+top_compare_df = (all_compare_df
     .merge(all_top_smallest_diff_df.loc[:, ['gene', 'top_lasso_param']],
            left_on=['identifier', 'lasso_param'],
            right_on=['gene', 'top_lasso_param'])
@@ -297,14 +307,26 @@ top_smallest_compare_df['reject_both'] = (
 print(top_compare_df.shape, smallest_compare_df.shape)
 print(top_smallest_compare_df.reject_either.value_counts())
 print(top_smallest_compare_df.reject_both.value_counts())
-top_smallest_compare_df.head()reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values
+top_smallest_compare_df.head()
+
+
+# In[ ]:
+
+
+reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values
 plot_df = (all_top_smallest_diff_df
     [all_top_smallest_diff_df.gene.isin(reject_both_genes)]
 )
 
 print(plot_df.shape)
 print(plot_df.best.value_counts())
-plot_df.head()sns.set({'figure.figsize': (8, 6)})
+plot_df.head()
+
+
+# In[ ]:
+
+
+sns.set({'figure.figsize': (8, 6)})
 sns.set_style('whitegrid')
 
 sns.histplot(
@@ -314,6 +336,8 @@ plt.xlim(-0.2, 0.2)
 plt.title('Differences between "best" and "smallest good" LASSO parameter, well-performing models')
 plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
+
+
 # ### Compare TCGA and CCLE performance for each gene
 # 
 # Given the "best" LASSO parameter (in terms of validation performance) for each gene, we want to look at relative performance on the TCGA validation set and on the held-out CCLE data.
