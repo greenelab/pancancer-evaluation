@@ -344,7 +344,7 @@ plt.gca().axvline(0, color='black', linestyle='--')
 # 
 # We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
-# In[16]:
+# In[13]:
 
 
 cv_perf_df = (
@@ -358,7 +358,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[17]:
+# In[14]:
 
 
 test_perf_df = (
@@ -372,7 +372,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[18]:
+# In[15]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -403,7 +403,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[19]:
+# In[16]:
 
 
 plot_df = (best_perf_df
@@ -415,7 +415,7 @@ plot_df = (best_perf_df
 plot_df.head()
 
 
-# In[20]:
+# In[17]:
 
 
 # plot cv/test performance distribution for each gene
@@ -461,7 +461,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[21]:
+# In[18]:
 
 
 # plot difference in validation and test performance for each gene
@@ -481,7 +481,12 @@ with sns.plotting_context('notebook', font_scale=1.5):
                      palette='flare')
     ax.axhline(0.0, linestyle='--', color='grey')
     plt.xticks(rotation=90)
-    plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
     plt.xlabel('Gene')
-    plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
+    
+    if os.path.split(results_dir)[-1].split('_')[0] == 'ccle':
+        plt.title(f'Difference between CCLE and TCGA mutation prediction performance, by gene', y=1.02)
+        plt.ylabel('AUPR(CCLE) - AUPR(TCGA)')
+    else:
+        plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
+        plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
 
