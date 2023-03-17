@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### TCGA to CCLE mutation prediction: LASSO parameter range experiments
+# ### TCGA <-> CCLE mutation prediction: LASSO parameter range experiments
 # 
-# Here, we're interested in training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines). This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
+# Here, we're interested in:
+# 
+# * Training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines), or
+# * Training mutation status models on data from CCLE and testing on data from TCGA
+# 
+# This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
 # 
 # This script plots the detailed results of varying regularization strength (LASSO parameter) for a single gene.
 
@@ -33,15 +38,30 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 results_dir = os.path.join(
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # uncomment to run for TCGA -> CCLE
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    
+    # uncomment to run for TCGA -> CCLE (using SGD optimizer)
     # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
+    
+    # uncomment to run for CCLE -> TCGA
+    cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
 )
+
 if 'sgd' in results_dir:
     param_orientation = 'lower'
 else:
     param_orientation = 'higher'
+    
+if os.path.split(results_dir)[-1].split('_')[0] == 'ccle':
+    dataset_labels = ['CCLE (train)', 'CCLE (holdout)', 'TCGA'] 
+else:
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
 
+# gene to plot results for
 plot_gene = 'EGFR'
+
+# performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
 
 
@@ -77,7 +97,7 @@ nz_coefs_df.head()
 # In[4]:
 
 
-sns.set({'figure.figsize': (12, 5)})
+sns.set({'figure.figsize': (14, 4)})
 sns.set_style('whitegrid')
 
 sns.boxplot(
@@ -177,15 +197,11 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()
-    legend_handles, legend_labels = ax.get_legend_handles_labels()
-    ax.legend(legend_handles,
-              ['TCGA (train)', 'TCGA (holdout)', 'CCLE'], 
-              title='Dataset')
+    legend_handles, _ = ax.get_legend_handles_labels()
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1))
     
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
-    
-plt.savefig(f'{plot_gene}_tcga_ccle_param_curve.png', dpi=200, bbox_inches='tight')
 
 
 # ### Visualize LASSO model selection for the given gene
@@ -281,10 +297,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
                   loc='lower left', bbox_to_anchor=(1.01, 0))
     ax.add_artist(l)
     
-    legend_handles, legend_labels = ax.get_legend_handles_labels()
-    ax.legend(legend_handles,
-              ['TCGA (train)', 'TCGA (holdout)', 'CCLE'], 
-              title='Dataset')
+    legend_handles, _ = ax.get_legend_handles_labels()
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
 

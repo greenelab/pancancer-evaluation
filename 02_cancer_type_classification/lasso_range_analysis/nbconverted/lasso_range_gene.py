@@ -36,7 +36,7 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-plot_gene = 'PTEN'
+plot_gene = 'CDKN2A'
 metric = 'aupr'
 nz_cutoff = 5.0
 
@@ -262,7 +262,7 @@ compare_all_df = pd.concat(compare_all_df)
 compare_all_df.head(5)
 
 
-# In[11]:
+# In[19]:
 
 
 # same plot as before but with the "best"/"smallest" parameters marked
@@ -289,7 +289,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.015, 0.6], frameon=True)
     g._legend.set_title('Dataset')
-    new_labels = ['Train', 'Holdout \n(same cancer type)', 'Test \n(unseen cancer type)']
+    new_labels = ['Train', 'Cross-validation \n(same cancer type)', 'Test \n(unseen cancer type)']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
     
@@ -316,8 +316,16 @@ with sns.plotting_context('notebook', font_scale=1.6):
         Line2D([0], [0], color='red', linestyle='--'),
     ]
     legend_labels = ['"best"', '"smallest good"']
+    
+    # note that this second legend's position has to be adjusted based on the
+    # number of plots in the bottom row, since it's technically the legend of
+    # the final plot
+    #
+    # if this script gets more use in the future we could figure out how
+    # to adjust it automatically, but for now just adjust by trial and error
     l = ax.legend(legend_handles, legend_labels, title='Model choice',
-                  loc='lower left', bbox_to_anchor=(2.28, 1.3))
+                  loc='lower left', bbox_to_anchor=(3.408, 1.3)) # 3 plots in bottom row
+                  # loc='lower left', bbox_to_anchor=(2.28, 1.3)) # 4 plots in bottom row
     ax.add_artist(l)
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
