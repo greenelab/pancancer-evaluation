@@ -161,6 +161,37 @@ def save_results_lasso_penalty(results_dir,
     )
 
 
+def save_results_mlp(results_dir,
+                     check_file,
+                     results,
+                     identifier,
+                     shuffle_labels,
+                     seed,
+                     feature_selection,
+                     num_features,
+                     predictor='classify'):
+
+    signal = 'shuffled' if shuffle_labels else 'signal'
+
+    metrics_df = pd.concat(results['gene_metrics'])
+    coef_df = pd.concat(results['gene_coef'])
+
+    coef_df.to_csv(
+        check_file, sep="\t", index=False, compression="gzip",
+        float_format="%.5g"
+    )
+
+    output_file = Path(
+        results_dir, "{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
+            identifier, signal, feature_selection,
+            seed, num_features, predictor
+        )
+    ).resolve()
+    metrics_df.to_csv(
+        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+    )
+
+
 def save_results_cross_cancer(output_dir,
                               check_file,
                               results,

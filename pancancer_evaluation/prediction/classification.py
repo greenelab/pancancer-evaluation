@@ -208,6 +208,112 @@ def train_lasso(X_train,
             (y_predict_train, y_predict_valid, y_predict_test))
 
 
+def train_mlp(X_train,
+              X_test,
+              y_train,
+              seed,
+              search_hparams={},
+              batch_size=50,
+              n_folds=3,
+              max_iter=100,
+              search_n_iter=20):
+    """Train MLP model, using random search to choose hyperparameters.
+
+    search_hparams should be a dict with lists of hyperparameter options to
+    randomly search over; the options/defaults are specified below.
+    """
+
+    import torch.optim
+    # from skorch import NeuralNetClassifier
+    from skorch import NeuralNetBinaryClassifier
+    from pancancer_evaluation.prediction.nn_models import ThreeLayerNet
+
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
+        'h1_size': [100, 200, 300, 500],
+        'dropout': [0.1, 0.5, 0.75],
+        'weight_decay': [0, 0.1, 1, 10, 100]
+    }
+    for k, v in default_hparams.items():
+        search_hparams.setdefault(k, v)
+
+    model = ThreeLayerNet(input_size=X_train.shape[1])
+
+    clf_parameters = {
+        'lr': search_hparams['learning_rate'],
+        'module__input_size': [X_train.shape[1]],
+        'module__h1_size': search_hparams['h1_size'],
+        'module__dropout': search_hparams['dropout'],
+        'optimizer__weight_decay': search_hparams['weight_decay'],
+     }
+
+    net = NeuralNetBinaryClassifier(
+        model,
+        max_epochs=max_iter,
+        batch_size=batch_size,
+        optimizer=torch.optim.Adam,
+        iterator_train__shuffle=True,
+        verbose=0, # by default this prints loss for each epoch
+        train_split=False,
+        device='cuda'
+    )
+
+    if n_folds == -1:
+        # for this option we just want to do a grid search for a single
+        # train/test split, this is much more computationally efficient
+        # but could have higher variance
+        from sklearn.model_selection import train_test_split
+        subtrain_ixs, valid_ixs = train_test_split(
+            np.arange(X_train.shape[0]),
+            test_size=0.2,
+            random_state=seed,
+            shuffle=True
+        )
+        cv = zip([subtrain_ixs], [valid_ixs])
+        cv_pipeline = RandomizedSearchCV(
+            estimator=net,
+            param_distributions=clf_parameters,
+            n_iter=search_n_iter,
+            cv=cv,
+            scoring='average_precision',
+            verbose=2,
+            random_state=seed
+        )
+    else:
+        cv_pipeline = RandomizedSearchCV(
+            estimator=net,
+            param_distributions=clf_parameters,
+            n_iter=search_n_iter,
+            cv=n_folds,
+            scoring='average_precision',
+            verbose=2,
+            random_state=seed
+        )
+
+    cv_pipeline.fit(X=X_train.values.astype(np.float32),
+                    y=y_train.status.values.astype(np.float32))
+
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
+    # Get all performance results
+    y_predict_train = cv_pipeline.predict_proba(
+        X_subtrain.values.astype(np.float32)
+    )[:, 1]
+    y_predict_valid = cv_pipeline.predict_proba(
+        X_valid.values.astype(np.float32)
+    )[:, 1]
+    y_predict_test = cv_pipeline.predict_proba(
+        X_test.values.astype(np.float32)
+    )[:, 1]
+
+    return (cv_pipeline, 
+            (y_subtrain, y_valid),
+            (y_predict_train, y_predict_valid, y_predict_test))
+
+
 def get_threshold_metrics(y_true, y_pred, drop=False):
     """
     Retrieve true/false positive rates and auroc/aupr for class predictions

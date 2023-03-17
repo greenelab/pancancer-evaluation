@@ -557,7 +557,8 @@ def run_cv_tcga_ccle(tcga_data,
                      identifier,
                      num_folds,
                      shuffle_labels,
-                     lasso=False,
+                     model='lr',
+                     lasso=True,
                      lasso_penalty=None):
     """Train a model on TCGA data, and test on CCLE data.
 
@@ -627,8 +628,14 @@ def run_cv_tcga_ccle(tcga_data,
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
-                train_model_params = apply_model_params(clf.train_classifier,
-                                                        lasso=True,
+                classifiers_list = {
+                    'lr': clf.train_classifier,
+                    'mlp': clf.train_mlp
+                }
+                train_model = classifiers_list[model]
+                train_model_params = apply_model_params(train_model,
+                                                        model=model,
+                                                        lasso=lasso,
                                                         lasso_penalty=lasso_penalty)
                 model_results = train_model_params(
                     X_train=X_train_df,
@@ -650,15 +657,18 @@ def run_cv_tcga_ccle(tcga_data,
             )
 
         # get coefficients
-        coef_df = extract_coefficients(
-            cv_pipeline=cv_pipeline,
-            feature_names=X_train_df.columns,
-            signal=signal,
-            seed=tcga_data.seed,
-            name='classify'
-        )
-        coef_df = coef_df.assign(identifier=identifier)
-        coef_df = coef_df.assign(fold=fold_no)
+        if model != 'mlp':
+            coef_df = extract_coefficients(
+                cv_pipeline=cv_pipeline,
+                feature_names=X_train_df.columns,
+                signal=signal,
+                seed=tcga_data.seed,
+                name='classify'
+            )
+            coef_df = coef_df.assign(identifier=identifier)
+            coef_df = coef_df.assign(fold=fold_no)
+        else:
+            coef_df = pd.DataFrame()
 
         try:
             with warnings.catch_warnings():
@@ -763,28 +773,39 @@ def shuffle_by_cancer_type(y_df, seed):
 
 
 def apply_model_params(train_model,
+                       model='lr',
                        ridge=False,
                        lasso=False,
                        lasso_penalty=None):
     """Pass hyperparameters to model, based on which model we want to fit."""
-    if ridge:
+    if model == 'lr':
+        if ridge:
+            return partial(
+                train_model,
+                ridge=ridge,
+                c_values=cfg.ridge_c_values
+            )
+        elif lasso:
+            return partial(
+                train_model,
+                lasso=lasso,
+                lasso_penalty=lasso_penalty
+            )
+        else:
+            # elastic net is the default
+            return partial(
+                train_model,
+                alphas=cfg.alphas,
+                l1_ratios=cfg.l1_ratios
+            )
+    elif model == 'mlp':
         return partial(
             train_model,
-            ridge=ridge,
-            c_values=cfg.ridge_c_values
-        )
-    elif lasso:
-        return partial(
-            train_model,
-            lasso=lasso,
-            lasso_penalty=lasso_penalty
+            search_hparams={},
+            search_n_iter=3,
         )
     else:
-        return partial(
-            train_model,
-            alphas=cfg.alphas,
-            l1_ratios=cfg.l1_ratios
-        )
+        raise NotImplementedError(f'model {model} not implemented')
 
 
 @contextlib.contextmanager
