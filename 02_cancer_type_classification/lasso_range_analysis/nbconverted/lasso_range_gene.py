@@ -316,9 +316,16 @@ with sns.plotting_context('notebook', font_scale=1.6):
         Line2D([0], [0], color='red', linestyle='--'),
     ]
     legend_labels = ['"best"', '"smallest good"']
+    
+    # note that this second legend's position has to be adjusted based on the
+    # number of plots in the bottom row, since it's technically the legend of
+    # the final plot
+    #
+    # if this script gets more use in the future we could figure out how
+    # to adjust it automatically, but for now just adjust by trial and error
     l = ax.legend(legend_handles, legend_labels, title='Model choice',
-                  # loc='lower left', bbox_to_anchor=(2.28, 1.3))
-                  loc='lower left', bbox_to_anchor=(3.408, 1.3))
+                  loc='lower left', bbox_to_anchor=(3.408, 1.3)) # 3 plots in bottom row
+                  # loc='lower left', bbox_to_anchor=(2.28, 1.3)) # 4 plots in bottom row
     ax.add_artist(l)
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
