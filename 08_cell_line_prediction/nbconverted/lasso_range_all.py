@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### TCGA to CCLE mutation prediction: LASSO parameter range experiments, summary across all genes
+# ### TCGA <-> CCLE mutation prediction: LASSO parameter range experiments, summary across all genes
 # 
-# Here, we're interested in training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines). This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
+# Here, we're interested in:
+# 
+# * Training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines), or
+# * Training mutation status models on data from CCLE and testing on data from TCGA
+# 
+# This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
 # 
 # This script plots the summarized results of varying regularization strength (LASSO parameter) across all genes in our cancer driver gene set.
 
@@ -31,11 +36,17 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 results_dir = os.path.join(
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    # uncomment to run for TCGA -> CCLE
+    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    
+    # uncomment to run for TCGA -> CCLE (using SGD optimizer)
     # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
+    
+    # uncomment to run for CCLE -> TCGA
+    cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
 )
 
-# 'aupr' or 'auroc'
+# performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
 
 
@@ -199,7 +210,7 @@ all_top_smallest_diff_df.head()
 sns.set({'figure.figsize': (8, 6)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=24)
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=12)
 plt.xlim(-0.2, 0.2)
 plt.title('Differences between "best" and "smallest good" LASSO parameter')
 plt.xlabel('AUPR(best) - AUPR(smallest good)')
@@ -214,7 +225,7 @@ sns.set_style('whitegrid')
 
 sns.histplot(
     all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
-    bins=24
+    bins=13
 )
 plt.xlim(-0.2, 0.2)
 plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
@@ -234,11 +245,15 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).he
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
 
 
-# In[13]:
+# Here, we want to filter out models that don't significantly outperform a baseline with shuffled labels. (Note that this requires the shuffled baseline data to be generated, which isn't yet the case for the CCLE -> TCGA experiments)
+
+# In[ ]:
 
 
 all_compare_df = []
 for lasso_param in perf_df.lasso_param.unique():
+    print(lasso_param)
+    print(perf_df[perf_df.lasso_param == lasso_param])
     compare_df = au.compare_results(perf_df[perf_df.lasso_param == lasso_param],
                                     metric='aupr',
                                     data_type='cv',
@@ -255,7 +270,7 @@ print(all_compare_df.reject_null.value_counts())
 all_compare_df.head()
 
 
-# In[14]:
+# In[ ]:
 
 
 top_compare_df = (all_compare_df
@@ -295,7 +310,7 @@ print(top_smallest_compare_df.reject_both.value_counts())
 top_smallest_compare_df.head()
 
 
-# In[15]:
+# In[ ]:
 
 
 reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values
@@ -308,7 +323,7 @@ print(plot_df.best.value_counts())
 plot_df.head()
 
 
-# In[16]:
+# In[ ]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -329,7 +344,7 @@ plt.gca().axvline(0, color='black', linestyle='--')
 # 
 # We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
-# In[17]:
+# In[13]:
 
 
 cv_perf_df = (
@@ -343,7 +358,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[18]:
+# In[14]:
 
 
 test_perf_df = (
@@ -357,7 +372,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[19]:
+# In[15]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -388,7 +403,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[20]:
+# In[16]:
 
 
 plot_df = (best_perf_df
@@ -400,7 +415,7 @@ plot_df = (best_perf_df
 plot_df.head()
 
 
-# In[21]:
+# In[17]:
 
 
 # plot cv/test performance distribution for each gene
@@ -446,7 +461,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[22]:
+# In[18]:
 
 
 # plot difference in validation and test performance for each gene
@@ -466,7 +481,12 @@ with sns.plotting_context('notebook', font_scale=1.5):
                      palette='flare')
     ax.axhline(0.0, linestyle='--', color='grey')
     plt.xticks(rotation=90)
-    plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
     plt.xlabel('Gene')
-    plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
+    
+    if os.path.split(results_dir)[-1].split('_')[0] == 'ccle':
+        plt.title(f'Difference between CCLE and TCGA mutation prediction performance, by gene', y=1.02)
+        plt.ylabel('AUPR(CCLE) - AUPR(TCGA)')
+    else:
+        plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
+        plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
 
