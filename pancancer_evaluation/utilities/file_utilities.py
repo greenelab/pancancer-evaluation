@@ -191,6 +191,18 @@ def save_results_mlp(results_dir,
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
+    if 'gene_param_grid' in results:
+        params_df = pd.concat(results['gene_param_grid'])
+        output_file = Path(
+            results_dir, "{}_{}_{}_s{}_n{}_{}_param_grid.tsv.gz".format(
+                identifier, signal, feature_selection,
+                seed, num_features, predictor
+            )
+        ).resolve()
+        params_df.to_csv(output_file, sep="\t")
+    else:
+        params_df = None
+
 
 def save_results_cross_cancer(output_dir,
                               check_file,

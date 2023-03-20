@@ -582,6 +582,9 @@ def run_cv_tcga_ccle(train_data_model,
         'gene_aupr': [],
         'gene_coef': []
     }
+    if model == 'mlp':
+        results['gene_param_grid'] = []
+
     signal = 'shuffled' if shuffle_labels else 'signal'
 
     # the "folds" here refer to choosing different validation datasets,
@@ -661,8 +664,8 @@ def run_cv_tcga_ccle(train_data_model,
                 'Only one class present in test set for identifier: {}\n'.format(identifier)
             )
 
-        # get coefficients
         if model != 'mlp':
+            # get coefficients
             coef_df = extract_coefficients(
                 cv_pipeline=cv_pipeline,
                 feature_names=X_train_df.columns,
@@ -674,6 +677,10 @@ def run_cv_tcga_ccle(train_data_model,
             coef_df = coef_df.assign(fold=fold_no)
         else:
             coef_df = pd.DataFrame()
+            # get parameter grid
+            results['gene_param_grid'].append(
+                generate_param_grid(cv_pipeline.cv_results_, fold_no)
+            )
 
         try:
             with warnings.catch_warnings():
@@ -758,8 +765,14 @@ def generate_param_grid(cv_results, fold_no=-1):
             )
 
     # add mean train/test scores across inner folds to parameter grid
-    results_grid.append(cv_results['mean_train_score'])
-    columns.append('mean_train_score')
+    try:
+        results_grid.append(cv_results['mean_train_score'])
+        columns.append('mean_train_score')
+    except KeyError:
+        # this can happen if there's only one train/test split, for some
+        # reason sklearn doesn't compute train performance
+        pass
+
     results_grid.append(cv_results['mean_test_score'])
     columns.append('mean_test_score')
 

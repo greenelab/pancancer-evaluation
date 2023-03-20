@@ -224,8 +224,7 @@ def train_mlp(X_train,
     """
 
     import torch.optim
-    # from skorch import NeuralNetClassifier
-    from skorch import NeuralNetBinaryClassifier
+    from skorch import NeuralNetClassifier
     from pancancer_evaluation.prediction.nn_models import ThreeLayerNet
 
     # default hyperparameter search options
@@ -249,7 +248,7 @@ def train_mlp(X_train,
         'optimizer__weight_decay': search_hparams['weight_decay'],
      }
 
-    net = NeuralNetBinaryClassifier(
+    net = NeuralNetClassifier(
         model,
         max_epochs=max_iter,
         batch_size=batch_size,
@@ -264,19 +263,23 @@ def train_mlp(X_train,
         # for this option we just want to do a grid search for a single
         # train/test split, this is much more computationally efficient
         # but could have higher variance
-        from sklearn.model_selection import train_test_split
+        from sklearn.model_selection import (
+            train_test_split,
+            PredefinedSplit
+        )
         subtrain_ixs, valid_ixs = train_test_split(
             np.arange(X_train.shape[0]),
             test_size=0.2,
             random_state=seed,
             shuffle=True
         )
-        cv = zip([subtrain_ixs], [valid_ixs])
+        test_fold = np.zeros(X_train.shape[0])
+        test_fold[subtrain_ixs] = -1
         cv_pipeline = RandomizedSearchCV(
             estimator=net,
             param_distributions=clf_parameters,
             n_iter=search_n_iter,
-            cv=cv,
+            cv=PredefinedSplit(test_fold=test_fold),
             scoring='average_precision',
             verbose=2,
             random_state=seed
@@ -293,7 +296,7 @@ def train_mlp(X_train,
         )
 
     cv_pipeline.fit(X=X_train.values.astype(np.float32),
-                    y=y_train.status.values.astype(np.float32))
+                    y=y_train.status.values.astype(int))
 
     X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
     y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
