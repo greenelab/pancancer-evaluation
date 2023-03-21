@@ -203,6 +203,18 @@ def save_results_mlp(results_dir,
     else:
         params_df = None
 
+    if 'learning_curves' in results:
+        lc_df = pd.concat(results['learning_curves'])
+        output_file = Path(
+            results_dir, "{}_{}_{}_s{}_n{}_{}_learning_curves.tsv.gz".format(
+                identifier, signal, feature_selection,
+                seed, num_features, predictor
+            )
+        ).resolve()
+        lc_df.to_csv(output_file, sep="\t")
+    else:
+        lc_df = None
+
 
 def save_results_cross_cancer(output_dir,
                               check_file,

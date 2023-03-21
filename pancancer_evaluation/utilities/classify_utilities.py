@@ -584,6 +584,7 @@ def run_cv_tcga_ccle(train_data_model,
     }
     if model == 'mlp':
         results['gene_param_grid'] = []
+        results['learning_curves'] = []
 
     signal = 'shuffled' if shuffle_labels else 'signal'
 
@@ -632,19 +633,36 @@ def run_cv_tcga_ccle(train_data_model,
             seed=train_data_model.seed,
         )
 
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # set the hyperparameters
-                classifiers_list = {
-                    'lr': clf.train_classifier,
-                    'mlp': clf.train_mlp
-                }
-                train_model = classifiers_list[model]
-                train_model_params = apply_model_params(train_model,
-                                                        model=model,
-                                                        lasso=lasso,
-                                                        lasso_penalty=lasso_penalty)
+        # try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # set the hyperparameters
+            classifiers_list = {
+                'lr': clf.train_classifier,
+                'mlp': clf.train_mlp
+            }
+            train_model = classifiers_list[model]
+            train_model_params = apply_model_params(train_model,
+                                                    model=model,
+                                                    lasso=lasso,
+                                                    lasso_penalty=lasso_penalty)
+            if model == 'mlp':
+                model_results = train_model_params(
+                    X_train=X_train_df,
+                    X_test=X_test_df,
+                    y_train=y_train_df,
+                    y_test=y_test_df,
+                    seed=train_data_model.seed,
+                    n_folds=cfg.folds,
+                    max_iter=cfg.max_iter
+                )
+                (net, cv_pipeline, labels, preds) = model_results
+                (y_train_df,
+                 y_cv_df) = labels
+                (y_pred_train,
+                 y_pred_cv,
+                 y_pred_test) = preds
+            else:
                 model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,
@@ -659,10 +677,10 @@ def run_cv_tcga_ccle(train_data_model,
                 (y_pred_train,
                  y_pred_cv,
                  y_pred_test) = preds
-        except ValueError:
-            raise OneClassError(
-                'Only one class present in test set for identifier: {}\n'.format(identifier)
-            )
+        # except ValueError:
+        #     raise OneClassError(
+        #         'Only one class present in test set for identifier: {}\n'.format(identifier)
+        #     )
 
         if model != 'mlp':
             # get coefficients
@@ -680,6 +698,9 @@ def run_cv_tcga_ccle(train_data_model,
             # get parameter grid
             results['gene_param_grid'].append(
                 generate_param_grid(cv_pipeline.cv_results_, fold_no)
+            )
+            results['learning_curves'].append(
+                history_to_tsv(net, fold_no)
             )
 
         try:
@@ -777,6 +798,24 @@ def generate_param_grid(cv_results, fold_no=-1):
     columns.append('mean_test_score')
 
     return pd.DataFrame(np.array(results_grid).T, columns=columns)
+
+
+def history_to_tsv(net, fold_no=-1):
+    learning_curves = []
+    for k in ['train_aupr', 'valid_aupr', 'test_aupr']:
+        num_epochs = len(net.history)
+        learning_curves += list(
+            zip(list(range(1, num_epochs+1)),
+                [fold_no] * num_epochs,
+                [k.split('_')[0] if k.split('_')[0] != 'valid' else 'cv'] * num_epochs,
+                ['aupr'] * num_epochs,
+                net.history[:, k]
+            )
+        )
+    return pd.DataFrame(
+        learning_curves,
+        columns=['epoch', 'fold', 'dataset', 'metric', 'value']
+    )
 
 
 def shuffle_by_cancer_type(y_df, seed):
