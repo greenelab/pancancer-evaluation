@@ -633,54 +633,54 @@ def run_cv_tcga_ccle(train_data_model,
             seed=train_data_model.seed,
         )
 
-        # try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # set the hyperparameters
-            classifiers_list = {
-                'lr': clf.train_classifier,
-                'mlp': clf.train_mlp
-            }
-            train_model = classifiers_list[model]
-            train_model_params = apply_model_params(train_model,
-                                                    model=model,
-                                                    lasso=lasso,
-                                                    lasso_penalty=lasso_penalty)
-            if model == 'mlp':
-                model_results = train_model_params(
-                    X_train=X_train_df,
-                    X_test=X_test_df,
-                    y_train=y_train_df,
-                    y_test=y_test_df,
-                    seed=train_data_model.seed,
-                    n_folds=cfg.folds,
-                    max_iter=cfg.max_iter
-                )
-                (net, cv_pipeline, labels, preds) = model_results
-                (y_train_df,
-                 y_cv_df) = labels
-                (y_pred_train,
-                 y_pred_cv,
-                 y_pred_test) = preds
-            else:
-                model_results = train_model_params(
-                    X_train=X_train_df,
-                    X_test=X_test_df,
-                    y_train=y_train_df,
-                    seed=train_data_model.seed,
-                    n_folds=cfg.folds,
-                    max_iter=cfg.max_iter
-                )
-                (cv_pipeline, labels, preds) = model_results
-                (y_train_df,
-                 y_cv_df) = labels
-                (y_pred_train,
-                 y_pred_cv,
-                 y_pred_test) = preds
-        # except ValueError:
-        #     raise OneClassError(
-        #         'Only one class present in test set for identifier: {}\n'.format(identifier)
-        #     )
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # set the hyperparameters
+                classifiers_list = {
+                    'lr': clf.train_classifier,
+                    'mlp': clf.train_mlp
+                }
+                train_model = classifiers_list[model]
+                train_model_params = apply_model_params(train_model,
+                                                        model=model,
+                                                        lasso=lasso,
+                                                        lasso_penalty=lasso_penalty)
+                if model == 'mlp':
+                    model_results = train_model_params(
+                        X_train=X_train_df,
+                        X_test=X_test_df,
+                        y_train=y_train_df,
+                        y_test=y_test_df,
+                        seed=train_data_model.seed,
+                        n_folds=cfg.mlp_folds,
+                        max_iter=cfg.mlp_max_iter
+                    )
+                    (net, cv_pipeline, labels, preds) = model_results
+                    (y_train_df,
+                     y_cv_df) = labels
+                    (y_pred_train,
+                     y_pred_cv,
+                     y_pred_test) = preds
+                else:
+                    model_results = train_model_params(
+                        X_train=X_train_df,
+                        X_test=X_test_df,
+                        y_train=y_train_df,
+                        seed=train_data_model.seed,
+                        n_folds=cfg.folds,
+                        max_iter=cfg.max_iter
+                    )
+                    (cv_pipeline, labels, preds) = model_results
+                    (y_train_df,
+                     y_cv_df) = labels
+                    (y_pred_train,
+                     y_pred_cv,
+                     y_pred_test) = preds
+        except ValueError:
+            raise OneClassError(
+                'Only one class present in test set for identifier: {}\n'.format(identifier)
+            )
 
         if model != 'mlp':
             # get coefficients
@@ -859,7 +859,7 @@ def apply_model_params(train_model,
         return partial(
             train_model,
             search_hparams={},
-            search_n_iter=3,
+            search_n_iter=cfg.mlp_search_n_iter
         )
     else:
         raise NotImplementedError(f'model {model} not implemented')
