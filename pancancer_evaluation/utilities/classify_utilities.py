@@ -643,9 +643,9 @@ def run_cv_tcga_ccle(train_data_model,
                 }
                 train_model = classifiers_list[model]
                 train_model_params = apply_model_params(train_model,
-                                                        model=model,
                                                         lasso=lasso,
-                                                        lasso_penalty=lasso_penalty)
+                                                        lasso_penalty=lasso_penalty,
+                                                        model=model)
                 if model == 'mlp':
                     model_results = train_model_params(
                         X_train=X_train_df,
@@ -830,10 +830,10 @@ def shuffle_by_cancer_type(y_df, seed):
 
 
 def apply_model_params(train_model,
-                       model='lr',
                        ridge=False,
                        lasso=False,
-                       lasso_penalty=None):
+                       lasso_penalty=None,
+                       model='lr'):
     """Pass hyperparameters to model, based on which model we want to fit."""
     if model == 'lr':
         if ridge:
