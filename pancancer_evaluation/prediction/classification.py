@@ -242,7 +242,7 @@ def train_mlp(X_train,
     # will be overridden by any existing entries in search_hparams
     default_hparams = {
         'learning_rate': [0.1, 0.01, 0.001, 5e-4, 1e-4],
-        'h1_size': [100, 200, 300, 500],
+        'h1_size': [100, 200, 300, 500, 1000],
         'dropout': [0.1, 0.5, 0.75],
         'weight_decay': [0, 0.1, 1, 10, 100]
     }
@@ -331,7 +331,7 @@ def train_mlp(X_train,
         train_split=ValidSplit(cv=((subtrain_ixs, valid_ixs),)),
         callbacks=[
             ScoreData(
-                X=X_test.values.astype(np.float32), 
+                X=X_test.values.astype(np.float32),
                 y=y_test.status.values.astype(np.int)
             ),
             EpochScoring(scoring='average_precision', name='valid_aupr',
@@ -360,7 +360,7 @@ def train_mlp(X_train,
         X_test.values.astype(np.float32)
     )[:, 1]
 
-    return (net, 
+    return (net,
             cv_pipeline,
             (y_subtrain, y_valid),
             (y_predict_train, y_predict_valid, y_predict_test))

@@ -559,7 +559,8 @@ def run_cv_tcga_ccle(train_data_model,
                      shuffle_labels,
                      model='lr',
                      lasso=True,
-                     lasso_penalty=None):
+                     lasso_penalty=None,
+                     params={}):
     """Train a model using one data model, and test on another.
 
     This can either be used to train on TCGA data and test on CCLE (passing a
@@ -654,7 +655,8 @@ def run_cv_tcga_ccle(train_data_model,
                         y_test=y_test_df,
                         seed=train_data_model.seed,
                         n_folds=cfg.mlp_folds,
-                        max_iter=cfg.mlp_max_iter
+                        max_iter=cfg.mlp_max_iter,
+                        search_hparams=params
                     )
                     (net, cv_pipeline, labels, preds) = model_results
                     (y_train_df,

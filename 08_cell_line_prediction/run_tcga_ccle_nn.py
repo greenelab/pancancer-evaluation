@@ -57,6 +57,17 @@ def process_args():
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--shuffle_labels', action='store_true')
     p.add_argument('--verbose', action='store_true')
+
+    # hyperparameter arguments
+    # if these are included they will override the random search ranges
+    # (in pancancer_evaluation/prediction/classification.py), instead providing
+    # a fixed value for the relevant hyperparameter
+    params = p.add_argument_group('params',
+                                  'these override the default random search ranges, '
+                                  'if not provided params will be searched over')
+    params.add_argument('--dropout', type=float, default=None)
+    params.add_argument('--learning_rate', type=float, default=None)
+
     args = p.parse_args()
 
     args.results_dir = Path(args.results_dir).resolve()
@@ -64,13 +75,15 @@ def process_args():
     if args.log_file is None:
         args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
 
-    return args
+    params = tdu.separate_params(args, p)
+
+    return args, params
 
 
 if __name__ == '__main__':
 
     # process command line arguments
-    args = process_args()
+    args, params = process_args()
 
     # load sample info
     tcga_sample_info_df = tdu.load_sample_info(args.verbose)
@@ -129,12 +142,22 @@ if __name__ == '__main__':
 
         try:
             gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
+            try:
+                learning_rate = params['learning_rate'][0]
+            except KeyError:
+                learning_rate = None
+            try:
+                dropout = params['dropout'][0]
+            except KeyError:
+                dropout = None
             check_file = fu.check_gene_file(gene_dir,
                                             gene,
                                             args.shuffle_labels,
                                             args.seed,
                                             args.feature_selection,
-                                            args.num_features)
+                                            args.num_features,
+                                            learning_rate=learning_rate,
+                                            dropout=dropout)
             tcga_data.process_data_for_gene(
                 gene,
                 classification,
@@ -178,7 +201,8 @@ if __name__ == '__main__':
                                        gene,
                                        args.num_folds,
                                        args.shuffle_labels,
-                                       model='mlp')
+                                       model='mlp',
+                                       params=params)
         except NoTestSamplesError:
             if args.verbose:
                 print('Skipping due to no test samples: gene {}'.format(
@@ -197,6 +221,15 @@ if __name__ == '__main__':
             )
         else:
             # only save results if no exceptions
+            try:
+                learning_rate = params['learning_rate'][0]
+            except KeyError:
+                learning_rate = None
+            try:
+                dropout = params['dropout'][0]
+            except KeyError:
+                dropout = None
+
             fu.save_results_mlp(gene_dir,
                                 check_file,
                                 results,
@@ -204,7 +237,9 @@ if __name__ == '__main__':
                                 args.shuffle_labels,
                                 args.seed,
                                 args.feature_selection,
-                                args.num_features)
+                                args.num_features,
+                                learning_rate=learning_rate,
+                                dropout=dropout)
 
         if gene_log_df is not None:
             fu.write_log_file(gene_log_df, args.log_file)
