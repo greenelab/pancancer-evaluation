@@ -13,19 +13,21 @@ MAD_PRESELECT=8000
 
 SEED=42
 
-# just run these genes locally, can run the rest on the cluster
 genes=(
   "KRAS"
   "EGFR"
 )
 
 learning_rates=(
-  "0.1"
   "0.01" 
   "0.005"
   "0.001"
   "0.0005"
+  "0.00025"
   "0.0001"
+  "0.00005"
+  "0.00001"
+  "0.000001"
 )
 
 for gene in "${genes[@]}"; do
