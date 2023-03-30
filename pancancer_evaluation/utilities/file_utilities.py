@@ -197,7 +197,7 @@ def save_results_mlp(results_dir,
     else:
         stem = '{}_{}_{}_s{}_n{}_{}_'.format(
             identifier, signal, feature_selection,
-            seed, num_features,  predictor
+            seed, num_features, predictor
         )
 
     output_file = Path(results_dir, stem + 'metrics.tsv.gz').resolve()

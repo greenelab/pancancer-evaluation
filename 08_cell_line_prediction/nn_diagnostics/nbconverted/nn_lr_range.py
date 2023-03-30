@@ -20,7 +20,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 
 
-# In[2]:
+# In[6]:
 
 
 results_dir = os.path.join(
@@ -28,10 +28,10 @@ results_dir = os.path.join(
 )
 
 num_genes = 8000
-plot_gene = 'EGFR'
+plot_gene = 'KRAS'
 
 
-# In[3]:
+# In[7]:
 
 
 lc_dfs = {}
@@ -52,7 +52,7 @@ print(list(lc_dfs.keys()))
 lc_dfs[list(lc_dfs.keys())[0]].head()
 
 
-# In[4]:
+# In[8]:
 
 
 sns.set_style('whitegrid')
@@ -77,7 +77,7 @@ for ix, lr in enumerate(learning_rates):
 plt.tight_layout()
 
 
-# In[5]:
+# In[9]:
 
 
 sns.set_style('whitegrid')

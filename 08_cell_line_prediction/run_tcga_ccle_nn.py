@@ -75,15 +75,15 @@ def process_args():
     if args.log_file is None:
         args.log_file = Path(args.results_dir, 'log_skipped.tsv').resolve()
 
-    params = tdu.separate_params(args, p)
+    param_values = tdu.separate_params(args, p)
 
-    return args, params
+    return args, param_values
 
 
 if __name__ == '__main__':
 
     # process command line arguments
-    args, params = process_args()
+    args, param_values = process_args()
 
     # load sample info
     tcga_sample_info_df = tdu.load_sample_info(args.verbose)
@@ -143,13 +143,14 @@ if __name__ == '__main__':
         try:
             gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
             try:
-                learning_rate = params['learning_rate'][0]
+                learning_rate = param_values['learning_rate'][0]
             except KeyError:
                 learning_rate = None
             try:
-                dropout = params['dropout'][0]
+                dropout = param_values['dropout'][0]
             except KeyError:
                 dropout = None
+
             check_file = fu.check_gene_file(gene_dir,
                                             gene,
                                             args.shuffle_labels,
@@ -202,7 +203,7 @@ if __name__ == '__main__':
                                        args.num_folds,
                                        args.shuffle_labels,
                                        model='mlp',
-                                       params=params)
+                                       params=param_values.copy())
         except NoTestSamplesError:
             if args.verbose:
                 print('Skipping due to no test samples: gene {}'.format(
@@ -222,11 +223,11 @@ if __name__ == '__main__':
         else:
             # only save results if no exceptions
             try:
-                learning_rate = params['learning_rate'][0]
+                learning_rate = param_values['learning_rate'][0]
             except KeyError:
                 learning_rate = None
             try:
-                dropout = params['dropout'][0]
+                dropout = param_values['dropout'][0]
             except KeyError:
                 dropout = None
 
