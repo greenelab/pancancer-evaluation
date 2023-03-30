@@ -573,6 +573,7 @@ def run_cv_tcga_ccle(train_data_model,
     identifier (str): identifier to run experiments for
     num_folds (int): number of cross-validation folds to run
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    model (str): model class, currently 'lr' (logistic regression) or 'mlp' (neural network)
     lasso (bool): use LASSO with a specified penalty rather than elastic net
     lasso_penalty (float): LASSO regularization penalty
     """
