@@ -557,7 +557,8 @@ def run_cv_tcga_ccle(train_data_model,
                      identifier,
                      num_folds,
                      shuffle_labels,
-                     lasso=False,
+                     model='lr',
+                     lasso=True,
                      lasso_penalty=None):
     """Train a model using one data model, and test on another.
 
@@ -572,6 +573,7 @@ def run_cv_tcga_ccle(train_data_model,
     identifier (str): identifier to run experiments for
     num_folds (int): number of cross-validation folds to run
     shuffle_labels (bool): whether or not to shuffle labels (negative control)
+    model (str): model class, currently 'lr' (logistic regression) or 'mlp' (neural network)
     lasso (bool): use LASSO with a specified penalty rather than elastic net
     lasso_penalty (float): LASSO regularization penalty
     """
@@ -581,6 +583,10 @@ def run_cv_tcga_ccle(train_data_model,
         'gene_aupr': [],
         'gene_coef': []
     }
+    if model == 'mlp':
+        results['gene_param_grid'] = []
+        results['learning_curves'] = []
+
     signal = 'shuffled' if shuffle_labels else 'signal'
 
     # the "folds" here refer to choosing different validation datasets,
@@ -632,38 +638,71 @@ def run_cv_tcga_ccle(train_data_model,
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
-                train_model_params = apply_model_params(clf.train_classifier,
-                                                        lasso=True,
-                                                        lasso_penalty=lasso_penalty)
-                model_results = train_model_params(
-                    X_train=X_train_df,
-                    X_test=X_test_df,
-                    y_train=y_train_df,
-                    seed=train_data_model.seed,
-                    n_folds=cfg.folds,
-                    max_iter=cfg.max_iter
-                )
-                (cv_pipeline, labels, preds) = model_results
-                (y_train_df,
-                 y_cv_df) = labels
-                (y_pred_train,
-                 y_pred_cv,
-                 y_pred_test) = preds
+                classifiers_list = {
+                    'lr': clf.train_classifier,
+                    'mlp': clf.train_mlp
+                }
+                train_model = classifiers_list[model]
+                train_model_params = apply_model_params(train_model,
+                                                        lasso=lasso,
+                                                        lasso_penalty=lasso_penalty,
+                                                        model=model)
+                if model == 'mlp':
+                    model_results = train_model_params(
+                        X_train=X_train_df,
+                        X_test=X_test_df,
+                        y_train=y_train_df,
+                        y_test=y_test_df,
+                        seed=train_data_model.seed,
+                        n_folds=cfg.mlp_folds,
+                        max_iter=cfg.mlp_max_iter
+                    )
+                    (net, cv_pipeline, labels, preds) = model_results
+                    (y_train_df,
+                     y_cv_df) = labels
+                    (y_pred_train,
+                     y_pred_cv,
+                     y_pred_test) = preds
+                else:
+                    model_results = train_model_params(
+                        X_train=X_train_df,
+                        X_test=X_test_df,
+                        y_train=y_train_df,
+                        seed=train_data_model.seed,
+                        n_folds=cfg.folds,
+                        max_iter=cfg.max_iter
+                    )
+                    (cv_pipeline, labels, preds) = model_results
+                    (y_train_df,
+                     y_cv_df) = labels
+                    (y_pred_train,
+                     y_pred_cv,
+                     y_pred_test) = preds
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for identifier: {}\n'.format(identifier)
             )
 
-        # get coefficients
-        coef_df = extract_coefficients(
-            cv_pipeline=cv_pipeline,
-            feature_names=X_train_df.columns,
-            signal=signal,
-            seed=train_data_model.seed,
-            name='classify'
-        )
-        coef_df = coef_df.assign(identifier=identifier)
-        coef_df = coef_df.assign(fold=fold_no)
+        if model != 'mlp':
+            # get coefficients
+            coef_df = extract_coefficients(
+                cv_pipeline=cv_pipeline,
+                feature_names=X_train_df.columns,
+                signal=signal,
+                seed=train_data_model.seed,
+                name='classify'
+            )
+            coef_df = coef_df.assign(identifier=identifier)
+            coef_df = coef_df.assign(fold=fold_no)
+        else:
+            coef_df = pd.DataFrame()
+            # get parameter grid
+            results['gene_param_grid'].append(
+                generate_param_grid(cv_pipeline.cv_results_, fold_no)
+            )
+            results['learning_curves'].append(
+                history_to_tsv(net, fold_no)
+            )
 
         try:
             with warnings.catch_warnings():
@@ -748,12 +787,36 @@ def generate_param_grid(cv_results, fold_no=-1):
             )
 
     # add mean train/test scores across inner folds to parameter grid
-    results_grid.append(cv_results['mean_train_score'])
-    columns.append('mean_train_score')
+    try:
+        results_grid.append(cv_results['mean_train_score'])
+        columns.append('mean_train_score')
+    except KeyError:
+        # this can happen if there's only one train/test split, for some
+        # reason sklearn doesn't compute train performance
+        pass
+
     results_grid.append(cv_results['mean_test_score'])
     columns.append('mean_test_score')
 
     return pd.DataFrame(np.array(results_grid).T, columns=columns)
+
+
+def history_to_tsv(net, fold_no=-1):
+    learning_curves = []
+    for k in ['train_aupr', 'valid_aupr', 'test_aupr']:
+        num_epochs = len(net.history)
+        learning_curves += list(
+            zip(list(range(1, num_epochs+1)),
+                [fold_no] * num_epochs,
+                [k.split('_')[0] if k.split('_')[0] != 'valid' else 'cv'] * num_epochs,
+                ['aupr'] * num_epochs,
+                net.history[:, k]
+            )
+        )
+    return pd.DataFrame(
+        learning_curves,
+        columns=['epoch', 'fold', 'dataset', 'metric', 'value']
+    )
 
 
 def shuffle_by_cancer_type(y_df, seed):
@@ -770,26 +833,37 @@ def shuffle_by_cancer_type(y_df, seed):
 def apply_model_params(train_model,
                        ridge=False,
                        lasso=False,
-                       lasso_penalty=None):
+                       lasso_penalty=None,
+                       model='lr'):
     """Pass hyperparameters to model, based on which model we want to fit."""
-    if ridge:
+    if model == 'lr':
+        if ridge:
+            return partial(
+                train_model,
+                ridge=ridge,
+                c_values=cfg.ridge_c_values
+            )
+        elif lasso:
+            return partial(
+                train_model,
+                lasso=lasso,
+                lasso_penalty=lasso_penalty
+            )
+        else:
+            # elastic net is the default
+            return partial(
+                train_model,
+                alphas=cfg.alphas,
+                l1_ratios=cfg.l1_ratios
+            )
+    elif model == 'mlp':
         return partial(
             train_model,
-            ridge=ridge,
-            c_values=cfg.ridge_c_values
-        )
-    elif lasso:
-        return partial(
-            train_model,
-            lasso=lasso,
-            lasso_penalty=lasso_penalty
+            search_hparams={},
+            search_n_iter=cfg.mlp_search_n_iter
         )
     else:
-        return partial(
-            train_model,
-            alphas=cfg.alphas,
-            l1_ratios=cfg.l1_ratios
-        )
+        raise NotImplementedError(f'model {model} not implemented')
 
 
 @contextlib.contextmanager
