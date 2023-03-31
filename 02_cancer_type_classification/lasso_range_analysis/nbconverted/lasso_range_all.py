@@ -351,7 +351,33 @@ with sns.plotting_context('notebook', font_scale=1.5):
     ax.axhline(0.0, linestyle='--', color='black')
     plt.xticks(rotation=90)
     plt.xlabel('Gene')
-    plt.title(f'Difference between cv and test performance, by cancer type', y=1.02)
+    plt.title(f'Difference between CV and test performance, by cancer type', y=1.02)
     plt.ylim(-0.95, 0.95)
     plt.ylabel('AUPR(CV) - AUPR(test)')
+
+
+# In[17]:
+
+
+gene_df = (best_perf_df
+  .loc[:, ['gene', 'cancer_type']]
+  .drop_duplicates(['gene', 'cancer_type'])
+  .groupby('cancer_type')['gene']
+  .apply(list)
+  .to_frame()
+  .rename(columns={'gene': 'gene_list'})
+)
+gene_df['num_genes'] = gene_df.gene_list.apply(len)
+
+pd.set_option('display.width', 1000)
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_seq_items', 1000)
+display(gene_df)
+
+
+# In[ ]:
+
+
+
 
