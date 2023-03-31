@@ -1,3 +1,5 @@
+import math
+
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -22,8 +24,8 @@ class ThreeLayerNet(nn.Module):
         if h1_size is None:
             h1_size = input_size // 2
         self.fc0 = nn.Linear(input_size, h1_size)
-        self.fc1 = nn.Linear(h1_size, h1_size // 2)
-        self.fc2 = nn.Linear(h1_size // 2, 2)
+        self.fc1 = nn.Linear(h1_size, math.ceil(h1_size / 2))
+        self.fc2 = nn.Linear(math.ceil(h1_size / 2), 2)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):

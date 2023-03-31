@@ -171,6 +171,8 @@ def save_results_mlp(results_dir,
                      num_features,
                      learning_rate=None,
                      dropout=None,
+                     h1_size=None,
+                     weight_decay=None,
                      predictor='classify'):
 
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -193,6 +195,16 @@ def save_results_mlp(results_dir,
         stem = '{}_{}_{}_s{}_n{}_d{}_{}_'.format(
             identifier, signal, feature_selection,
             seed, num_features, dropout, predictor
+        )
+    elif h1_size is not None:
+        stem = '{}_{}_{}_s{}_n{}_h{}_{}_'.format(
+            identifier, signal, feature_selection,
+            seed, num_features, h1_size, predictor
+        )
+    elif weight_decay is not None:
+        stem = '{}_{}_{}_s{}_n{}_w{}_{}_'.format(
+            identifier, signal, feature_selection,
+            seed, num_features, weight_decay, predictor
         )
     else:
         stem = '{}_{}_{}_s{}_n{}_{}_'.format(
@@ -426,6 +438,8 @@ def check_gene_file(gene_dir,
                     lasso_penalty=None,
                     learning_rate=None,
                     dropout=None,
+                    h1_size=None,
+                    weight_decay=None,
                     predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
     if lasso_penalty is not None:
@@ -444,6 +458,16 @@ def check_gene_file(gene_dir,
             stem = '{}_{}_{}_s{}_n{}_d{}_{}_'.format(
                 gene, signal, feature_selection,
                 seed, num_features, dropout, predictor
+            )
+        elif h1_size is not None:
+            stem = '{}_{}_{}_s{}_n{}_h{}_{}_'.format(
+                gene, signal, feature_selection,
+                seed, num_features, h1_size, predictor
+            )
+        elif weight_decay is not None:
+            stem = '{}_{}_{}_s{}_n{}_w{}_{}_'.format(
+                gene, signal, feature_selection,
+                seed, num_features, weight_decay, predictor
             )
         else:
             stem = '{}_{}_{}_s{}_n{}_{}_'.format(

@@ -66,7 +66,9 @@ def process_args():
                                   'these override the default random search ranges, '
                                   'if not provided params will be searched over')
     params.add_argument('--dropout', type=float, default=None)
+    params.add_argument('--h1_size', type=int, default=None)
     params.add_argument('--learning_rate', type=float, default=None)
+    params.add_argument('--weight_decay', type=float, default=None)
 
     args = p.parse_args()
 
@@ -150,6 +152,14 @@ if __name__ == '__main__':
                 dropout = param_values['dropout'][0]
             except KeyError:
                 dropout = None
+            try:
+                h1_size = param_values['h1_size'][0]
+            except KeyError:
+                h1_size = None
+            try:
+                weight_decay = param_values['weight_decay'][0]
+            except KeyError:
+                weight_decay = None
 
             check_file = fu.check_gene_file(gene_dir,
                                             gene,
@@ -158,7 +168,9 @@ if __name__ == '__main__':
                                             args.feature_selection,
                                             args.num_features,
                                             learning_rate=learning_rate,
-                                            dropout=dropout)
+                                            dropout=dropout,
+                                            h1_size=h1_size,
+                                            weight_decay=weight_decay)
             tcga_data.process_data_for_gene(
                 gene,
                 classification,
@@ -230,6 +242,14 @@ if __name__ == '__main__':
                 dropout = param_values['dropout'][0]
             except KeyError:
                 dropout = None
+            try:
+                h1_size = param_values['h1_size'][0]
+            except KeyError:
+                h1_size = None
+            try:
+                weight_decay = param_values['weight_decay'][0]
+            except KeyError:
+                weight_decay = None
 
             fu.save_results_mlp(gene_dir,
                                 check_file,
@@ -240,7 +260,9 @@ if __name__ == '__main__':
                                 args.feature_selection,
                                 args.num_features,
                                 learning_rate=learning_rate,
-                                dropout=dropout)
+                                dropout=dropout,
+                                h1_size=h1_size,
+                                weight_decay=weight_decay)
 
         if gene_log_df is not None:
             fu.write_log_file(gene_log_df, args.log_file)
