@@ -147,7 +147,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
-    g.set_xlabel(f'Weight decay (higher = more regularization)')
+    g.set_xlabel(f'Weight decay (lower = less regularization)')
     g.set_ylabel('AUPR')
         
     ax = plt.gca()
@@ -179,7 +179,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         marker='o'
     )
     g.set(xscale='log', xlim=(min(plot_df.weight_decay) + 0.0001, max(plot_df.weight_decay)))
-    g.set_xlabel(f'Weight decay (higher = more regularization)')
+    g.set_xlabel(f'Weight decay (lower = less regularization)')
     g.set_ylabel('AUPR')
         
     ax = plt.gca()

@@ -82,6 +82,16 @@ def process_args():
     return args, param_values
 
 
+def pass_param_or_none(param_values, param):
+    """Function to pass param values into file naming functions, or None
+       if param value is not set.
+    """
+    try:
+        return param_values[param][0]
+    except KeyError:
+        return None
+
+
 if __name__ == '__main__':
 
     # process command line arguments
@@ -144,33 +154,18 @@ if __name__ == '__main__':
 
         try:
             gene_dir = fu.make_gene_dir(args.results_dir, gene, dirname=None)
-            try:
-                learning_rate = param_values['learning_rate'][0]
-            except KeyError:
-                learning_rate = None
-            try:
-                dropout = param_values['dropout'][0]
-            except KeyError:
-                dropout = None
-            try:
-                h1_size = param_values['h1_size'][0]
-            except KeyError:
-                h1_size = None
-            try:
-                weight_decay = param_values['weight_decay'][0]
-            except KeyError:
-                weight_decay = None
-
-            check_file = fu.check_gene_file(gene_dir,
-                                            gene,
-                                            args.shuffle_labels,
-                                            args.seed,
-                                            args.feature_selection,
-                                            args.num_features,
-                                            learning_rate=learning_rate,
-                                            dropout=dropout,
-                                            h1_size=h1_size,
-                                            weight_decay=weight_decay)
+            check_file = fu.check_gene_file(
+                gene_dir,
+                gene,
+                args.shuffle_labels,
+                args.seed,
+                args.feature_selection,
+                args.num_features,
+                learning_rate=pass_param_or_none(param_values, 'learning_rate'),
+                dropout=pass_param_or_none(param_values, 'dropout'),
+                h1_size=pass_param_or_none(param_values, 'h1_size'),
+                weight_decay=pass_param_or_none(param_values, 'weight_decay')
+            )
             tcga_data.process_data_for_gene(
                 gene,
                 classification,
@@ -235,10 +230,6 @@ if __name__ == '__main__':
         else:
             # only save results if no exceptions
             try:
-                learning_rate = param_values['learning_rate'][0]
-            except KeyError:
-                learning_rate = None
-            try:
                 dropout = param_values['dropout'][0]
             except KeyError:
                 dropout = None
@@ -251,18 +242,20 @@ if __name__ == '__main__':
             except KeyError:
                 weight_decay = None
 
-            fu.save_results_mlp(gene_dir,
-                                check_file,
-                                results,
-                                gene,
-                                args.shuffle_labels,
-                                args.seed,
-                                args.feature_selection,
-                                args.num_features,
-                                learning_rate=learning_rate,
-                                dropout=dropout,
-                                h1_size=h1_size,
-                                weight_decay=weight_decay)
+            fu.save_results_mlp(
+                gene_dir,
+                check_file,
+                results,
+                gene,
+                args.shuffle_labels,
+                args.seed,
+                args.feature_selection,
+                args.num_features,
+                learning_rate=pass_param_or_none(param_values, 'learning_rate'),
+                dropout=pass_param_or_none(param_values, 'dropout'),
+                h1_size=pass_param_or_none(param_values, 'h1_size'),
+                weight_decay=pass_param_or_none(param_values, 'weight_decay')
+            )
 
         if gene_log_df is not None:
             fu.write_log_file(gene_log_df, args.log_file)

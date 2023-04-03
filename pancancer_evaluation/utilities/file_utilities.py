@@ -185,33 +185,17 @@ def save_results_mlp(results_dir,
         float_format='%.5g'
     )
 
-    # TODO: refactor this
-    if learning_rate is not None:
-        stem = '{}_{}_{}_s{}_n{}_lr{}_{}_'.format(
-            identifier, signal, feature_selection,
-            seed, num_features, learning_rate, predictor
-        )
-    elif dropout is not None:
-        stem = '{}_{}_{}_s{}_n{}_d{}_{}_'.format(
-            identifier, signal, feature_selection,
-            seed, num_features, dropout, predictor
-        )
-    elif h1_size is not None:
-        stem = '{}_{}_{}_s{}_n{}_h{}_{}_'.format(
-            identifier, signal, feature_selection,
-            seed, num_features, h1_size, predictor
-        )
-    elif weight_decay is not None:
-        stem = '{}_{}_{}_s{}_n{}_w{}_{}_'.format(
-            identifier, signal, feature_selection,
-            seed, num_features, weight_decay, predictor
-        )
-    else:
-        stem = '{}_{}_{}_s{}_n{}_{}_'.format(
-            identifier, signal, feature_selection,
-            seed, num_features, predictor
-        )
-
+    stem_prefix = '{}_{}_{}_s{}_n{}_'.format(
+        identifier, signal, feature_selection, seed, num_features
+    )
+    stem = get_stem_from_params(
+        learning_rate,
+        dropout,
+        h1_size,
+        weight_decay,
+        stem_prefix,
+        predictor
+    )
     output_file = Path(results_dir, stem + 'metrics.tsv.gz').resolve()
     metrics_df.to_csv(
         output_file, sep='\t', index=False, compression='gzip', float_format='%.5g'
@@ -449,31 +433,17 @@ def check_gene_file(gene_dir,
                 num_features, lasso_penalty, predictor
             )).resolve()
     else:
-        if learning_rate is not None:
-            stem = '{}_{}_{}_s{}_n{}_lr{}_{}_'.format(
-                gene, signal, feature_selection,
-                seed, num_features, learning_rate, predictor
-            )
-        elif dropout is not None:
-            stem = '{}_{}_{}_s{}_n{}_d{}_{}_'.format(
-                gene, signal, feature_selection,
-                seed, num_features, dropout, predictor
-            )
-        elif h1_size is not None:
-            stem = '{}_{}_{}_s{}_n{}_h{}_{}_'.format(
-                gene, signal, feature_selection,
-                seed, num_features, h1_size, predictor
-            )
-        elif weight_decay is not None:
-            stem = '{}_{}_{}_s{}_n{}_w{}_{}_'.format(
-                gene, signal, feature_selection,
-                seed, num_features, weight_decay, predictor
-            )
-        else:
-            stem = '{}_{}_{}_s{}_n{}_{}_'.format(
-                gene, signal, feature_selection,
-                seed, num_features,  predictor
-            )
+        stem_prefix = '{}_{}_{}_s{}_n{}_'.format(
+            gene, signal, feature_selection, seed, num_features
+        )
+        stem = get_stem_from_params(
+            learning_rate,
+            dropout,
+            h1_size,
+            weight_decay,
+            stem_prefix,
+            predictor
+        )
         check_file = Path(gene_dir, stem + "coefficients.tsv.gz").resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
@@ -623,4 +593,22 @@ def check_status(file):
     import os
     return os.path.isfile(file)
 
+
+def get_stem_from_params(learning_rate,
+                         dropout,
+                         h1_size,
+                         weight_decay,
+                         stem_prefix,
+                         predictor):
+    if learning_rate is not None:
+        stem = stem_prefix + f'lr{learning_rate}_{predictor}_'
+    elif dropout is not None:
+        stem = stem_prefix + f'd{dropout}_{predictor}_'
+    elif h1_size is not None:
+        stem = stem_prefix + f'h{h1_size}_{predictor}_'
+    elif weight_decay is not None:
+        stem = stem_prefix + f'w{weight_decay}_{predictor}_'
+    else:
+        stem = stem_prefix + f'{predictor}_'
+    return stem
 
