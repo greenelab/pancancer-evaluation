@@ -229,19 +229,6 @@ if __name__ == '__main__':
             )
         else:
             # only save results if no exceptions
-            try:
-                dropout = param_values['dropout'][0]
-            except KeyError:
-                dropout = None
-            try:
-                h1_size = param_values['h1_size'][0]
-            except KeyError:
-                h1_size = None
-            try:
-                weight_decay = param_values['weight_decay'][0]
-            except KeyError:
-                weight_decay = None
-
             fu.save_results_mlp(
                 gene_dir,
                 check_file,
