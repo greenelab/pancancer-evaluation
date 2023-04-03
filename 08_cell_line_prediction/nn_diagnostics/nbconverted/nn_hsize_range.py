@@ -28,7 +28,7 @@ results_dir = os.path.join(
 )
 
 num_genes = 8000
-plot_gene = 'EGFR'
+plot_gene = 'KRAS'
 
 
 # In[3]:
@@ -127,7 +127,7 @@ print(perf_df.shape)
 perf_df.head()
 
 
-# In[9]:
+# In[8]:
 
 
 # same plot as before but with the "best"/"smallest" parameters marked
@@ -158,8 +158,34 @@ with sns.plotting_context('notebook', font_scale=1.6):
     plt.title(f'Hidden layer size vs. AUPR, {plot_gene}', y=1.025)
 
 
-# In[ ]:
+# In[9]:
 
 
+# same plot as before but with the "best"/"smallest" parameters marked
+sns.set({'figure.figsize': (10, 6)})
+sns.set_style('ticks')
 
+plot_df = (perf_df
+    .sort_values(by=['hsize'])
+    .reset_index(drop=True)
+)
+plot_df.hsize = plot_df.hsize.astype(int)
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.lineplot(
+        data=plot_df,
+        x='hsize', y='value', hue='dataset',
+        hue_order=['train', 'cv', 'test'],
+        marker='o'
+    )
+    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)))
+    g.set_xlabel(f'Hidden layer size (lower = more regularization)')
+    g.set_ylabel('AUPR')
+        
+    ax = plt.gca()
+    legend_handles, _ = ax.get_legend_handles_labels()
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
+    sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
+    plt.title(f'Hidden layer size vs. AUPR, {plot_gene}', y=1.025)
 

@@ -28,7 +28,7 @@ results_dir = os.path.join(
 )
 
 num_genes = 8000
-plot_gene = 'EGFR'
+plot_gene = 'KRAS'
 
 
 # In[3]:

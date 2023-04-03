@@ -131,7 +131,7 @@ perf_df.head()
 
 
 # same plot as before but with the "best"/"smallest" parameters marked
-sns.set({'figure.figsize': (10, 8)})
+sns.set({'figure.figsize': (12, 6)})
 sns.set_style('ticks')
 
 plot_df = (perf_df
@@ -147,6 +147,38 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
+    g.set_xlabel(f'Weight decay (higher = more regularization)')
+    g.set_ylabel('AUPR')
+        
+    ax = plt.gca()
+    legend_handles, _ = ax.get_legend_handles_labels()
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
+    sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
+    plt.title(f'Weight decay vs. AUPR, {plot_gene}', y=1.025)
+
+
+# In[9]:
+
+
+# same plot as before but with the "best"/"smallest" parameters marked
+sns.set({'figure.figsize': (10, 6)})
+sns.set_style('ticks')
+
+plot_df = (perf_df
+    .sort_values(by=['weight_decay'])
+    .reset_index(drop=True)
+)
+plot_df.weight_decay = plot_df.weight_decay.astype(float)
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.lineplot(
+        data=plot_df,
+        x='weight_decay', y='value', hue='dataset',
+        hue_order=['train', 'cv', 'test'],
+        marker='o'
+    )
+    g.set(xscale='log', xlim=(min(plot_df.weight_decay) + 0.0001, max(plot_df.weight_decay)))
     g.set_xlabel(f'Weight decay (higher = more regularization)')
     g.set_ylabel('AUPR')
         
