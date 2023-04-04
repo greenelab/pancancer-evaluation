@@ -28,6 +28,7 @@ results_dir = os.path.join(
 )
 
 num_genes = 8000
+seed = 42
 plot_gene = 'KRAS'
 
 
@@ -39,7 +40,7 @@ weight_decay_dfs = {}
 for weight_decay_file in glob.glob(
     os.path.join(results_dir,
                  plot_gene,
-                 f'{plot_gene}_signal_mad_s42_n{num_genes}_w*_classify_learning_curves.tsv.gz')
+                 f'{plot_gene}_signal_mad_s{seed}_n{num_genes}_w*_classify_learning_curves.tsv.gz')
 ):
     weight_decay = (
         os.path.basename(weight_decay_file).split('_')[5].replace('w', '')
