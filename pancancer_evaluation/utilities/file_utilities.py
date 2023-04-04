@@ -169,6 +169,10 @@ def save_results_mlp(results_dir,
                      seed,
                      feature_selection,
                      num_features,
+                     learning_rate=None,
+                     dropout=None,
+                     h1_size=None,
+                     weight_decay=None,
                      predictor='classify'):
 
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -177,41 +181,37 @@ def save_results_mlp(results_dir,
     coef_df = pd.concat(results['gene_coef'])
 
     coef_df.to_csv(
-        check_file, sep="\t", index=False, compression="gzip",
-        float_format="%.5g"
+        check_file, sep='\t', index=False, compression='gzip',
+        float_format='%.5g'
     )
 
-    output_file = Path(
-        results_dir, "{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
-            identifier, signal, feature_selection,
-            seed, num_features, predictor
-        )
-    ).resolve()
+    stem_prefix = '{}_{}_{}_s{}_n{}_'.format(
+        identifier, signal, feature_selection, seed, num_features
+    )
+    stem = get_stem_from_params(
+        learning_rate,
+        dropout,
+        h1_size,
+        weight_decay,
+        stem_prefix,
+        predictor
+    )
+    output_file = Path(results_dir, stem + 'metrics.tsv.gz').resolve()
     metrics_df.to_csv(
-        output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
+        output_file, sep='\t', index=False, compression='gzip', float_format='%.5g'
     )
 
     if 'gene_param_grid' in results:
         params_df = pd.concat(results['gene_param_grid'])
-        output_file = Path(
-            results_dir, "{}_{}_{}_s{}_n{}_{}_param_grid.tsv.gz".format(
-                identifier, signal, feature_selection,
-                seed, num_features, predictor
-            )
-        ).resolve()
-        params_df.to_csv(output_file, sep="\t")
+        output_file = Path(results_dir, stem + 'param_grid.tsv.gz').resolve()
+        params_df.to_csv(output_file, sep='\t')
     else:
         params_df = None
 
     if 'learning_curves' in results:
         lc_df = pd.concat(results['learning_curves'])
-        output_file = Path(
-            results_dir, "{}_{}_{}_s{}_n{}_{}_learning_curves.tsv.gz".format(
-                identifier, signal, feature_selection,
-                seed, num_features, predictor
-            )
-        ).resolve()
-        lc_df.to_csv(output_file, sep="\t")
+        output_file = Path(results_dir, stem + 'learning_curves.tsv.gz').resolve()
+        lc_df.to_csv(output_file, sep='\t')
     else:
         lc_df = None
 
@@ -420,6 +420,10 @@ def check_gene_file(gene_dir,
                     feature_selection,
                     num_features,
                     lasso_penalty=None,
+                    learning_rate=None,
+                    dropout=None,
+                    h1_size=None,
+                    weight_decay=None,
                     predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
     if lasso_penalty is not None:
@@ -429,9 +433,18 @@ def check_gene_file(gene_dir,
                 num_features, lasso_penalty, predictor
             )).resolve()
     else:
-        check_file = Path(
-            gene_dir, "{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
-                gene, signal, feature_selection, seed, num_features, predictor)).resolve()
+        stem_prefix = '{}_{}_{}_s{}_n{}_'.format(
+            gene, signal, feature_selection, seed, num_features
+        )
+        stem = get_stem_from_params(
+            learning_rate,
+            dropout,
+            h1_size,
+            weight_decay,
+            stem_prefix,
+            predictor
+        )
+        check_file = Path(gene_dir, stem + "coefficients.tsv.gz").resolve()
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for gene: {}\n'.format(gene)
@@ -580,4 +593,22 @@ def check_status(file):
     import os
     return os.path.isfile(file)
 
+
+def get_stem_from_params(learning_rate,
+                         dropout,
+                         h1_size,
+                         weight_decay,
+                         stem_prefix,
+                         predictor):
+    if learning_rate is not None:
+        stem = stem_prefix + f'lr{learning_rate}_{predictor}_'
+    elif dropout is not None:
+        stem = stem_prefix + f'd{dropout}_{predictor}_'
+    elif h1_size is not None:
+        stem = stem_prefix + f'h{h1_size}_{predictor}_'
+    elif weight_decay is not None:
+        stem = stem_prefix + f'w{weight_decay}_{predictor}_'
+    else:
+        stem = stem_prefix + f'{predictor}_'
+    return stem
 

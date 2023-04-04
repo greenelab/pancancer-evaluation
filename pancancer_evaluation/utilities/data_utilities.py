@@ -664,3 +664,21 @@ def summarize_results(results, gene, holdout_cancer_type, signal, z_dim,
 
     return metrics_out_, roc_df_, pr_df_
 
+
+def separate_params(args, parser):
+    """Split model params out of remaining command line arguments.
+
+    See: https://stackoverflow.com/a/46929320
+    """
+    import argparse
+    arg_groups = {}
+    for group in parser._action_groups:
+        if group.title in ['positional arguments', 'optional arguments']:
+            continue
+        group_dict = {
+            a.dest : getattr(args, a.dest, None) for a in group._group_actions
+        }
+        arg_groups[group.title] = argparse.Namespace(**group_dict)
+    return {k: [v] for k, v in vars(arg_groups['params']).items() if v is not None}
+
+
