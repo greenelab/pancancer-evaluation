@@ -128,7 +128,7 @@ perf_df.head()
 # In[8]:
 
 
-# same plot as before but with the "best"/"smallest" parameters marked
+# plot dropout (as a float-valued variable) vs. performance
 sns.set({'figure.figsize': (10, 6)})
 sns.set_style('ticks')
 

@@ -131,7 +131,7 @@ perf_df.head()
 # In[8]:
 
 
-# same plot as before but with the "best"/"smallest" parameters marked
+# plot hidden layer size as a categorical variable vs. performance
 sns.set({'figure.figsize': (10, 8)})
 sns.set_style('ticks')
 
@@ -162,7 +162,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
 # In[9]:
 
 
-# same plot as before but with the "best"/"smallest" parameters marked
+# plot hidden layer size as a float-valued variable (on a log scale) vs. performance
 sns.set({'figure.figsize': (10, 6)})
 sns.set_style('ticks')
 

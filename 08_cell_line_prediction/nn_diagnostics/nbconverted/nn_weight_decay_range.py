@@ -131,7 +131,7 @@ perf_df.head()
 # In[8]:
 
 
-# same plot as before but with the "best"/"smallest" parameters marked
+# plot weight decay as a categorical variable vs. performance
 sns.set({'figure.figsize': (12, 6)})
 sns.set_style('ticks')
 
@@ -162,7 +162,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
 # In[9]:
 
 
-# same plot as before but with the "best"/"smallest" parameters marked
+# plot weight decay as a float-valued variable (on a log scale, like LASSO parameter) vs. performance
 sns.set({'figure.figsize': (10, 6)})
 sns.set_style('ticks')
 

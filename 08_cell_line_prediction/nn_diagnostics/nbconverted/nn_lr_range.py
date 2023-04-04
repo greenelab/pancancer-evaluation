@@ -20,7 +20,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 
 
-# In[6]:
+# In[2]:
 
 
 results_dir = os.path.join(
@@ -32,7 +32,7 @@ seed = 42
 plot_gene = 'KRAS'
 
 
-# In[7]:
+# In[3]:
 
 
 lc_dfs = {}
@@ -53,7 +53,7 @@ print(list(lc_dfs.keys()))
 lc_dfs[list(lc_dfs.keys())[0]].head()
 
 
-# In[8]:
+# In[4]:
 
 
 sns.set_style('whitegrid')
@@ -78,7 +78,7 @@ for ix, lr in enumerate(learning_rates):
 plt.tight_layout()
 
 
-# In[9]:
+# In[5]:
 
 
 sns.set_style('whitegrid')
@@ -103,4 +103,87 @@ for lr_ix, lr in enumerate(learning_rates):
     ax.set_title(f'Learning curve for {plot_gene}, lr={lr}, for each split')
 
 plt.tight_layout()
+
+
+# In[6]:
+
+
+lr_df = pd.concat(lc_dfs.values())
+print(lr_df.shape)
+lr_df.head()
+
+
+# In[7]:
+
+
+last_epoch = lr_df.epoch.max()
+perf_df = (lr_df[lr_df.epoch == last_epoch]
+    .drop(columns=['epoch'])
+)
+                      
+print(perf_df.shape)
+perf_df.head()
+
+
+# In[8]:
+
+
+# plot weight decay as a categorical variable vs. performance
+sns.set({'figure.figsize': (12, 6)})
+sns.set_style('ticks')
+
+plot_df = (perf_df
+    .sort_values(by=['learning_rate'])
+    .reset_index(drop=True)
+)
+plot_df.learning_rate = plot_df.learning_rate.astype(float)
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.pointplot(
+        data=plot_df,
+        x='learning_rate', y='value', hue='dataset',
+        hue_order=['train', 'cv', 'test'],
+        marker='o'
+    )
+    g.set_xlabel(f'Learning rate')
+    g.set_ylabel('AUPR')
+        
+    ax = plt.gca()
+    legend_handles, _ = ax.get_legend_handles_labels()
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
+    sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
+    plt.title(f'Learning rate vs. AUPR, {plot_gene}', y=1.025)
+
+
+# In[9]:
+
+
+# plot learning rate as a float-valued variable (on a log scale) vs. performance
+sns.set({'figure.figsize': (10, 6)})
+sns.set_style('ticks')
+
+plot_df = (perf_df
+    .sort_values(by=['learning_rate'])
+    .reset_index(drop=True)
+)
+plot_df.learning_rate = plot_df.learning_rate.astype(float)
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.lineplot(
+        data=plot_df,
+        x='learning_rate', y='value', hue='dataset',
+        hue_order=['train', 'cv', 'test'],
+        marker='o'
+    )
+    g.set(xscale='log', xlim=(min(plot_df.learning_rate) + 0.0001, max(plot_df.learning_rate)))
+    g.set_xlabel(f'Learning rate')
+    g.set_ylabel('AUPR')
+        
+    ax = plt.gca()
+    legend_handles, _ = ax.get_legend_handles_labels()
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
+    sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
+    plt.title(f'Learning rate vs. AUPR, {plot_gene}', y=1.025)
 
