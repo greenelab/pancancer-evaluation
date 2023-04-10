@@ -356,7 +356,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
     plt.ylabel('AUPR(CV) - AUPR(test)')
 
 
-# In[17]:
+# In[22]:
 
 
 gene_df = (best_perf_df
@@ -373,7 +373,8 @@ pd.set_option('display.width', 1000)
 pd.set_option('display.expand_frame_repr', False)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_seq_items', 1000)
-display(gene_df)
+for cancer_type, row in gene_df.iterrows():
+    print(cancer_type, row.gene_list)
 
 
 # In[ ]:
