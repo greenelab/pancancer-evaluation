@@ -376,9 +376,3 @@ pd.set_option('display.max_seq_items', 1000)
 for cancer_type, row in gene_df.iterrows():
     print(cancer_type, row.gene_list)
 
-
-# In[ ]:
-
-
-
-
