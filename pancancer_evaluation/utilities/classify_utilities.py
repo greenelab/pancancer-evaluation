@@ -391,7 +391,8 @@ def run_cv_stratified(data_model,
                       predictor='classify',
                       ridge=False,
                       lasso=False,
-                      lasso_penalty=None):
+                      lasso_penalty=None,
+                      use_sgd=False):
     """
     Run stratified cross-validation experiments for a given identifier, then
     write the results to files in the results directory. If the relevant
@@ -497,7 +498,8 @@ def run_cv_stratified(data_model,
                     y_train=y_train_df,
                     seed=data_model.seed,
                     n_folds=cfg.folds,
-                    max_iter=cfg.max_iter
+                    max_iter=cfg.max_iter,
+                    use_sgd=use_sgd
                 )
                 if lasso_penalty is not None:
                     (cv_pipeline, labels, preds) = model_results

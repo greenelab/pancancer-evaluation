@@ -49,6 +49,7 @@ def process_args():
     p.add_argument('--results_dir', default=cfg.results_dir,
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
+    p.add_argument('--sgd', action='store_true')
     p.add_argument('--shuffle_labels', action='store_true')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
@@ -156,7 +157,8 @@ if __name__ == '__main__':
                                             args.num_folds,
                                             shuffle_labels,
                                             lasso=True,
-                                            lasso_penalty=args.lasso_penalty)
+                                            lasso_penalty=args.lasso_penalty,
+                                            use_sgd=args.sgd)
             except NoTestSamplesError:
                 if args.verbose:
                     print('Skipping due to no test samples: gene {}'.format(

@@ -27,6 +27,7 @@ def train_classifier(X_train,
                      ridge=False,
                      lasso=False,
                      lasso_penalty=None,
+                     use_sgd=False,
                      alphas=None,
                      l1_ratios=None,
                      c_values=None,
@@ -79,7 +80,8 @@ def train_classifier(X_train,
                 seed,
                 lasso_penalty,
                 n_folds=n_folds,
-                max_iter=max_iter
+                max_iter=max_iter,
+                use_sgd=use_sgd
             )
 
         else:
@@ -160,10 +162,11 @@ def train_lasso(X_train,
                 seed,
                 lasso_penalty,
                 n_folds=5,
-                max_iter=1000):
+                max_iter=1000,
+                use_sgd=False):
 
     import pancancer_evaluation.config as cfg
-    if cfg.lasso_sgd:
+    if use_sgd or cfg.lasso_sgd:
         estimator = SGDClassifier(
             random_state=seed,
             class_weight='balanced',
