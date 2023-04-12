@@ -12,6 +12,7 @@ import itertools as it
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 from scipy.stats import pearsonr, spearmanr
 import seaborn as sns
 
@@ -136,7 +137,7 @@ coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 # 
 # We'll do this for each gene/cancer type in the dataset below, and plot the distribution of differences between the two strategies, as a way to quantify which strategy is "better" for generalization across cancer types.
 
-# In[8]:
+# In[7]:
 
 
 def get_top_and_smallest_diff(gene, cancer_type):
@@ -189,7 +190,7 @@ def get_top_and_smallest_diff(gene, cancer_type):
 print(get_top_and_smallest_diff('SETD2', 'KIRP'))
 
 
-# In[9]:
+# In[8]:
 
 
 all_top_smallest_diff_df = []
@@ -216,7 +217,7 @@ print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
 
 
-# In[10]:
+# In[9]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -228,7 +229,7 @@ plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='grey', linestyle='--')
 
 
-# In[11]:
+# In[10]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -243,14 +244,135 @@ plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
 
 
-# In[12]:
+# In[11]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
 
 
-# In[13]:
+# In[12]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
+
+
+# ### Visualize performance by cancer type
+# 
+# We'll do this using the "best" parameters.
+
+# In[13]:
+
+
+cv_perf_df = (
+    perf_df[(perf_df.data_type == 'cv') &
+            (perf_df.signal == 'signal')]
+      .drop(columns=['experiment', 'signal'])
+      .rename(columns={'holdout_cancer_type': 'cancer_type'})
+).copy()
+cv_perf_df.lasso_param = cv_perf_df.lasso_param.astype(float)
+
+print(cv_perf_df.shape)
+cv_perf_df.head()
+
+
+# In[14]:
+
+
+test_perf_df = (
+    perf_df[(perf_df.data_type == 'test') &
+            (perf_df.signal == 'signal')]
+      .drop(columns=['experiment', 'signal'])
+      .rename(columns={'holdout_cancer_type': 'cancer_type'})
+).copy()
+test_perf_df.lasso_param = test_perf_df.lasso_param.astype(float)
+
+print(test_perf_df.shape)
+test_perf_df.head()
+
+
+# In[15]:
+
+
+# get performance using "best" lasso parameter, across all seeds and folds
+# (so we can plot the distribution/visualize the variance across CV splits)
+best_perf_df = (
+    all_top_smallest_diff_df.loc[:, ['gene', 'cancer_type', 'top_lasso_param']]
+      .merge(cv_perf_df,
+             left_on=['gene', 'cancer_type', 'top_lasso_param'],
+             right_on=['gene', 'cancer_type', 'lasso_param'])
+      .drop(columns=['lasso_param'])
+      .rename(columns={'auroc': 'cv_auroc',
+                       'aupr': 'cv_aupr'})
+      .merge(test_perf_df,
+             left_on=['gene', 'cancer_type', 'top_lasso_param', 'seed', 'fold'],
+             right_on=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold'])
+      .drop(columns=['lasso_param'])
+      .rename(columns={'auroc': 'test_auroc',
+                       'aupr': 'test_aupr'})
+)
+best_perf_df['cv_test_auroc_diff'] = (
+    best_perf_df.cv_auroc - best_perf_df.test_auroc
+)
+best_perf_df['cv_test_aupr_diff'] = (
+    best_perf_df.cv_aupr - best_perf_df.test_aupr
+)
+
+print(best_perf_df.shape)
+best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
+
+
+# In[16]:
+
+
+# plot difference in validation and test performance for each gene
+sns.set({'figure.figsize': (28, 6)})
+sns.set_style('ticks')
+
+# order boxes by median (cv - test) diff per gene
+medians = (best_perf_df
+    .groupby(['cancer_type'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+)['cv_test_aupr_diff'].values
+
+cancer_type_order = (best_perf_df
+    .groupby(['cancer_type'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+).index.get_level_values(0).values
+
+with sns.plotting_context('notebook', font_scale=1.5):
+    # map median performance values to colors on scale centered at 0
+    cmap = sns.color_palette('coolwarm', as_cmap=True)
+    norm = Normalize(vmin=-0.5, vmax=0.5)
+    ax = sns.boxplot(data=best_perf_df, order=cancer_type_order,
+                     x='cancer_type', y='cv_test_aupr_diff',
+                     palette=[cmap(norm(m)) for m in medians])
+    ax.axhline(0.0, linestyle='--', color='black')
+    plt.xticks(rotation=90)
+    plt.xlabel('Gene')
+    plt.title(f'Difference between CV and test performance, by cancer type', y=1.02)
+    plt.ylim(-0.95, 0.95)
+    plt.ylabel('AUPR(CV) - AUPR(test)')
+
+
+# In[22]:
+
+
+gene_df = (best_perf_df
+  .loc[:, ['gene', 'cancer_type']]
+  .drop_duplicates(['gene', 'cancer_type'])
+  .groupby('cancer_type')['gene']
+  .apply(list)
+  .to_frame()
+  .rename(columns={'gene': 'gene_list'})
+)
+gene_df['num_genes'] = gene_df.gene_list.apply(len)
+
+pd.set_option('display.width', 1000)
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_seq_items', 1000)
+for cancer_type, row in gene_df.iterrows():
+    print(cancer_type, row.gene_list)
 
