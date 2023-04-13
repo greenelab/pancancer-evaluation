@@ -37,7 +37,7 @@ sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
 )
 
-plot_gene = 'EGFR'
+plot_gene = 'SETD2'
 metric = 'aupr'
 
 
@@ -139,14 +139,8 @@ sgd_perf_df.head()
 # In[5]:
 
 
-# plot LASSO parameter vs. AUPR, for all 3 datasets
-# "train" = data used to train model
-# "cv" = validation set from TCGA (not used to train model)
-# "test" = CCLE data (not used to train model)
-sns.set({'figure.figsize': (9, 8)})
+# same plot as before but with the "best"/"smallest" parameters marked
 sns.set_style('ticks')
-
-fig, axarr = plt.subplots(2, 1)
 
 ll_plot_df = (
     ll_perf_df[(ll_perf_df.signal == 'signal')]
@@ -162,44 +156,6 @@ sgd_plot_df = (
 )
 sgd_plot_df.lasso_param = sgd_plot_df.lasso_param.astype(float)
 
-with sns.plotting_context('notebook', font_scale=1.6):
-    g = sns.lineplot(
-        data=ll_plot_df,
-        x='lasso_param', y=metric, hue='data_type',
-        hue_order=['train', 'cv', 'test'],
-        marker='o',
-        ax=axarr[0]
-    )
-    g.set(xscale='log',
-          xlim=(min(ll_plot_df.lasso_param), max(ll_plot_df.lasso_param)),
-          ylim=(0.0, 1.1))
-    g.set_title(f'Liblinear optimizer, {plot_gene}')
-    g.set_xlabel('LASSO parameter (higher = less regularization)')
-    g.set_ylabel(f'{metric.upper()}')
-    
-    g = sns.lineplot(
-        data=sgd_plot_df,
-        x='lasso_param', y=metric, hue='data_type',
-        hue_order=['train', 'cv', 'test'],
-        marker='o',
-        ax=axarr[1]
-    )
-    g.set(xscale='log',
-          xlim=(min(sgd_plot_df.lasso_param), max(sgd_plot_df.lasso_param)),
-          ylim=(0.0, 1.1))
-    g.set_title(f'SGD optimizer, {plot_gene}')
-    g.set_xlabel('LASSO parameter (lower = less regularization)')
-    g.set_ylabel(f'{metric.upper()}')
-    
-plt.tight_layout()
-
-
-# In[6]:
-
-
-# same plot as before but with the "best"/"smallest" parameters marked
-sns.set_style('ticks')
-
 ll_plot_df['optimizer'] = 'liblinear'
 sgd_plot_df['optimizer'] = 'SGD'
 
@@ -211,14 +167,16 @@ with sns.plotting_context('notebook', font_scale=1.6):
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
         marker='o', kind='line', col='optimizer',
-        col_wrap=1, height=5, aspect=1.6,
+        col_wrap=2, height=5, aspect=1.6,
         facet_kws={'sharex': False}
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.axes[0].set_xlabel('LASSO parameter \n (higher = less regularization)')
-    g.axes[1].set_xlabel('LASSO parameter \n (lower = less regularization)')
+    g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
+    g.axes[0].set_xlim((10e-4, 10e2))
+    g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
+    g.axes[1].set_xlim((10e-7, 10))
     g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.125, 0.55], frameon=True)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.035, 0.55], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['Train', 'Holdout', 'Test']
     for t, l in zip(g._legend.texts, new_labels):
@@ -228,10 +186,4 @@ with sns.plotting_context('notebook', font_scale=1.6):
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
 
 plt.tight_layout()
-
-
-# In[ ]:
-
-
-
 
