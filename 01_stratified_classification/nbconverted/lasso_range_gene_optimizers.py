@@ -37,7 +37,7 @@ sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
 )
 
-plot_gene = 'SETD2'
+plot_gene = 'KRAS'
 metric = 'aupr'
 
 
@@ -185,7 +185,6 @@ sgd_perf_df.head()
 # In[8]:
 
 
-# same plot as before but with the "best"/"smallest" parameters marked
 sns.set_style('ticks')
 
 ll_plot_df = (
@@ -230,6 +229,191 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_titles('Optimizer: {col_name}')
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
+
+plt.tight_layout()
+
+
+# In[9]:
+
+
+ll_nz_coefs_df['optimizer'] = 'liblinear'
+sgd_nz_coefs_df['optimizer'] = 'SGD'
+
+nz_coefs_df = pd.concat((ll_nz_coefs_df, sgd_nz_coefs_df))
+nz_coefs_df.head()
+
+
+# In[10]:
+
+
+perf_coefs_df = (plot_df
+    .merge(nz_coefs_df,
+           left_on=['gene', 'optimizer', 'lasso_param', 'seed', 'fold'],
+           right_on=['gene', 'optimizer', 'lasso_param', 'seed', 'fold'])
+)
+
+print(perf_coefs_df.shape)
+perf_coefs_df.head()
+
+
+# In[11]:
+
+
+sns.set({'figure.figsize': (10, 5)})
+sns.set_style('ticks')
+sns.histplot(perf_coefs_df.nz_coefs)
+plt.title(f'Nonzero coefficient distribution for {plot_gene}')
+plt.xlabel('Number of nonzero coefficients')
+
+linear_bins_df = []
+quantiles_df = []
+
+ax = plt.gca()
+for q in np.linspace(0.1, 0.9, 9):
+    quantiles_df.append([q, perf_coefs_df.nz_coefs.quantile(q)])
+    ax.axvline(x=perf_coefs_df.nz_coefs.quantile(q),
+                      color='black', linestyle='--')
+    
+for b in np.linspace(0, perf_coefs_df.nz_coefs.max(), 11):
+    ax.axvline(x=b, color='grey', linestyle=':')
+    
+# create custom legend for bin boundary lines
+from matplotlib.lines import Line2D
+legend_handles = [
+    Line2D([0], [0], color='black', linestyle='--'),
+    Line2D([0], [0], color='grey', linestyle=':'),
+]
+legend_labels = ['deciles', 'linear bins']
+l = ax.legend(legend_handles, legend_labels, title='Bin type',
+              loc='lower left', bbox_to_anchor=(1.01, 0.4))
+ax.add_artist(l)
+    
+quantiles_df = pd.DataFrame(quantiles_df, columns=['quantile', 'value'])
+quantiles_df
+
+
+# In[12]:
+
+
+# TODO: figure out 0 quantile general solution
+perf_coefs_df['nz_linear_bin'] = pd.cut(
+    perf_coefs_df.nz_coefs,
+    bins=np.linspace(0, perf_coefs_df.nz_coefs.max(), 11),
+    labels=[f'{q}' for q in range(1, 11)],
+    include_lowest=True
+)
+
+print(perf_coefs_df.nz_linear_bin.unique().sort_values())
+perf_coefs_df.head()
+
+
+# In[13]:
+
+
+# TODO: figure out 0 quantile general solution
+perf_coefs_df['nz_quantile'] = pd.qcut(
+    perf_coefs_df.nz_coefs,
+    q=np.linspace(0, 1, 11),
+    labels=[f'{q}' for q in range(1, 10)],
+    duplicates='drop'
+)
+
+print(perf_coefs_df.nz_quantile.unique())
+perf_coefs_df.head()
+
+
+# In[14]:
+
+
+sns.set_style('ticks')
+
+ll_plot_df = (
+    perf_coefs_df[(perf_coefs_df.optimizer == 'liblinear')]
+      .sort_values(by=['nz_linear_bin'])
+      .reset_index(drop=True)
+)
+
+sgd_plot_df = (
+    perf_coefs_df[(perf_coefs_df.optimizer == 'sgd')]
+      .sort_values(by=['nz_linear_bin'])
+      .reset_index(drop=True)
+)
+
+plot_df = pd.concat((ll_plot_df, sgd_plot_df))
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.relplot(
+        data=perf_coefs_df,
+        x='nz_linear_bin', y=metric, hue='data_type',
+        hue_order=['train', 'cv', 'test'],
+        marker='o', kind='line', col='optimizer',
+        col_wrap=2, height=5, aspect=1.6,
+        facet_kws={'sharex': False}
+    )
+    g.axes[0].set_xlabel('Bin (increasing number of nonzero coefficients)')
+    g.axes[0].set_xlim((0, perf_coefs_df.nz_linear_bin.max()))
+    g.axes[1].set_xlabel('Bin (increasing number of nonzero coefficients)')
+    g.axes[1].set_xlim((0, perf_coefs_df.nz_linear_bin.max()))
+    g.set_ylabels(f'{metric.upper()}')
+    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
+    g._legend.set_title('Dataset')
+    new_labels = ['Train', 'Holdout', 'Test']
+    for t, l in zip(g._legend.texts, new_labels):
+        t.set_text(l)
+    g.set_titles('Optimizer: {col_name}')
+     
+    plt.suptitle(
+        f'Number of nonzero coefficients vs. {metric.upper()}, linear binning, {plot_gene}',
+        y=1.0
+    )
+
+plt.tight_layout()
+
+
+# In[15]:
+
+
+sns.set_style('ticks')
+
+ll_plot_df = (
+    perf_coefs_df[(perf_coefs_df.optimizer == 'liblinear')]
+      .sort_values(by=['nz_quantile'])
+      .reset_index(drop=True)
+)
+
+sgd_plot_df = (
+    perf_coefs_df[(perf_coefs_df.optimizer == 'sgd')]
+      .sort_values(by=['nz_quantile'])
+      .reset_index(drop=True)
+)
+
+plot_df = pd.concat((ll_plot_df, sgd_plot_df))
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.relplot(
+        data=perf_coefs_df,
+        x='nz_quantile', y=metric, hue='data_type',
+        hue_order=['train', 'cv', 'test'],
+        marker='o', kind='line', col='optimizer',
+        col_wrap=2, height=5, aspect=1.6,
+        facet_kws={'sharex': False}
+    )
+    g.axes[0].set_xlabel('Bin (increasing number of nonzero coefficients)')
+    g.axes[0].set_xlim((0, perf_coefs_df.nz_quantile.max()))
+    g.axes[1].set_xlabel('Bin (increasing number of nonzero coefficients)')
+    g.axes[1].set_xlim((0, perf_coefs_df.nz_quantile.max()))
+    g.set_ylabels(f'{metric.upper()}')
+    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
+    g._legend.set_title('Dataset')
+    new_labels = ['Train', 'Holdout', 'Test']
+    for t, l in zip(g._legend.texts, new_labels):
+        t.set_text(l)
+    g.set_titles('Optimizer: {col_name}')
+     
+    plt.suptitle(
+        f'Number of nonzero coefficients vs. {metric.upper()}, decile binning, {plot_gene}',
+        y=1.0
+    )
 
 plt.tight_layout()
 
