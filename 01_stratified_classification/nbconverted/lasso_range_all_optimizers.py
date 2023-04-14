@@ -39,31 +39,64 @@ metric = 'aupr'
 
 
 # ### Get coefficient information for each lasso penalty
-nz_coefs_df = []
 
-# get pancancer coefs info for now
-for coef_info in au.generate_nonzero_coefficients_lasso_range(results_dir):
+# In[3]:
+
+
+ll_nz_coefs_df = []
+
+# get coefficient info for training dataset specified above
+for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir):
     (gene,
      cancer_type,
      seed,
      lasso_param,
      coefs_list) = coef_info
     for fold_no, coefs in enumerate(coefs_list):
-        nz_coefs_df.append(
+        ll_nz_coefs_df.append(
             [gene, cancer_type, lasso_param, seed, fold_no, len(coefs)]
         )
         
-nz_coefs_df = pd.DataFrame(
-    nz_coefs_df,
-    columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
+ll_nz_coefs_df = pd.DataFrame(
+    ll_nz_coefs_df,
+    columns=['gene', 'signal', 'lasso_param', 'seed', 'fold', 'nz_coefs']
 )
-nz_coefs_df.lasso_param = nz_coefs_df.lasso_param.astype(float)
-print(nz_coefs_df.shape)
-print(nz_coefs_df.gene.unique())
-nz_coefs_df.head()
+ll_nz_coefs_df.lasso_param = ll_nz_coefs_df.lasso_param.astype(float)
+
+print(ll_nz_coefs_df.gene.unique())
+ll_nz_coefs_df.head()
+
+
+# In[4]:
+
+
+sgd_nz_coefs_df = []
+
+# get coefficient info for training dataset specified above
+for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir):
+    (gene,
+     cancer_type,
+     seed,
+     lasso_param,
+     coefs_list) = coef_info
+    for fold_no, coefs in enumerate(coefs_list):
+        sgd_nz_coefs_df.append(
+            [gene, cancer_type, lasso_param, seed, fold_no, len(coefs)]
+        )
+        
+sgd_nz_coefs_df = pd.DataFrame(
+    sgd_nz_coefs_df,
+    columns=['gene', 'signal', 'lasso_param', 'seed', 'fold', 'nz_coefs']
+)
+sgd_nz_coefs_df.lasso_param = sgd_nz_coefs_df.lasso_param.astype(float)
+
+print(sgd_nz_coefs_df.gene.unique())
+sgd_nz_coefs_df.head()
+
+
 # ### Get performance information for each lasso penalty
 
-# In[3]:
+# In[5]:
 
 
 ll_perf_df = au.load_prediction_results_lasso_range(ll_results_dir,
@@ -79,7 +112,7 @@ print(ll_perf_df.gene.unique())
 ll_perf_df.head()
 
 
-# In[4]:
+# In[6]:
 
 
 sgd_perf_df = au.load_prediction_results_lasso_range(sgd_results_dir,
@@ -95,70 +128,77 @@ print(sgd_perf_df.gene.unique())
 sgd_perf_df.head()
 
 
-# ### Compare feature selection with performance
-coefs_perf_df = (nz_coefs_df
-    .rename(columns={'cancer_type': 'holdout_cancer_type'})
-    .merge(perf_df[perf_df.signal == 'signal'],
-           on=['gene', 'holdout_cancer_type', 'seed', 'fold', 'lasso_param'])
-    .drop(columns=['signal', 'experiment'])
-)
-
-print(coefs_perf_df.shape)
-coefs_perf_df.head()sns.set({'figure.figsize': (8, 6)})
-
-sns.histplot(coefs_perf_df.nz_coefs)
-plt.title('Distribution of feature count across cancer types/folds')
-plt.xlabel('Number of nonzero features')
-
-# calculate quantile cutoff if included
-# models below the cutoff get filtered out in the next cell, here we'll visualize the
-# distribution and a few of the filtered rows
-if quantile_cutoff is not None:
-    nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=quantile_cutoff)
-    plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
-    print('cutoff:', nz_coefs_cutoff)
-    
-coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 # ### Get "best" LASSO parameter and compare performance across all genes
 # 
 # Here, we'll just define the "best" model as the one with the highest validation set AUPR. We'll do this for each gene in the Vogelstein dataset, separately for each optimizer, and plot the distribution of AUPR differences between the two optimizers to give an idea of which one tends to be "better".
 
-# In[5]:
+# In[7]:
+
+
+ll_top_df = []
+
+# get top-performing lasso param for each gene,
+# based on mean performance across seeds/folds
+for gene in ll_perf_df.gene.unique():
+    ll_mean_perf_df = (
+      ll_perf_df[(ll_perf_df.gene == gene) &
+                 (ll_perf_df.data_type == 'cv') &
+                 (ll_perf_df.signal == 'signal')]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+          .sort_values(by='mean_aupr', ascending=False)
+          .reset_index()
+    )
+    ll_mean_perf_df['gene'] = gene
+    ll_top_df.append(ll_mean_perf_df.iloc[[0], :])
+    
+ll_top_df = (
+    pd.concat(ll_top_df)
+      .set_index('gene')
+)
+print(ll_top_df.shape)
+ll_top_df.head()
+
+
+# In[8]:
+
+
+sgd_top_df = []
+
+# get top-performing lasso param for each gene,
+# based on mean performance across seeds/folds
+for gene in sgd_perf_df.gene.unique():
+    sgd_mean_perf_df = (
+      sgd_perf_df[(sgd_perf_df.gene == gene) &
+                  (sgd_perf_df.data_type == 'cv') &
+                  (sgd_perf_df.signal == 'signal')]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+          .sort_values(by='mean_aupr', ascending=False)
+          .reset_index()
+    )
+    sgd_mean_perf_df['gene'] = gene
+    sgd_top_df.append(sgd_mean_perf_df.iloc[[0], :])
+    
+sgd_top_df = (
+    pd.concat(sgd_top_df)
+      .set_index('gene')
+)
+print(sgd_top_df.shape)
+sgd_top_df.head()
+
+
+# In[9]:
 
 
 def get_top_optimizer_diff(gene):
     # TODO: put some of repeated code in functions
-    ll_top_df = (
-        ll_perf_df[(ll_perf_df.gene == gene) &
-                   (ll_perf_df.data_type == 'cv') &
-                   (ll_perf_df.signal == 'signal')]
-          .groupby(['lasso_param'])
-          .agg(np.mean)
-          .drop(columns=['seed', 'fold'])
-          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
-          .sort_values(by='mean_aupr', ascending=False)
-    )
-    ll_top_df.index = ll_top_df.index.astype(float)
-    ll_top_df['aupr_rank'] = ll_top_df.mean_aupr.rank(ascending=False)
-    ll_top_lasso_param = (
-        ll_top_df.sort_values(by='aupr_rank', ascending=True)
-    ).index[0]
-    
-    sgd_top_df = (
-        sgd_perf_df[(sgd_perf_df.gene == gene) &
-                    (sgd_perf_df.data_type == 'cv') &
-                    (sgd_perf_df.signal == 'signal')]
-          .groupby(['lasso_param'])
-          .agg(np.mean)
-          .drop(columns=['seed', 'fold'])
-          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
-          .sort_values(by='mean_aupr', ascending=False)
-    )
-    sgd_top_df.index = sgd_top_df.index.astype(float)
-    sgd_top_df['aupr_rank'] = sgd_top_df.mean_aupr.rank(ascending=False)
-    sgd_top_lasso_param = (
-        sgd_top_df.sort_values(by='aupr_rank', ascending=True)
-    ).index[0]
+    ll_top_lasso_param = ll_top_df.loc[gene, 'lasso_param']
+    sgd_top_lasso_param = sgd_top_df.loc[gene, 'lasso_param']
     
     ll_mean_test_perf_df = (
         ll_perf_df[(ll_perf_df.gene == gene) &
@@ -191,7 +231,7 @@ def get_top_optimizer_diff(gene):
 print(get_top_optimizer_diff('PTEN'))
 
 
-# In[6]:
+# In[10]:
 
 
 all_top_optimizer_diff_df = []
@@ -220,7 +260,7 @@ print(all_top_optimizer_diff_df.best.value_counts())
 all_top_optimizer_diff_df.head()
 
 
-# In[7]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -232,14 +272,103 @@ plt.xlabel('AUPR(liblinear) - AUPR(SGD)')
 plt.gca().axvline(0, color='grey', linestyle='--')
 
 
-# In[8]:
+# In[12]:
 
 
 all_top_optimizer_diff_df.sort_values(by='ll_sgd_diff', ascending=False).head(10)
 
 
-# In[9]:
+# In[13]:
 
 
 all_top_optimizer_diff_df.sort_values(by='ll_sgd_diff', ascending=True).head(10)
+
+
+# ### Compare feature selection with performance
+
+# In[14]:
+
+
+ll_coefs_perf_df = (ll_top_df
+    .reset_index()
+    .merge(ll_nz_coefs_df,
+           on=['gene', 'lasso_param'])
+    .drop(columns=['signal'])
+)
+ll_coefs_perf_df['optimizer'] = 'liblinear'
+
+print(ll_coefs_perf_df.shape)
+ll_coefs_perf_df.head()
+
+
+# In[15]:
+
+
+sgd_coefs_perf_df = (sgd_top_df
+    .reset_index()
+    .merge(sgd_nz_coefs_df,
+           on=['gene', 'lasso_param'])
+    .drop(columns=['signal'])
+)
+sgd_coefs_perf_df['optimizer'] = 'sgd'
+
+print(sgd_coefs_perf_df.shape)
+sgd_coefs_perf_df.head()
+
+
+# In[16]:
+
+
+sns.set({'figure.figsize': (10, 4)})
+sns.set_style('whitegrid')
+
+coefs_perf_df = pd.concat((ll_coefs_perf_df, sgd_coefs_perf_df))
+sns.violinplot(data=coefs_perf_df, x='optimizer', y='nz_coefs', cut=0)
+plt.title('Number of nonzero coefficients included in best model, across all genes')
+plt.xlabel('Optimizer')
+plt.ylabel('Number of nonzero coefficients')
+
+
+# In[17]:
+
+
+import matplotlib.patches
+sns.set({'figure.figsize': (26, 4)})
+sns.set_style('whitegrid')
+
+sns.boxplot(data=coefs_perf_df.sort_values(by='gene'),
+            x='gene', y='nz_coefs', hue='optimizer')
+plt.title('Number of nonzero coefficients included in best model, per gene')
+plt.xlabel('Gene')
+plt.xticks(rotation=90)
+plt.ylabel('Number of nonzero coefficients')
+plt.ylim(-1000, coefs_perf_df.nz_coefs.max()+1000)
+
+# color the boxplot lines/edges rather than the box fill
+# this makes it easier to discern colors at the extremes; i.e. very many or few nonzero coefs
+# https://stackoverflow.com/a/72333641
+def color_boxes(ax):
+    box_patches = [patch for patch in ax.patches if type(patch) == matplotlib.patches.PathPatch]
+    num_patches = len(box_patches)
+    lines_per_boxplot = len(ax.lines) // num_patches
+    for i, patch in enumerate(box_patches):
+        # set the linecolor on the patch to the facecolor, and set the facecolor to None
+        col = patch.get_facecolor()
+        patch.set_edgecolor(col)
+        patch.set_facecolor('None')
+
+        # each box has associated Line2D objects (to make the whiskers, fliers, etc.)
+        # loop over them here, and use the same color as above
+        for line in ax.lines[i * lines_per_boxplot: (i + 1) * lines_per_boxplot]:
+            line.set_color(col)
+            line.set_mfc(col)  # facecolor of fliers
+            line.set_mec(col)  # edgecolor of fliers
+            
+    # also fix the legend to color the edges rather than fill
+    for legpatch in ax.legend_.get_patches():
+        col = legpatch.get_facecolor()
+        legpatch.set_edgecolor(col)
+        legpatch.set_facecolor('None')
+            
+color_boxes(plt.gca())
 

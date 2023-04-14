@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from scipy.stats import pearsonr
 import seaborn as sns
 
@@ -37,7 +38,7 @@ sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
 )
 
-plot_gene = 'KRAS'
+plot_gene = 'RB1'
 metric = 'aupr'
 
 
@@ -223,7 +224,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.035, 0.55], frameon=True)
     g._legend.set_title('Dataset')
-    new_labels = ['Train', 'Holdout', 'Test']
+    new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
     g.set_titles('Optimizer: {col_name}')
@@ -278,7 +279,6 @@ for b in np.linspace(0, perf_coefs_df.nz_coefs.max(), 11):
     ax.axvline(x=b, color='grey', linestyle=':')
     
 # create custom legend for bin boundary lines
-from matplotlib.lines import Line2D
 legend_handles = [
     Line2D([0], [0], color='black', linestyle='--'),
     Line2D([0], [0], color='grey', linestyle=':'),
@@ -310,15 +310,24 @@ perf_coefs_df.head()
 # In[13]:
 
 
-# TODO: figure out 0 quantile general solution
+# sometimes there are enough classifiers with O nonzero coefficients, or the
+# max number of coefficients, such that they are covered by a whole decile
+# in that case, we drop the duplicate deciles and combine them into one (so we'll
+# have e.g. 9 bins instead of 10 deciles)
+range_bounds = (0.0, float(perf_coefs_df.nz_coefs.max()))
+print(range_bounds)
+
+num_quantiles = quantiles_df[~quantiles_df.value.isin(range_bounds)].shape[0]
+print(num_quantiles, 'unique quantiles')
+
 perf_coefs_df['nz_quantile'] = pd.qcut(
     perf_coefs_df.nz_coefs,
     q=np.linspace(0, 1, 11),
-    labels=[f'{q}' for q in range(1, 10)],
+    labels=[f'{q}' for q in range(1, num_quantiles+2)],
     duplicates='drop'
 )
 
-print(perf_coefs_df.nz_quantile.unique())
+print(perf_coefs_df.nz_quantile.unique().sort_values())
 perf_coefs_df.head()
 
 
@@ -357,7 +366,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
     g._legend.set_title('Dataset')
-    new_labels = ['Train', 'Holdout', 'Test']
+    new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
     g.set_titles('Optimizer: {col_name}')
@@ -405,7 +414,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
     g._legend.set_title('Dataset')
-    new_labels = ['Train', 'Holdout', 'Test']
+    new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
     g.set_titles('Optimizer: {col_name}')
