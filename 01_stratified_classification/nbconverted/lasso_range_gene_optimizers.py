@@ -38,8 +38,13 @@ sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
 )
 
-plot_gene = 'RB1'
+plot_gene = 'EGFR'
 metric = 'aupr'
+
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
+)
 
 
 # ### Get coefficient information for each lasso penalty
@@ -152,6 +157,10 @@ plt.suptitle(
 
 plt.tight_layout()
 
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefs_count.svg'), bbox_inches='tight')
+
 
 # ### Get performance information for each lasso penalty
 
@@ -233,6 +242,9 @@ with sns.plotting_context('notebook', font_scale=1.6):
 
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_vs_perf.svg'), bbox_inches='tight')
+
 
 # In[9]:
 
@@ -310,6 +322,103 @@ perf_coefs_df.head()
 # In[13]:
 
 
+ll_param_bin_map = (perf_coefs_df
+    [perf_coefs_df.optimizer == 'liblinear']
+).loc[:, ['lasso_param', 'nz_linear_bin']]
+
+(ll_param_bin_map
+   .drop_duplicates()
+   .groupby('lasso_param')
+)['nz_linear_bin'].apply(list)
+
+
+# In[14]:
+
+
+sgd_param_bin_map = (perf_coefs_df
+    [perf_coefs_df.optimizer == 'SGD']
+).loc[:, ['lasso_param', 'nz_linear_bin']]
+
+(sgd_param_bin_map
+   .drop_duplicates()
+   .groupby('lasso_param')
+)['nz_linear_bin'].apply(list)
+
+
+# In[15]:
+
+
+sns.set({'figure.figsize': (15, 5)})
+sns.set_style('ticks')
+
+fig, axarr = plt.subplots(2, 1)
+
+param_bin_map = perf_coefs_df.loc[:, ['lasso_param', 'nz_linear_bin']]
+
+# ax1 is the bin axis for liblinear
+ax1 = axarr[0]
+ax1.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
+            y=[0] * param_bin_map.shape[0])
+ax1.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
+             param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
+ax1.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
+ax1.get_yaxis().set_visible(False)
+ax1.set_xlabel('Linear bin')
+
+ax2 = ax1.twiny()
+param_vals = param_bin_map.lasso_param.sort_values(ascending=True).astype(str)
+ax2.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
+ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
+
+def bins_to_coords(bins):
+    # TODO document
+    x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 11)
+    # https://stackoverflow.com/a/23856065
+    x_mid = (x[1:] + x[:-1]) / 2
+    return {b: x_mid[int(b)-1] for b in bins}
+
+# iterate through all (param, bin) coordinates and use bin to index
+bins = param_bin_map.nz_linear_bin.astype(int).sort_values(ascending=True).unique().tolist()
+b_to_c = bins_to_coords(bins)
+
+unique_param_vals = param_vals.astype(float).unique().tolist()
+for ix, row in ll_param_bin_map.iterrows():
+    bin_ix = int(row.nz_linear_bin)
+    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+    ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+ax1.set_ylim(-0.1, 1.1)
+ax1.set_yticks([0, 1])
+
+# ax3 is the bin axis for SGD
+ax3 = axarr[1]
+ax3.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
+            y=[0] * param_bin_map.shape[0])
+ax3.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
+             param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
+ax3.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
+ax3.get_yaxis().set_visible(False)
+ax3.set_xlabel('Linear bin')
+
+ax4 = ax3.twiny()
+param_vals = param_bin_map.lasso_param.sort_values(ascending=True).astype(str)
+ax4.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
+ax4.set_xlabel('LASSO parameter, SGD', labelpad=10)
+
+unique_param_vals = param_vals.astype(float).unique().tolist()
+print(unique_param_vals)
+for ix, row in sgd_param_bin_map.iterrows():
+    bin_ix = int(row.nz_linear_bin)
+    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+    ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+ax3.set_ylim(-0.1, 1.1)
+ax3.set_yticks([0, 1])
+
+plt.tight_layout()
+
+
+# In[16]:
+
+
 # sometimes there are enough classifiers with O nonzero coefficients, or the
 # max number of coefficients, such that they are covered by a whole decile
 # in that case, we drop the duplicate deciles and combine them into one (so we'll
@@ -331,7 +440,105 @@ print(perf_coefs_df.nz_quantile.unique().sort_values())
 perf_coefs_df.head()
 
 
-# In[14]:
+# In[17]:
+
+
+ll_param_q_map = (perf_coefs_df
+    [perf_coefs_df.optimizer == 'liblinear']                  
+).loc[:, ['lasso_param', 'nz_quantile']]
+
+(ll_param_q_map
+   .drop_duplicates()
+   .groupby('lasso_param')
+)['nz_quantile'].apply(list)
+
+
+# In[18]:
+
+
+sgd_param_q_map = (perf_coefs_df
+    [perf_coefs_df.optimizer == 'SGD']                  
+).loc[:, ['lasso_param', 'nz_quantile']]
+
+(sgd_param_q_map
+   .drop_duplicates()
+   .groupby('lasso_param')
+)['nz_quantile'].apply(list)
+
+
+# In[19]:
+
+
+sns.set({'figure.figsize': (15, 5)})
+sns.set_style('ticks')
+
+fig, axarr = plt.subplots(2, 1)
+
+param_q_map = perf_coefs_df.loc[:, ['lasso_param', 'nz_quantile']]
+
+# ax1 is the bin axis for liblinear
+ax1 = axarr[0]
+ax1.scatter(x=param_q_map.nz_quantile.astype(int).values,
+            y=[0] * param_q_map.shape[0])
+ax1.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
+             param_q_map.nz_quantile.astype(int).max() + 0.5)
+ax1.set_xticks(param_q_map.nz_quantile.astype(int).unique())
+ax1.get_yaxis().set_visible(False)
+ax1.set_xlabel('Quantile')
+
+ax2 = ax1.twiny()
+param_vals = param_q_map.lasso_param.sort_values(ascending=True).astype(str)
+ax2.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
+ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
+
+def bins_to_coords(bins):
+    # TODO document
+    x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], len(perf_coefs_df.nz_quantile.unique())+1)
+    # https://stackoverflow.com/a/23856065
+    x_mid = (x[1:] + x[:-1]) / 2
+    return {b: x_mid[int(b)-1] for b in bins}
+
+# iterate through all (param, bin) coordinates and use bin to index
+qs = param_q_map.nz_quantile.astype(int).sort_values(ascending=True).unique().tolist()
+b_to_c = bins_to_coords(qs)
+
+unique_param_vals = param_vals.astype(float).unique().tolist()
+print(unique_param_vals)
+for ix, row in ll_param_q_map.iterrows():
+    bin_ix = int(row.nz_quantile)
+    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+    ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+ax1.set_ylim(-0.1, 1.1)
+ax1.set_yticks([0, 1])
+
+# ax3 is the bin axis for SGD
+ax3 = axarr[1]
+ax3.scatter(x=param_q_map.nz_quantile.astype(int).values,
+            y=[0] * param_q_map.shape[0])
+ax3.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
+             param_q_map.nz_quantile.astype(int).max() + 0.5)
+ax3.set_xticks(param_q_map.nz_quantile.astype(int).unique())
+ax3.get_yaxis().set_visible(False)
+ax3.set_xlabel('Quantile')
+
+ax4 = ax3.twiny()
+param_vals = param_q_map.lasso_param.sort_values(ascending=True).astype(str)
+ax4.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
+ax4.set_xlabel('LASSO parameter, SGD', labelpad=10)
+
+unique_param_vals = param_vals.astype(float).unique().tolist()
+print(unique_param_vals)
+for ix, row in sgd_param_q_map.iterrows():
+    bin_ix = int(row.nz_quantile)
+    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+    ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+ax3.set_ylim(-0.1, 1.1)
+ax3.set_yticks([0, 1])
+
+plt.tight_layout()
+
+
+# In[20]:
 
 
 sns.set_style('ticks')
@@ -378,8 +585,11 @@ with sns.plotting_context('notebook', font_scale=1.6):
 
 plt.tight_layout()
 
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_linear_bin_vs_perf.svg'), bbox_inches='tight')
 
-# In[15]:
+
+# In[21]:
 
 
 sns.set_style('ticks')
@@ -425,4 +635,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     )
 
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_decile_vs_perf.svg'), bbox_inches='tight')
 
