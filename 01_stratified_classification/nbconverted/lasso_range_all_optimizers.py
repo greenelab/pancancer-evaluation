@@ -37,6 +37,11 @@ sgd_results_dir = os.path.join(
 plot_gene = 'EGFR'
 metric = 'aupr'
 
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
+)
+
 
 # ### Get coefficient information for each lasso penalty
 
@@ -250,7 +255,7 @@ all_top_optimizer_diff_df = pd.DataFrame(
 all_top_optimizer_diff_df['best'] = 'liblinear'
 all_top_optimizer_diff_df.loc[
     all_top_optimizer_diff_df.ll_sgd_diff < 0, 'best'
-] = 'sgd'
+] = 'SGD'
 # this probably won't happen but just in case
 all_top_optimizer_diff_df.loc[
     all_top_optimizer_diff_df.ll_sgd_diff == 0, 'best'
@@ -263,13 +268,20 @@ all_top_optimizer_diff_df.head()
 # In[11]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (10, 2.75)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff)
-plt.title('Differences between liblinear and SGD optimizers, across all Vogelstein genes')
-plt.xlabel('AUPR(liblinear) - AUPR(SGD)')
-plt.gca().axvline(0, color='grey', linestyle='--')
+sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff, binwidth=0.025, binrange=(-0.1, 0.45))
+plt.xlim(-0.1, 0.45)
+plt.title('Differences between liblinear and SGD optimizers, across all Vogelstein genes', size=14, y=1.05)
+plt.xlabel('AUPR(liblinear) - AUPR(SGD)', size=13)
+plt.ylabel('Count', size=13)
+plt.yticks(np.arange(0, 15, 2))
+plt.gca().axvline(0, color='black', linestyle='--')
+
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_diff_dist.svg'), bbox_inches='tight')
 
 
 # In[12]:
@@ -301,7 +313,7 @@ print(ll_coefs_perf_df.shape)
 ll_coefs_perf_df.head()
 
 
-# In[15]:
+# In[19]:
 
 
 sgd_coefs_perf_df = (sgd_top_df
@@ -310,23 +322,27 @@ sgd_coefs_perf_df = (sgd_top_df
            on=['gene', 'lasso_param'])
     .drop(columns=['signal'])
 )
-sgd_coefs_perf_df['optimizer'] = 'sgd'
+sgd_coefs_perf_df['optimizer'] = 'SGD'
 
 print(sgd_coefs_perf_df.shape)
+print(sgd_coefs_perf_df.nz_coefs.min(), sgd_coefs_perf_df.nz_coefs.max())
 sgd_coefs_perf_df.head()
 
 
-# In[16]:
+# In[18]:
 
 
-sns.set({'figure.figsize': (10, 4)})
+sns.set({'figure.figsize': (7, 3)})
 sns.set_style('whitegrid')
 
 coefs_perf_df = pd.concat((ll_coefs_perf_df, sgd_coefs_perf_df))
 sns.violinplot(data=coefs_perf_df, x='optimizer', y='nz_coefs', cut=0)
-plt.title('Number of nonzero coefficients included in best model, across all genes')
+plt.title('Number of nonzero coefficients included in best model, across all genes', y=1.05)
 plt.xlabel('Optimizer')
 plt.ylabel('Number of nonzero coefficients')
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_dist.svg'), bbox_inches='tight')
 
 
 # In[17]:
@@ -371,4 +387,7 @@ def color_boxes(ax):
         legpatch.set_facecolor('None')
             
 color_boxes(plt.gca())
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_per_gene.png'), bbox_inches='tight')
 

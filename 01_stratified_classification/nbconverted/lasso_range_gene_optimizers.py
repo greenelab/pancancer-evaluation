@@ -38,7 +38,7 @@ sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
 )
 
-plot_gene = 'EGFR'
+plot_gene = 'KRAS'
 metric = 'aupr'
 
 output_plots = True
@@ -594,20 +594,6 @@ if output_plots:
 
 sns.set_style('ticks')
 
-ll_plot_df = (
-    perf_coefs_df[(perf_coefs_df.optimizer == 'liblinear')]
-      .sort_values(by=['nz_quantile'])
-      .reset_index(drop=True)
-)
-
-sgd_plot_df = (
-    perf_coefs_df[(perf_coefs_df.optimizer == 'sgd')]
-      .sort_values(by=['nz_quantile'])
-      .reset_index(drop=True)
-)
-
-plot_df = pd.concat((ll_plot_df, sgd_plot_df))
-
 with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.relplot(
         data=perf_coefs_df,
@@ -638,4 +624,168 @@ plt.tight_layout()
 
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_decile_vs_perf.svg'), bbox_inches='tight')
+
+
+# In[22]:
+
+
+decile_perf_df = (perf_coefs_df
+    [perf_coefs_df.data_type == 'test']
+    .groupby(['optimizer', 'nz_quantile'])
+    .agg(np.mean)
+    .drop(columns=['seed', 'fold', 'lasso_param'])
+)
+
+print(decile_perf_df.shape)
+decile_perf_df.loc['liblinear', :]
+
+
+# In[23]:
+
+
+decile_perf_df.loc['SGD', :]
+
+
+# In[24]:
+
+
+# plot coefficient distributions for this seed/fold
+plot_seed = 42
+plot_fold = 0
+
+
+# In[25]:
+
+
+ll_top_df = []
+
+# get top-performing lasso param for each gene,
+# based on mean performance across seeds/folds
+ll_mean_perf_df = (
+  ll_perf_df[(ll_perf_df.data_type == 'cv') &
+             (ll_perf_df.signal == 'signal')]
+      .groupby(['lasso_param'])
+      .agg(np.mean)
+      .drop(columns=['seed', 'fold'])
+      .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+      .sort_values(by='mean_aupr', ascending=False)
+      .reset_index()
+)
+ll_mean_perf_df.head()
+
+
+# In[26]:
+
+
+sgd_top_df = []
+
+# get top-performing lasso param for each gene,
+# based on mean performance across seeds/folds
+sgd_mean_perf_df = (
+  sgd_perf_df[(sgd_perf_df.data_type == 'cv') &
+              (sgd_perf_df.signal == 'signal')]
+      .groupby(['lasso_param'])
+      .agg(np.mean)
+      .drop(columns=['seed', 'fold'])
+      .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+      .sort_values(by='mean_aupr', ascending=False)
+      .reset_index()
+)
+sgd_mean_perf_df.head()
+
+
+# In[27]:
+
+
+ll_top_lasso_param = ll_mean_perf_df.iloc[0, :].lasso_param
+sgd_top_lasso_param = sgd_mean_perf_df.iloc[0, :].lasso_param
+print(ll_top_lasso_param, sgd_top_lasso_param)
+
+
+# In[28]:
+
+
+# get coefficient info for liblinear
+for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir,
+                                                              gene=plot_gene,
+                                                              nonzero_only=False):
+    (gene,
+     cancer_type,
+     seed,
+     lasso_param,
+     coefs_list) = coef_info
+    if seed != plot_seed or lasso_param != ll_top_lasso_param:
+        continue
+    for fold_no, coefs in enumerate(coefs_list):
+        if fold_no != plot_fold:
+            continue
+        ll_coefs_df = coefs
+        
+ll_coefs_df = (
+    pd.DataFrame(ll_coefs_df)
+      .rename(columns={0: 'feature', 1: 'coef'})
+)
+ll_coefs_df['optimizer'] = 'liblinear'
+ll_coefs_df['abs+1'] = abs(ll_coefs_df.coef) + 1
+ll_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
+
+
+# In[29]:
+
+
+# get coefficient info for sgd
+for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir,
+                                                              gene=plot_gene,
+                                                              nonzero_only=False):
+    (gene,
+     cancer_type,
+     seed,
+     lasso_param,
+     coefs_list) = coef_info
+    if seed != plot_seed or lasso_param != sgd_top_lasso_param:
+        continue
+        continue
+    for fold_no, coefs in enumerate(coefs_list):
+        if fold_no != plot_fold:
+            continue
+        sgd_coefs_df = coefs
+        
+sgd_coefs_df = (
+    pd.DataFrame(sgd_coefs_df)
+      .rename(columns={0: 'feature', 1: 'coef'})
+)
+sgd_coefs_df['optimizer'] = 'SGD'
+sgd_coefs_df['abs+1'] = abs(sgd_coefs_df.coef) + 1
+sgd_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
+
+
+# In[32]:
+
+
+sns.set({'figure.figsize': (8, 3)})
+sns.set_style('whitegrid')
+
+coefs_df = pd.concat((ll_coefs_df, sgd_coefs_df)).reset_index(drop=True)
+
+sns.histplot(data=coefs_df, x='abs+1', hue='optimizer', bins=200,
+             log_scale=(True, True), alpha=0.65)
+plt.xlabel(r'$\log_{10}($absolute value of coefficient + 1$)$')
+plt.ylabel(r'$\log_{10}($count$)$')
+plt.title(f'Log-log coefficient magnitude distribution, {plot_gene}', y=1.03)
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefficient_magnitudes.svg'),
+                bbox_inches='tight')
+
+
+# In[31]:
+
+
+sns.set({'figure.figsize': (10, 4)})
+sns.set_style('whitegrid')
+
+coefs_df = pd.concat((ll_coefs_df, sgd_coefs_df)).reset_index(drop=True)
+
+sns.histplot(data=coefs_df, x='coef', hue='optimizer', bins=30, multiple='stack')
+plt.xlabel('Coefficient')
 
