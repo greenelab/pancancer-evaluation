@@ -223,13 +223,15 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o', kind='line', col='optimizer',
         col_wrap=2, height=5, aspect=1.6,
-        facet_kws={'sharex': False}
+        facet_kws={'sharex': False, 'sharey': False}
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
     g.axes[0].set_xlim((10e-4, 10e2))
+    g.axes[0].set_ylim((-0.05, 1.05))
     g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
     g.axes[1].set_xlim((10e-7, 10))
+    g.axes[1].set_ylim((-0.05, 1.05))
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.035, 0.55], frameon=True)
     g._legend.set_title('Dataset')
@@ -240,7 +242,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
 
-plt.tight_layout()
+plt.tight_layout(w_pad=10)
 
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_vs_perf.svg'), bbox_inches='tight')
@@ -299,6 +301,9 @@ legend_labels = ['deciles', 'linear bins']
 l = ax.legend(legend_handles, legend_labels, title='Bin type',
               loc='lower left', bbox_to_anchor=(1.01, 0.4))
 ax.add_artist(l)
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefs_dist.svg'), bbox_inches='tight')
     
 quantiles_df = pd.DataFrame(quantiles_df, columns=['quantile', 'value'])
 quantiles_df
@@ -400,9 +405,9 @@ ax3.get_yaxis().set_visible(False)
 ax3.set_xlabel('Linear bin')
 
 ax4 = ax3.twiny()
-param_vals = param_bin_map.lasso_param.sort_values(ascending=True).astype(str)
+param_vals = param_bin_map.lasso_param.sort_values(ascending=False).astype(str)
 ax4.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
-ax4.set_xlabel('LASSO parameter, SGD', labelpad=10)
+ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
 
 unique_param_vals = param_vals.astype(float).unique().tolist()
 print(unique_param_vals)
@@ -522,9 +527,9 @@ ax3.get_yaxis().set_visible(False)
 ax3.set_xlabel('Quantile')
 
 ax4 = ax3.twiny()
-param_vals = param_q_map.lasso_param.sort_values(ascending=True).astype(str)
+param_vals = param_q_map.lasso_param.sort_values(ascending=False).astype(str)
 ax4.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
-ax4.set_xlabel('LASSO parameter, SGD', labelpad=10)
+ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
 
 unique_param_vals = param_vals.astype(float).unique().tolist()
 print(unique_param_vals)
@@ -536,6 +541,9 @@ ax3.set_ylim(-0.1, 1.1)
 ax3.set_yticks([0, 1])
 
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_to_decile.svg'), bbox_inches='tight')
 
 
 # In[20]:
@@ -568,8 +576,10 @@ with sns.plotting_context('notebook', font_scale=1.6):
     )
     g.axes[0].set_xlabel('Bin (increasing number of nonzero coefficients)')
     g.axes[0].set_xlim((0, perf_coefs_df.nz_linear_bin.max()))
+    g.axes[0].set_ylim((-0.05, 1.05))
     g.axes[1].set_xlabel('Bin (increasing number of nonzero coefficients)')
     g.axes[1].set_xlim((0, perf_coefs_df.nz_linear_bin.max()))
+    g.axes[1].set_ylim((-0.05, 1.05))
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
     g._legend.set_title('Dataset')
@@ -583,10 +593,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         y=1.0
     )
 
-plt.tight_layout()
-
-if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_linear_bin_vs_perf.svg'), bbox_inches='tight')
+plt.tight_layout(w_pad=10)
 
 
 # In[21]:
@@ -605,22 +612,19 @@ with sns.plotting_context('notebook', font_scale=1.6):
     )
     g.axes[0].set_xlabel('Bin (increasing number of nonzero coefficients)')
     g.axes[0].set_xlim((0, perf_coefs_df.nz_quantile.max()))
+    g.axes[0].set_ylim((-0.05, 1.05))
     g.axes[1].set_xlabel('Bin (increasing number of nonzero coefficients)')
     g.axes[1].set_xlim((0, perf_coefs_df.nz_quantile.max()))
+    g.axes[1].set_ylim((-0.05, 1.05))
     g.set_ylabels(f'{metric.upper()}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
-    g.set_titles('Optimizer: {col_name}')
-     
-    plt.suptitle(
-        f'Number of nonzero coefficients vs. {metric.upper()}, decile binning, {plot_gene}',
-        y=1.0
-    )
+    g.set_titles('Gene: {}, optimizer: {{col_name}}; decile binning'.format(plot_gene), y=1.05)
 
-plt.tight_layout()
+plt.tight_layout(w_pad=10)
 
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_decile_vs_perf.svg'), bbox_inches='tight')
@@ -759,7 +763,7 @@ sgd_coefs_df['abs+1'] = abs(sgd_coefs_df.coef) + 1
 sgd_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[32]:
+# In[30]:
 
 
 sns.set({'figure.figsize': (8, 3)})
