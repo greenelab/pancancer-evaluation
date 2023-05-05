@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### LASSO parameter range experiments
+# ### LASSO parameter range experiments, single gene
 # 
-# We want to see whether smaller models (i.e. models with fewer nonzero features) tend to generalize to new cancer types better than larger ones; this script compares/visualizes those results.
+# `scikit-learn` has two different implementations of logistic regression: [LogisticRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html) (using the `liblinear` coordinate descent optimizer) and [SGDClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html) (using stochastic gradient descent for optimization).
+# 
+# In this script we want to compare their performance and model selection dynamics across different levels of regularization, in depth for a single gene in our cancer gene set.
 
 # In[1]:
 
@@ -246,6 +248,10 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_vs_perf.svg'), bbox_inches='tight')
 
 
+# ### Get nonzero coefficient info, and bin models by nonzero coefficients
+# 
+# We'll try doing this both linearly (just 10 evenly spaced bins) and based on the deciles of the nonzero coefficient distributions.
+
 # In[9]:
 
 
@@ -274,19 +280,20 @@ perf_coefs_df.head()
 
 sns.set({'figure.figsize': (10, 5)})
 sns.set_style('ticks')
-sns.histplot(perf_coefs_df.nz_coefs)
+sns.histplot(perf_coefs_df.nz_coefs, bins=10)
 plt.title(f'Nonzero coefficient distribution for {plot_gene}')
 plt.xlabel('Number of nonzero coefficients')
 
-linear_bins_df = []
 quantiles_df = []
-
 ax = plt.gca()
+
+# visualize quantile boundaries
 for q in np.linspace(0.1, 0.9, 9):
     quantiles_df.append([q, perf_coefs_df.nz_coefs.quantile(q)])
     ax.axvline(x=perf_coefs_df.nz_coefs.quantile(q),
                       color='black', linestyle='--')
     
+# visualize linear bins
 for b in np.linspace(0, perf_coefs_df.nz_coefs.max(), 11):
     ax.axvline(x=b, color='grey', linestyle=':')
     
@@ -303,6 +310,10 @@ ax.add_artist(l)
 quantiles_df = pd.DataFrame(quantiles_df, columns=['quantile', 'value'])
 quantiles_df
 
+
+# ### Map regularization parameters to bins
+# 
+# We just want to visualize which parameters map to which bins, in both the linear and decile cases.
 
 # In[12]:
 
@@ -538,6 +549,10 @@ ax3.set_yticks([0, 1])
 plt.tight_layout()
 
 
+# ### Plot performance vs. nonzero coefficient bin
+# 
+# This allows us to compare liblinear and SGD using variation on the same axis (sparsity/number of nonzero coefficients), rather than comparing in parameter space since the regularization parameters vary in opposite directions.
+
 # In[20]:
 
 
@@ -625,6 +640,10 @@ plt.tight_layout()
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_decile_vs_perf.svg'), bbox_inches='tight')
 
+
+# ### Plot coefficient magnitudes
+# 
+# Even though SGD seems to have lots of nonzero coefficients, it's possible that lots of them are close to 0, or effectively 0. We'll plot the coefficient magnitudes on the same axis as the liblinear coefficients, to get a sense of this.
 
 # In[22]:
 
@@ -759,7 +778,7 @@ sgd_coefs_df['abs+1'] = abs(sgd_coefs_df.coef) + 1
 sgd_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[32]:
+# In[30]:
 
 
 sns.set({'figure.figsize': (8, 3)})
@@ -789,3 +808,5 @@ coefs_df = pd.concat((ll_coefs_df, sgd_coefs_df)).reset_index(drop=True)
 sns.histplot(data=coefs_df, x='coef', hue='optimizer', bins=30, multiple='stack')
 plt.xlabel('Coefficient')
 
+
+# So it does look like the SGD coefficient magnitudes are actually just larger: in other words, all of the gene coefficients are contributing to the final model, unlike liblinear where most of them are 0 (or $10^0$ on the log axis).
