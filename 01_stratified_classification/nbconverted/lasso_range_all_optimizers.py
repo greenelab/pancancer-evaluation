@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### LASSO parameter range experiments, summary across all genes
+# ### LASSO parameter range experiments, summary across all genes from Vogelstein et al. 2013
+# 
+# `scikit-learn` has two different implementations of logistic regression: [LogisticRegression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html) (using the `liblinear` coordinate descent optimizer) and [SGDClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html) (using stochastic gradient descent for optimization).
+# 
+# In this script we want to compare their performance and model selection dynamics across different levels of regularization, across the cancer genes in our gene set.
 
 # In[1]:
 
@@ -133,11 +137,21 @@ print(sgd_perf_df.gene.unique())
 sgd_perf_df.head()
 
 
+# In[7]:
+
+
+# make sure gene sets are the same between optimizers
+assert np.array_equal(
+    sgd_perf_df.gene.sort_values().unique(),
+    ll_perf_df.gene.sort_values().unique()
+)
+
+
 # ### Get "best" LASSO parameter and compare performance across all genes
 # 
 # Here, we'll just define the "best" model as the one with the highest validation set AUPR. We'll do this for each gene in the Vogelstein dataset, separately for each optimizer, and plot the distribution of AUPR differences between the two optimizers to give an idea of which one tends to be "better".
 
-# In[7]:
+# In[8]:
 
 
 ll_top_df = []
@@ -167,7 +181,7 @@ print(ll_top_df.shape)
 ll_top_df.head()
 
 
-# In[8]:
+# In[9]:
 
 
 sgd_top_df = []
@@ -197,7 +211,7 @@ print(sgd_top_df.shape)
 sgd_top_df.head()
 
 
-# In[9]:
+# In[10]:
 
 
 def get_top_optimizer_diff(gene):
@@ -236,7 +250,7 @@ def get_top_optimizer_diff(gene):
 print(get_top_optimizer_diff('PTEN'))
 
 
-# In[10]:
+# In[11]:
 
 
 all_top_optimizer_diff_df = []
@@ -265,7 +279,7 @@ print(all_top_optimizer_diff_df.best.value_counts())
 all_top_optimizer_diff_df.head()
 
 
-# In[11]:
+# In[12]:
 
 
 sns.set({'figure.figsize': (10, 2.75)})
@@ -284,13 +298,13 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_diff_dist.svg'), bbox_inches='tight')
 
 
-# In[12]:
+# In[13]:
 
 
 all_top_optimizer_diff_df.sort_values(by='ll_sgd_diff', ascending=False).head(10)
 
 
-# In[13]:
+# In[14]:
 
 
 all_top_optimizer_diff_df.sort_values(by='ll_sgd_diff', ascending=True).head(10)
@@ -298,7 +312,7 @@ all_top_optimizer_diff_df.sort_values(by='ll_sgd_diff', ascending=True).head(10)
 
 # ### Compare feature selection with performance
 
-# In[14]:
+# In[15]:
 
 
 ll_coefs_perf_df = (ll_top_df
@@ -313,7 +327,7 @@ print(ll_coefs_perf_df.shape)
 ll_coefs_perf_df.head()
 
 
-# In[19]:
+# In[16]:
 
 
 sgd_coefs_perf_df = (sgd_top_df
@@ -329,7 +343,7 @@ print(sgd_coefs_perf_df.nz_coefs.min(), sgd_coefs_perf_df.nz_coefs.max())
 sgd_coefs_perf_df.head()
 
 
-# In[18]:
+# In[17]:
 
 
 sns.set({'figure.figsize': (7, 3)})
@@ -345,7 +359,7 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_dist.svg'), bbox_inches='tight')
 
 
-# In[17]:
+# In[18]:
 
 
 import matplotlib.patches
