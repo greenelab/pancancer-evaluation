@@ -398,7 +398,7 @@ def generate_nonzero_coefficients_fs(results_dir, fs_methods):
             yield identifier, coefs
 
 
-def generate_nonzero_coefficients_lasso_range(results_dir, gene=None):
+def generate_nonzero_coefficients_lasso_range(results_dir, gene=None, nonzero_only=True):
     """Generate coefficients for lasso range experiments.
 
 
@@ -436,7 +436,7 @@ def generate_nonzero_coefficients_lasso_range(results_dir, gene=None):
             if all_features is None:
                 all_features = np.unique(coefs_df.feature.values)
             identifier = '{}_{}'.format(gene_name, cancer_type)
-            coefs = process_coefs(coefs_df)
+            coefs = process_coefs(coefs_df, nonzero_only)
             yield gene_name, cancer_type, seed, lasso_param, coefs
 
 

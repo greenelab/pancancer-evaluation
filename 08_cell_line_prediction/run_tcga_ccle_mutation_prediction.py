@@ -25,7 +25,6 @@ import pancancer_evaluation.utilities.ccle_data_utilities as cdu
 import pancancer_evaluation.utilities.data_utilities as tdu
 from pancancer_evaluation.utilities.data_utilities import (
     load_custom_genes,
-    get_classification,
     merge_features
 )
 import pancancer_evaluation.utilities.file_utilities as fu
