@@ -8,8 +8,7 @@ LL_ERRORS_DIR=./optimizer_compare_ll_errors
 SGD_RESULTS_DIR=./01_stratified_classification/results/optimizer_compare_sgd
 SGD_ERRORS_DIR=./optimizer_compare_sgd_errors
 
-# number of features to "preselect" to by mean absolute deviation
-# -1 == no preselection
+# keep all the genes in the gene set, otherwise scripts default to 8000
 MAD_PRESELECT=16042
 
 mkdir -p $LL_ERRORS_DIR

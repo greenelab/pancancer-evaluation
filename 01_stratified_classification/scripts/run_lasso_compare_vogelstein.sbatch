@@ -34,8 +34,7 @@ gene=${genes[${SLURM_ARRAY_TASK_ID}]}
 LL_RESULTS_DIR=./01_stratified_classification/results/optimizer_compare_ll
 SGD_RESULTS_DIR=./01_stratified_classification/results/optimizer_compare_sgd
 
-# number of features to "preselect" to by mean absolute deviation
-# -1 == no preselection
+# keep all the genes in the gene set, otherwise scripts default to 8000
 MAD_PRESELECT=16042
 
 mkdir -p $LL_ERRORS_DIR
