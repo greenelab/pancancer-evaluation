@@ -10,7 +10,6 @@ import pandas as pd
 from pancancer_evaluation.exceptions import ResultsFileExistsError
 
 def construct_filename(output_dir,
-                       predictor,
                        file_descriptor,
                        extension,
                        *args,
@@ -18,12 +17,12 @@ def construct_filename(output_dir,
     """Construct a filename from varying experimental parameters.
 
     The format of the filename will roughly look like this:
-    {output_dir}/{a}_{k}_{predictor}_{file_descriptor}{extension}
+    {output_dir}/{a}_{k}_{file_descriptor}{extension}
     where a = '_'.join([ar for ar in args]),
           k = '_'.join(['{k}{v} for k, v in kwargs.items()])
 
     For example:
-    >>> construct_filename('output_dir', 'classify', 'output', '.tsv',
+    >>> construct_filename('output_dir', 'output', '.tsv',
     ...                    'expression', 'signal',
     ...                    s=42, n=5000)
     output_dir/expression_signal_s42_n5000_classify_output.tsv
@@ -33,28 +32,25 @@ def construct_filename(output_dir,
     """
     if len(args) == 0 and len(kwargs) == 0:
         return Path(output_dir,
-                    '{}_{}{}'.format(predictor, file_descriptor, extension))
+                    '{}{}'.format(file_descriptor, extension))
     elif len(args) == 0:
         return Path(output_dir,
-                    '{}_{}_{}{}'.format('_'.join([f'{k}{v}' for k, v in kwargs.items()
-                                                             if v is not None]),
-                                        predictor,
-                                        file_descriptor,
-                                        extension))
+                    '{}_{}{}'.format('_'.join([f'{k}{v}' for k, v in kwargs.items()
+                                                          if v is not None]),
+                                     file_descriptor,
+                                     extension))
     elif len(kwargs) == 0:
         return Path(output_dir,
-                    '{}_{}_{}{}'.format('_'.join([ar for ar in args if ar is not None]),
-                                        predictor,
-                                        file_descriptor,
-                                        extension))
+                    '{}_{}{}'.format('_'.join([ar for ar in args if ar is not None]),
+                                     file_descriptor,
+                                     extension))
     else:
         return Path(output_dir,
-                    '{}_{}_{}_{}{}'.format('_'.join([ar for ar in args if ar is not None]),
-                                           '_'.join([f'{k}{v}' for k, v in kwargs.items()
-                                                                if v is not None]),
-                                           predictor,
-                                           file_descriptor,
-                                           extension))
+                    '{}_{}_{}{}'.format('_'.join([ar for ar in args if ar is not None]),
+                                        '_'.join([f'{k}{v}' for k, v in kwargs.items()
+                                                             if v is not None]),
+                                        file_descriptor,
+                                        extension))
 
 
 def save_results_stratified(results_dir,
@@ -82,10 +78,10 @@ def save_results_stratified(results_dir,
         )
 
         output_file = construct_filename(results_dir,
-                                         predictor,
                                          'auc_threshold_metrics',
                                          '.tsv.gz',
                                          gene,
+                                         predictor,
                                          signal,
                                          feature_selection,
                                          s=seed,
@@ -95,10 +91,10 @@ def save_results_stratified(results_dir,
         )
 
         output_file = construct_filename(results_dir,
-                                         predictor,
                                          'aupr_threshold_metrics',
                                          '.tsv.gz',
                                          gene,
+                                         predictor,
                                          signal,
                                          feature_selection,
                                          s=seed,
@@ -108,10 +104,10 @@ def save_results_stratified(results_dir,
         )
 
     output_file = construct_filename(results_dir,
-                                     predictor,
                                      'metrics',
                                      '.tsv.gz',
                                      gene,
+                                     predictor,
                                      signal,
                                      feature_selection,
                                      s=seed,
@@ -147,11 +143,11 @@ def save_results_cancer_type(results_dir,
         #       the identifier {gene}_{cancer_type}, in this order
 
         output_file = construct_filename(results_dir,
-                                         predictor,
                                          'auc_threshold_metrics',
                                          '.tsv.gz',
                                          identifier,
                                          cancer_type,
+                                         predictor,
                                          signal,
                                          feature_selection,
                                          s=seed,
@@ -161,11 +157,11 @@ def save_results_cancer_type(results_dir,
         )
 
         output_file = construct_filename(results_dir,
-                                         predictor,
                                          'aupr_threshold_metrics',
                                          '.tsv.gz',
                                          identifier,
                                          cancer_type,
+                                         predictor,
                                          signal,
                                          feature_selection,
                                          s=seed,
@@ -181,11 +177,11 @@ def save_results_cancer_type(results_dir,
     )
 
     output_file = construct_filename(results_dir,
-                                     predictor,
                                      'metrics',
                                      '.tsv.gz',
                                      identifier,
                                      cancer_type,
+                                     predictor,
                                      signal,
                                      feature_selection,
                                      s=seed,
@@ -200,15 +196,8 @@ def save_results_lasso_penalty(results_dir,
                                results,
                                identifier,
                                cancer_type,
-                               shuffle_labels,
-                               seed,
-                               feature_selection,
-                               num_features,
-                               lasso_penalty,
-                               max_iter=None,
-                               predictor='classify'):
-
-    signal = 'shuffled' if shuffle_labels else 'signal'
+                               *args,
+                               **kwargs):
 
     metrics_df = pd.concat(results['gene_metrics'])
     coef_df = pd.concat(results['gene_coef'])
@@ -219,23 +208,19 @@ def save_results_lasso_penalty(results_dir,
     # NOTE: these filenames follow the following convention:
     #       any experiment identified by a gene and a cancer type has
     #       the identifier {gene}_{cancer_type}, in this order
+    print(check_file)
     coef_df.to_csv(
         check_file, sep="\t", index=False, compression="gzip",
         float_format="%.5g"
     )
 
     output_file = construct_filename(results_dir,
-                                     predictor,
                                      'metrics',
                                      '.tsv.gz',
                                      identifier,
                                      cancer_type,
-                                     signal,
-                                     feature_selection,
-                                     s=seed,
-                                     n=num_features,
-                                     c=lasso_penalty,
-                                     i=max_iter)
+                                     *args,
+                                     **kwargs)
     metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -509,10 +494,10 @@ def check_gene_file(gene_dir,
     signal = 'shuffled' if shuffle_labels else 'signal'
     if lasso_penalty is not None:
         check_file = construct_filename(gene_dir,
-                                        predictor,
                                         'coefficients',
                                         '.tsv.gz',
                                         gene,
+                                        predictor,
                                         signal,
                                         feature_selection,
                                         s=seed,
@@ -553,11 +538,11 @@ def check_cancer_type_file(results_dir,
     #       the format {identifier}_{cancer_type}, in this order
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = construct_filename(results_dir,
-                                    predictor,
                                     'coefficients',
                                     '.tsv.gz',
                                     identifier,
                                     cancer_type,
+                                    predictor,
                                     signal,
                                     feature_selection,
                                     s=seed,
@@ -579,11 +564,11 @@ def check_purity_file(output_dir,
                       predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = construct_filename(results_dir,
-                                    predictor,
                                     'coefficients',
                                     '.tsv.gz',
                                     'purity',
                                     cancer_type,
+                                    predictor,
                                     signal,
                                     feature_selection,
                                     s=seed,
@@ -604,11 +589,11 @@ def check_msi_file(output_dir,
                    lasso_penalty):
     signal = 'shuffled' if shuffle_labels else 'signal'
     check_file = construct_filename(results_dir,
-                                    predictor,
                                     'coefficients',
                                     '.tsv.gz',
                                     'msi',
                                     cancer_type,
+                                    predictor,
                                     signal,
                                     feature_selection,
                                     s=seed,

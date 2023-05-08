@@ -187,12 +187,13 @@ if __name__ == '__main__':
                                               results,
                                               gene,
                                               None,
-                                              shuffle_labels,
-                                              args.seed,
+                                              'classify',
+                                              ('shuffled' if args.shuffle_labels else 'signal'),
                                               args.feature_selection,
-                                              args.num_features,
-                                              args.lasso_penalty,
-                                              args.max_iter)
+                                              s=args.seed,
+                                              n=args.num_features,
+                                              c=args.lasso_penalty,
+                                              i=args.max_iter)
 
             if gene_log_df is not None:
                 fu.write_log_file(gene_log_df, args.log_file)
