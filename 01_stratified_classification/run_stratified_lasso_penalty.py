@@ -124,7 +124,8 @@ if __name__ == '__main__':
                                                 args.seed,
                                                 args.feature_selection,
                                                 args.num_features,
-                                                args.lasso_penalty)
+                                                args.lasso_penalty,
+                                                args.max_iter)
                 tcga_data.process_data_for_gene(gene,
                                                 classification,
                                                 gene_dir,
@@ -190,7 +191,8 @@ if __name__ == '__main__':
                                               args.seed,
                                               args.feature_selection,
                                               args.num_features,
-                                              args.lasso_penalty)
+                                              args.lasso_penalty,
+                                              args.max_iter)
 
             if gene_log_df is not None:
                 fu.write_log_file(gene_log_df, args.log_file)
