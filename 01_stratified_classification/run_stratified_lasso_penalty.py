@@ -41,6 +41,9 @@ def process_args():
                         'before applying primary feature selection method. this '
                         'can help to speed up more complicated feature selection '
                         'approaches')
+    p.add_argument('--max_iter', type=int, default=None,
+                   help='explicitly specify max number of optimizer iterations, '
+                        'default is in config file')
     p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, select this number of features, using '
                         'feature selection method specified in feature_selection')
@@ -158,6 +161,7 @@ if __name__ == '__main__':
                                             shuffle_labels,
                                             lasso=True,
                                             lasso_penalty=args.lasso_penalty,
+                                            max_iter=args.max_iter,
                                             use_sgd=args.sgd)
             except NoTestSamplesError:
                 if args.verbose:
