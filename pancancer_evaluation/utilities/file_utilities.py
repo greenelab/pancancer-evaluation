@@ -238,6 +238,7 @@ def save_results_mlp(results_dir,
                      dropout=None,
                      h1_size=None,
                      weight_decay=None,
+                     lasso_penalty=None,
                      predictor='classify'):
 
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -258,6 +259,7 @@ def save_results_mlp(results_dir,
         dropout,
         h1_size,
         weight_decay,
+        lasso_penalty,
         stem_prefix,
         predictor
     )
@@ -484,6 +486,7 @@ def check_gene_file(gene_dir,
                     seed,
                     feature_selection,
                     num_features,
+                    mlp=False,
                     lasso_penalty=None,
                     max_iter=None,
                     learning_rate=None,
@@ -492,7 +495,7 @@ def check_gene_file(gene_dir,
                     weight_decay=None,
                     predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    if lasso_penalty is not None:
+    if not mlp and lasso_penalty is not None:
         check_file = construct_filename(gene_dir,
                                         'coefficients',
                                         '.tsv.gz',
@@ -513,6 +516,7 @@ def check_gene_file(gene_dir,
             dropout,
             h1_size,
             weight_decay,
+            lasso_penalty,
             stem_prefix,
             predictor
         )
@@ -679,17 +683,20 @@ def get_stem_from_params(learning_rate,
                          dropout,
                          h1_size,
                          weight_decay,
+                         lasso_penalty,
                          stem_prefix,
                          predictor):
+    stem = stem_prefix
     if learning_rate is not None:
-        stem = stem_prefix + f'lr{learning_rate}_{predictor}_'
-    elif dropout is not None:
-        stem = stem_prefix + f'd{dropout}_{predictor}_'
-    elif h1_size is not None:
-        stem = stem_prefix + f'h{h1_size}_{predictor}_'
-    elif weight_decay is not None:
-        stem = stem_prefix + f'w{weight_decay}_{predictor}_'
-    else:
-        stem = stem_prefix + f'{predictor}_'
+        stem += f'lr{learning_rate}_'
+    if dropout is not None:
+        stem += f'd{dropout}_'
+    if h1_size is not None:
+        stem += f'h{h1_size}_'
+    if weight_decay is not None:
+        stem += f'w{weight_decay}_'
+    if lasso_penalty is not None:
+        stem += f'c{lasso_penalty}_'
+    stem += f'{predictor}_'
     return stem
 

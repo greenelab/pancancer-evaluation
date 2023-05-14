@@ -211,6 +211,165 @@ def train_lasso(X_train,
             (y_predict_train, y_predict_valid, y_predict_test))
 
 
+def train_mlp_lr(X_train,
+                 X_test,
+                 y_train,
+                 y_test,
+                 seed,
+                 search_hparams={},
+                 batch_size=50,
+                 n_folds=3,
+                 max_iter=100,
+                 search_n_iter=20):
+
+    import torch.optim
+    from skorch import NeuralNetBinaryClassifier
+    from skorch.callbacks import Callback, EpochScoring
+    from skorch.dataset import ValidSplit
+    from pancancer_evaluation.prediction.nn_models import SingleLayer
+
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'learning_rate': [100, 50, 10, 5, 1, 0.1, 0.01, 0.001, 0.0005, 0.0001],
+        'lasso_penalty': [0, 0.1, 1, 10, 100]
+    }
+    for k, v in default_hparams.items():
+        search_hparams.setdefault(k, v)
+
+    model = SingleLayer(input_size=X_train.shape[1])
+
+    clf_parameters = {
+        'lr': search_hparams['learning_rate'],
+        'lambda1': search_hparams['lasso_penalty'],
+        'module__input_size': [X_train.shape[1]],
+     }
+
+    class LassoClassifier(NeuralNetBinaryClassifier):
+        # https://skorch.readthedocs.io/en/latest/user/customization.html#methods-starting-with-get
+        def __init__(self, *args, lambda1=0.01, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.lambda1 = lambda1
+
+        def get_loss(self, y_pred, y_true, X=None, training=False):
+            loss = super().get_loss(y_pred, y_true, X=X, training=training)
+            loss += self.lambda1 * sum([w.abs().sum() for w in self.module_.parameters()])
+            return loss
+
+    # net = LassoClassifier(
+    #     model,
+    #     max_epochs=max_iter,
+    #     batch_size=batch_size,
+    #     # optimizer=torch.optim.SGD,
+    #     optimizer=torch.optim.Adam,
+    #     iterator_train__shuffle=True,
+    #     verbose=0, # by default this prints loss for each epoch
+    #     train_split=False,
+    #     device='cuda'
+    # )
+
+    # if n_folds == -1:
+    #     # for this option we just want to do a grid search for a single
+    #     # train/test split, this is much more computationally efficient
+    #     # but could have higher variance
+    #     from sklearn.model_selection import train_test_split
+    #     subtrain_ixs, valid_ixs = train_test_split(
+    #         np.arange(X_train.shape[0]),
+    #         test_size=0.2,
+    #         random_state=seed,
+    #         shuffle=True
+    #     )
+    #     cv_pipeline = RandomizedSearchCV(
+    #         estimator=net,
+    #         param_distributions=clf_parameters,
+    #         n_iter=search_n_iter,
+    #         cv=((subtrain_ixs, valid_ixs),),
+    #         scoring='neg_log_loss',
+    #         verbose=2,
+    #         random_state=seed,
+    #         error_score='raise'
+    #     )
+    # else:
+    #     cv_pipeline = RandomizedSearchCV(
+    #         estimator=net,
+    #         param_distributions=clf_parameters,
+    #         n_iter=search_n_iter,
+    #         cv=n_folds,
+    #         scoring='neg_log_loss',
+    #         verbose=2,
+    #         random_state=seed,
+    #         error_score='raise'
+    #     )
+    # cv_pipeline.fit(X=X_train.values.astype(np.float32),
+    #                 y=y_train.status.values.astype(np.float32))
+    # print(cv_pipeline.cv_results_)
+    # print(cv_pipeline.best_params_)
+    # print('Training final model...')
+    # exit()
+    cv_pipeline = None
+    print(search_hparams)
+
+    from sklearn.model_selection import train_test_split
+    subtrain_ixs, valid_ixs = train_test_split(
+        np.arange(X_train.shape[0]),
+        test_size=0.2,
+        random_state=seed,
+        shuffle=True
+    )
+
+    # then retrain the model and get epoch-level performance info
+
+    # define callback for scoring test set, to run each epoch
+    class ScoreData(Callback):
+        def __init__(self, X, y):
+            self.X = X
+            self.y = y
+
+        def on_epoch_end(self, net, **kwargs):
+            y_pred = net.predict_proba(self.X)[:, 1]
+            net.history.record(
+                'test_aupr',
+                average_precision_score(self.y, y_pred)
+            )
+
+    net = LassoClassifier(
+        model,
+        max_epochs=max_iter,
+        batch_size=batch_size,
+        # optimizer=torch.optim.SGD,
+        optimizer=torch.optim.Adam,
+        iterator_train__shuffle=True,
+        verbose=0,
+        train_split=ValidSplit(cv=((subtrain_ixs, valid_ixs),)),
+        device='cuda',
+        lr=search_hparams['learning_rate'][0],
+        lambda1=search_hparams['lasso_penalty'][0]
+        # **cv_pipeline.best_params_
+    )
+
+    net.fit(X_train.values.astype(np.float32),
+            y_train.status.values.astype(np.float32))
+
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
+    # Get all performance results
+    y_predict_train = net.predict_proba(
+        X_subtrain.values.astype(np.float32)
+    )[:, 1]
+    y_predict_valid = net.predict_proba(
+        X_valid.values.astype(np.float32)
+    )[:, 1]
+    y_predict_test = net.predict_proba(
+        X_test.values.astype(np.float32)
+    )[:, 1]
+
+    return (net,
+            cv_pipeline,
+            (y_subtrain, y_valid),
+            (y_predict_train, y_predict_valid, y_predict_test))
+
+
 def train_mlp(X_train,
               X_test,
               y_train,

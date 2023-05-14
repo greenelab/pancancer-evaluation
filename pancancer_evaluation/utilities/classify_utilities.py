@@ -389,11 +389,13 @@ def run_cv_stratified(data_model,
                       num_folds,
                       shuffle_labels,
                       predictor='classify',
+                      model='lr',
                       ridge=False,
                       lasso=False,
                       lasso_penalty=None,
                       max_iter=None,
-                      use_sgd=False):
+                      use_sgd=False,
+                      params={}):
     """
     Run stratified cross-validation experiments for a given identifier, then
     write the results to files in the results directory. If the relevant
@@ -417,6 +419,8 @@ def run_cv_stratified(data_model,
             'gene_aupr': [],
             'gene_coef': []
         }
+        # if model == 'mlp':
+        #     results['gene_param_grid'] = []
     elif predictor == 'regress':
         results = {
             'gene_metrics': [],
@@ -480,19 +484,44 @@ def run_cv_stratified(data_model,
             predictor=predictor
         )
 
-        try:
-            # also ignore warnings here, same deal as above
-            train_model = {
-                'classify': clf.train_classifier,
-                'regress': reg.train_regressor,
-            }[predictor]
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # set the hyperparameters
-                train_model_params = apply_model_params(train_model,
-                                                        ridge,
-                                                        lasso,
-                                                        lasso_penalty)
+        # try:
+        # also ignore warnings here, same deal as above
+        classifiers_list = {
+            'lr': clf.train_classifier,
+            'mlp': clf.train_mlp_lr
+        }
+        models_list = {
+            'classify': classifiers_list[model],
+            'regress': reg.train_regressor,
+        }
+        train_model = models_list[predictor]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # set the hyperparameters
+            train_model_params = apply_model_params(train_model,
+                                                    ridge,
+                                                    lasso,
+                                                    lasso_penalty,
+                                                    model=model)
+            # TODO: this is pretty complicated
+            if model == 'mlp':
+                model_results = train_model_params(
+                    X_train=X_train_df,
+                    X_test=X_test_df,
+                    y_train=y_train_df,
+                    y_test=y_test_df,
+                    seed=data_model.seed,
+                    n_folds=cfg.mlp_folds,
+                    max_iter=cfg.mlp_max_iter,
+                    search_hparams=params
+                )
+                (net, cv_pipeline, labels, preds) = model_results
+                (y_train_df,
+                 y_cv_df) = labels
+                (y_pred_train,
+                 y_pred_cv,
+                 y_pred_test) = preds
+            else:
                 model_results = train_model_params(
                     X_train=X_train_df,
                     X_test=X_test_df,
@@ -515,56 +544,76 @@ def run_cv_stratified(data_model,
                      y_pred_train,
                      y_pred_test,
                      y_pred_cv) = model_results
-        except ValueError:
-            raise OneClassError(
-                'Only one class present in test set for identifier: {}\n'.format(
-                    identifier)
-            )
+        # except ValueError:
+        #     raise OneClassError(
+        #         'Only one class present in test set for identifier: {}\n'.format(
+        #             identifier)
+        #     )
 
         # get coefficients
-        coef_df = extract_coefficients(
-            cv_pipeline=cv_pipeline,
-            feature_names=X_train_df.columns,
-            signal=signal,
-            seed=data_model.seed,
-            name=predictor
-        )
-        coef_df = coef_df.assign(identifier=identifier)
-        coef_df = coef_df.assign(fold=fold_no)
-
-        try:
-            if predictor == 'classify':
-                # also ignore warnings here, same deal as above
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
-                        y_train_df, y_test_df, y_pred_cv, y_pred_train,
-                        y_pred_test, identifier, 'N/A', signal,
-                        data_model.seed, fold_no, y_cv_df
-                    )
-                results['gene_metrics'].append(metric_df)
-                results['gene_auc'].append(gene_auc_df)
-                results['gene_aupr'].append(gene_aupr_df)
-                results['gene_coef'].append(coef_df)
-            elif predictor == 'regress':
-                metric_df = reg.get_metrics(
-                    y_train_df,
-                    y_test_df,
-                    y_pred_cv,
-                    y_pred_train,
-                    y_pred_test,
-                    identifier='N/A',
-                    signal=signal,
-                    seed=data_model.seed,
-                    fold_no=fold_no
-                )
-                results['gene_metrics'].append(metric_df)
-                results['gene_coef'].append(coef_df)
-        except ValueError:
-            raise OneClassError(
-                'Only one class present in test set for identifier: {}\n'.format(
-                    identifier)
+        if model != 'mlp':
+            # get coefficients
+            coef_df = extract_coefficients(
+                cv_pipeline=cv_pipeline,
+                feature_names=X_train_df.columns,
+                signal=signal,
+                seed=data_model.seed,
+                name=predictor
             )
+            coef_df = coef_df.assign(identifier=identifier)
+            coef_df = coef_df.assign(fold=fold_no)
+        else:
+            # element 0 is the weights, element 1 is the bias
+            weight = [w for w in net.module_.parameters()][0].cpu().detach().numpy().flatten()
+            coef_df = (
+                pd.DataFrame.from_dict({"feature": X_train_df.columns,
+                                        "weight": weight})
+                  .assign(abs=lambda df: df.weight.abs())
+                  .sort_values("abs", ascending=False)
+                  .reset_index(drop=True)
+                  .assign(signal=signal, seed=data_model.seed)
+            )
+            coef_df = coef_df.assign(identifier=identifier)
+            coef_df = coef_df.assign(fold=fold_no)
+            coef_df = pd.DataFrame()
+            # get parameter grid
+            # results['gene_param_grid'].append(
+            #     generate_param_grid(cv_pipeline.cv_results_, fold_no)
+            # )
+
+        # try:
+        if predictor == 'classify':
+            # also ignore warnings here, same deal as above
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                metric_df, gene_auc_df, gene_aupr_df = clf.get_metrics(
+                    y_train_df, y_test_df, y_pred_cv, y_pred_train,
+                    y_pred_test, identifier, 'N/A', signal,
+                    data_model.seed, fold_no, y_cv_df
+                )
+            results['gene_metrics'].append(metric_df)
+            results['gene_auc'].append(gene_auc_df)
+            results['gene_aupr'].append(gene_aupr_df)
+            results['gene_coef'].append(coef_df)
+        elif predictor == 'regress':
+            metric_df = reg.get_metrics(
+                y_train_df,
+                y_test_df,
+                y_pred_cv,
+                y_pred_train,
+                y_pred_test,
+                identifier='N/A',
+                signal=signal,
+                seed=data_model.seed,
+                fold_no=fold_no
+            )
+            results['gene_metrics'].append(metric_df)
+            results['gene_coef'].append(coef_df)
+        # except ValueError:
+        #     raise OneClassError(
+        #         'Only one class present in test set for identifier: {}\n'.format(
+        #             identifier)
+        #     )
 
     return results
 

@@ -3,12 +3,11 @@ import math
 import torch.nn as nn
 import torch.nn.functional as F
 
-class LogisticRegression(nn.Module):
-    """Model for PyTorch logistic regression."""
+class SingleLayer(nn.Module):
+    """Model for PyTorch linear/logistic regression."""
 
     def __init__(self, input_size):
-        super(LogisticRegression, self).__init__()
-        # one output for binary classification
+        super(SingleLayer, self).__init__()
         self.linear = nn.Linear(input_size, 1)
 
     def forward(self, x):

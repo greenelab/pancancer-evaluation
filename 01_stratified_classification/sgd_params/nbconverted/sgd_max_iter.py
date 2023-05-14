@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
-
-
-
-
-
 # In[1]:
 
 
@@ -34,11 +28,6 @@ results_dir = os.path.join(
 
 plot_gene = 'KRAS'
 metric = 'aupr'
-
-output_plots = True
-output_plots_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
-)
 
 
 # In[3]:
@@ -82,7 +71,7 @@ print(perf_df.max_iter.unique())
 perf_df.head()
 
 
-# In[16]:
+# In[5]:
 
 
 sns.set({'figure.figsize': (16, 6)})
@@ -128,10 +117,4 @@ with sns.plotting_context('notebook', font_scale=1.5):
     axarr[1].tick_params(axis='both', labelsize=16)
 
 plt.tight_layout()
-
-
-# In[ ]:
-
-
-
 
