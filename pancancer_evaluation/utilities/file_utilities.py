@@ -272,15 +272,16 @@ def save_results_mlp(results_dir,
         params_df = pd.concat(results['gene_param_grid'])
         output_file = Path(results_dir, stem + 'param_grid.tsv.gz').resolve()
         params_df.to_csv(output_file, sep='\t')
-    else:
-        params_df = None
 
     if 'learning_curves' in results:
         lc_df = pd.concat(results['learning_curves'])
         output_file = Path(results_dir, stem + 'learning_curves.tsv.gz').resolve()
         lc_df.to_csv(output_file, sep='\t')
-    else:
-        lc_df = None
+
+    if 'gene_loss' in results:
+        loss_df = pd.concat(results['gene_loss'])
+        output_file = Path(results_dir, stem + 'loss_values.tsv').resolve()
+        loss_df.to_csv(output_file, sep='\t')
 
 
 def save_results_cross_cancer(output_dir,

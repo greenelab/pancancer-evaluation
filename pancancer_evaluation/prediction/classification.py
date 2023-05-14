@@ -216,7 +216,7 @@ def train_mlp_lr(X_train,
                  y_train,
                  y_test,
                  seed,
-                 search_hparams={},
+                 hparams={},
                  batch_size=50,
                  n_folds=3,
                  max_iter=100,
@@ -231,17 +231,17 @@ def train_mlp_lr(X_train,
     # default hyperparameter search options
     # will be overridden by any existing entries in search_hparams
     default_hparams = {
-        'learning_rate': [100, 50, 10, 5, 1, 0.1, 0.01, 0.001, 0.0005, 0.0001],
-        'lasso_penalty': [0, 0.1, 1, 10, 100]
+        'learning_rate': [0.0001],
+        'lasso_penalty': [0.0]
     }
     for k, v in default_hparams.items():
-        search_hparams.setdefault(k, v)
+        hparams.setdefault(k, v)
 
     model = SingleLayer(input_size=X_train.shape[1])
 
     clf_parameters = {
-        'lr': search_hparams['learning_rate'],
-        'lambda1': search_hparams['lasso_penalty'],
+        'lr': hparams['learning_rate'],
+        'lambda1': hparams['lasso_penalty'],
         'module__input_size': [X_train.shape[1]],
      }
 
@@ -256,58 +256,7 @@ def train_mlp_lr(X_train,
             loss += self.lambda1 * sum([w.abs().sum() for w in self.module_.parameters()])
             return loss
 
-    # net = LassoClassifier(
-    #     model,
-    #     max_epochs=max_iter,
-    #     batch_size=batch_size,
-    #     # optimizer=torch.optim.SGD,
-    #     optimizer=torch.optim.Adam,
-    #     iterator_train__shuffle=True,
-    #     verbose=0, # by default this prints loss for each epoch
-    #     train_split=False,
-    #     device='cuda'
-    # )
-
-    # if n_folds == -1:
-    #     # for this option we just want to do a grid search for a single
-    #     # train/test split, this is much more computationally efficient
-    #     # but could have higher variance
-    #     from sklearn.model_selection import train_test_split
-    #     subtrain_ixs, valid_ixs = train_test_split(
-    #         np.arange(X_train.shape[0]),
-    #         test_size=0.2,
-    #         random_state=seed,
-    #         shuffle=True
-    #     )
-    #     cv_pipeline = RandomizedSearchCV(
-    #         estimator=net,
-    #         param_distributions=clf_parameters,
-    #         n_iter=search_n_iter,
-    #         cv=((subtrain_ixs, valid_ixs),),
-    #         scoring='neg_log_loss',
-    #         verbose=2,
-    #         random_state=seed,
-    #         error_score='raise'
-    #     )
-    # else:
-    #     cv_pipeline = RandomizedSearchCV(
-    #         estimator=net,
-    #         param_distributions=clf_parameters,
-    #         n_iter=search_n_iter,
-    #         cv=n_folds,
-    #         scoring='neg_log_loss',
-    #         verbose=2,
-    #         random_state=seed,
-    #         error_score='raise'
-    #     )
-    # cv_pipeline.fit(X=X_train.values.astype(np.float32),
-    #                 y=y_train.status.values.astype(np.float32))
-    # print(cv_pipeline.cv_results_)
-    # print(cv_pipeline.best_params_)
-    # print('Training final model...')
-    # exit()
-    cv_pipeline = None
-    print(search_hparams)
+    print(hparams)
 
     from sklearn.model_selection import train_test_split
     subtrain_ixs, valid_ixs = train_test_split(
@@ -316,8 +265,6 @@ def train_mlp_lr(X_train,
         random_state=seed,
         shuffle=True
     )
-
-    # then retrain the model and get epoch-level performance info
 
     # define callback for scoring test set, to run each epoch
     class ScoreData(Callback):
@@ -336,15 +283,13 @@ def train_mlp_lr(X_train,
         model,
         max_epochs=max_iter,
         batch_size=batch_size,
-        # optimizer=torch.optim.SGD,
-        optimizer=torch.optim.Adam,
+        optimizer=torch.optim.SGD,
         iterator_train__shuffle=True,
         verbose=0,
         train_split=ValidSplit(cv=((subtrain_ixs, valid_ixs),)),
         device='cuda',
-        lr=search_hparams['learning_rate'][0],
-        lambda1=search_hparams['lasso_penalty'][0]
-        # **cv_pipeline.best_params_
+        lr=hparams['learning_rate'][0],
+        lambda1=hparams['lasso_penalty'][0]
     )
 
     net.fit(X_train.values.astype(np.float32),
@@ -365,7 +310,6 @@ def train_mlp_lr(X_train,
     )[:, 1]
 
     return (net,
-            cv_pipeline,
             (y_subtrain, y_valid),
             (y_predict_train, y_predict_valid, y_predict_test))
 
