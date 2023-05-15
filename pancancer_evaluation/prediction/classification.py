@@ -217,7 +217,6 @@ def train_mlp_lr(X_train,
                  y_test,
                  seed,
                  hparams={},
-                 batch_size=50,
                  n_folds=3,
                  max_iter=100,
                  search_n_iter=20):
@@ -231,6 +230,7 @@ def train_mlp_lr(X_train,
     # default hyperparameter search options
     # will be overridden by any existing entries in search_hparams
     default_hparams = {
+        'batch_size': [50],
         'learning_rate': [0.0001],
         'lasso_penalty': [0.0]
     }
@@ -282,7 +282,7 @@ def train_mlp_lr(X_train,
     net = LassoClassifier(
         model,
         max_epochs=max_iter,
-        batch_size=batch_size,
+        batch_size=hparams['batch_size'][0],
         optimizer=torch.optim.SGD,
         iterator_train__shuffle=True,
         verbose=0,

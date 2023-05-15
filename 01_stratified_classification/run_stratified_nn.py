@@ -57,6 +57,7 @@ def process_args():
     params = p.add_argument_group('params',
                                   'these override the default random search ranges, '
                                   'if not provided params will be searched over')
+    params.add_argument('--batch_size', type=int, default=50)
     params.add_argument('--learning_rate', type=float, default=None)
     params.add_argument('--lasso_penalty', type=float, default=None)
 
@@ -138,6 +139,7 @@ if __name__ == '__main__':
                 args.feature_selection,
                 args.num_features,
                 mlp=True,
+                batch_size=pass_param_or_none(param_values, 'batch_size'),
                 learning_rate=pass_param_or_none(param_values, 'learning_rate'),
                 lasso_penalty=pass_param_or_none(param_values, 'lasso_penalty')
             )
@@ -207,6 +209,7 @@ if __name__ == '__main__':
                 args.seed,
                 args.feature_selection,
                 args.num_features,
+                batch_size=pass_param_or_none(param_values, 'batch_size'),
                 learning_rate=pass_param_or_none(param_values, 'learning_rate'),
                 lasso_penalty=pass_param_or_none(param_values, 'lasso_penalty'),
             )

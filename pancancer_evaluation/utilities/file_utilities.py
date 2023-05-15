@@ -234,6 +234,7 @@ def save_results_mlp(results_dir,
                      seed,
                      feature_selection,
                      num_features,
+                     batch_size=None,
                      learning_rate=None,
                      dropout=None,
                      h1_size=None,
@@ -255,6 +256,7 @@ def save_results_mlp(results_dir,
         identifier, signal, feature_selection, seed, num_features
     )
     stem = get_stem_from_params(
+        batch_size,
         learning_rate,
         dropout,
         h1_size,
@@ -488,12 +490,13 @@ def check_gene_file(gene_dir,
                     feature_selection,
                     num_features,
                     mlp=False,
-                    lasso_penalty=None,
+                    batch_size=None,
                     max_iter=None,
                     learning_rate=None,
                     dropout=None,
                     h1_size=None,
                     weight_decay=None,
+                    lasso_penalty=None,
                     predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
     if not mlp and lasso_penalty is not None:
@@ -513,6 +516,7 @@ def check_gene_file(gene_dir,
             gene, signal, feature_selection, seed, num_features
         )
         stem = get_stem_from_params(
+            batch_size,
             learning_rate,
             dropout,
             h1_size,
@@ -680,7 +684,8 @@ def check_status(file):
     return os.path.isfile(file)
 
 
-def get_stem_from_params(learning_rate,
+def get_stem_from_params(batch_size,
+                         learning_rate,
                          dropout,
                          h1_size,
                          weight_decay,
@@ -688,6 +693,8 @@ def get_stem_from_params(learning_rate,
                          stem_prefix,
                          predictor):
     stem = stem_prefix
+    if batch_size is not None:
+        stem += f'bs{batch_size}_'
     if learning_rate is not None:
         stem += f'lr{learning_rate}_'
     if dropout is not None:
