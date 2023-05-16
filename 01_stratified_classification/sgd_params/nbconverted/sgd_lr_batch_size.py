@@ -194,8 +194,43 @@ with sns.plotting_context('notebook', font_scale=1.6):
 plt.tight_layout()
 
 
-# In[ ]:
+# In[13]:
 
 
+def load_loss_function_results(results_dir, gene):
+    results_df = pd.DataFrame()
+    for gene_name in os.listdir(results_dir):
+        # if gene argument is provided, only process files for that gene
+        if gene not in gene_name: continue
+        gene_dir = os.path.join(results_dir, gene_name)
+        if not os.path.isdir(gene_dir): continue
+        for results_file in os.listdir(gene_dir):
+            if not ('loss_values' in results_file): continue
+            if results_file[0] == '.': continue
+            full_results_file = os.path.join(gene_dir, results_file)
+            gene_results_df = pd.read_csv(full_results_file, sep='\t')
+            lasso_param = results_file.split('_')[-4].replace('c', '')
+            gene_results_df['lasso_param'] = lasso_param
+            learning_rate = results_file.split('_')[-5].replace('lr', '')
+            gene_results_df['learning_rate'] = learning_rate
+            batch_size = results_file.split('_')[-6].replace('bs', '')
+            gene_results_df['batch_size'] = batch_size
+            results_df = pd.concat((results_df, gene_results_df))
+    return results_df
 
+
+# In[15]:
+
+
+loss_df = (
+    load_loss_function_results(results_dir, plot_gene)
+      .drop(columns=['Unnamed: 0'])
+      .copy()
+)
+
+print(loss_df.shape)
+print(loss_df.lasso_param.unique())
+print(loss_df.learning_rate.unique())
+print(loss_df.batch_size.unique())
+loss_df.head()
 

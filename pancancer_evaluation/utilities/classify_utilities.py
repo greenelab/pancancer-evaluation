@@ -955,7 +955,7 @@ def get_loss_breakdown(y_train_df,
 
 
 def get_l1_penalty(lasso_penalty, weights):
-    return lasso_penalty * sum(weights)
+    return lasso_penalty * np.sum(np.absolute(weights))
 
 
 @contextlib.contextmanager
