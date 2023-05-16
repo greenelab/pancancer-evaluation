@@ -15,6 +15,8 @@ data/ccle/*
 **/papermill_output_nbs/*
 **/results/*
 
+01_stratified_classification/optimizers_plots/*
+
 02_cancer_type_classification/lasso_range_analysis/*.tsv
 
 08_cell_line_prediction/drug_response_dists/*
