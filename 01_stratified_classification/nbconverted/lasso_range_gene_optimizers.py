@@ -304,7 +304,7 @@ legend_handles = [
     Line2D([0], [0], color='black', linestyle='--'),
     Line2D([0], [0], color='grey', linestyle=':'),
 ]
-legend_labels = ['deciles', 'linear bins']
+legend_labels = ['deciles', 'evenly spaced\nlinear bins']
 l = ax.legend(legend_handles, legend_labels, title='Bin type',
               loc='lower left', bbox_to_anchor=(1.01, 0.4))
 ax.add_artist(l)
@@ -372,62 +372,65 @@ fig, axarr = plt.subplots(2, 1)
 param_bin_map = perf_coefs_df.loc[:, ['lasso_param', 'nz_linear_bin']]
 
 # ax1 is the bin axis for liblinear
-ax1 = axarr[0]
-ax1.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
-            y=[0] * param_bin_map.shape[0])
-ax1.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
-             param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
-ax1.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
-ax1.get_yaxis().set_visible(False)
-ax1.set_xlabel('Linear bin')
+with sns.plotting_context('notebook', font_scale=1.1):
+    ax1 = axarr[0]
+    ax1.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
+                y=[0] * param_bin_map.shape[0])
+    ax1.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
+                 param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
+    ax1.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
+    ax1.tick_params(axis='x', labelsize=12)
+    ax1.get_yaxis().set_visible(False)
+    ax1.set_xlabel('Linear bin', size=14)
 
-ax2 = ax1.twiny()
-param_vals = param_bin_map.lasso_param.sort_values(ascending=True).astype(str)
-ax2.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
-ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
+    ax2 = ax1.twiny()
+    param_vals = param_bin_map.lasso_param.sort_values(ascending=True).astype(str)
+    ax2.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
+    ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
 
-def bins_to_coords(bins):
-    # TODO document
-    x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 11)
-    # https://stackoverflow.com/a/23856065
-    x_mid = (x[1:] + x[:-1]) / 2
-    return {b: x_mid[int(b)-1] for b in bins}
+    def bins_to_coords(bins):
+        # TODO document
+        x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 11)
+        # https://stackoverflow.com/a/23856065
+        x_mid = (x[1:] + x[:-1]) / 2
+        return {b: x_mid[int(b)-1] for b in bins}
 
-# iterate through all (param, bin) coordinates and use bin to index
-bins = param_bin_map.nz_linear_bin.astype(int).sort_values(ascending=True).unique().tolist()
-b_to_c = bins_to_coords(bins)
+    # iterate through all (param, bin) coordinates and use bin to index
+    bins = param_bin_map.nz_linear_bin.astype(int).sort_values(ascending=True).unique().tolist()
+    b_to_c = bins_to_coords(bins)
 
-unique_param_vals = param_vals.astype(float).unique().tolist()
-for ix, row in ll_param_bin_map.iterrows():
-    bin_ix = int(row.nz_linear_bin)
-    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-    ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-ax1.set_ylim(-0.1, 1.1)
-ax1.set_yticks([0, 1])
+    unique_param_vals = param_vals.astype(float).unique().tolist()
+    for ix, row in ll_param_bin_map.iterrows():
+        bin_ix = int(row.nz_linear_bin)
+        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+        ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+    ax1.set_ylim(-0.1, 1.1)
+    ax1.set_yticks([0, 1])
 
-# ax3 is the bin axis for SGD
-ax3 = axarr[1]
-ax3.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
-            y=[0] * param_bin_map.shape[0])
-ax3.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
-             param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
-ax3.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
-ax3.get_yaxis().set_visible(False)
-ax3.set_xlabel('Linear bin')
+    # ax3 is the bin axis for SGD
+    ax3 = axarr[1]
+    ax3.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
+                y=[0] * param_bin_map.shape[0])
+    ax3.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
+                 param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
+    ax3.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
+    ax3.tick_params(axis='x', labelsize=12)
+    ax3.get_yaxis().set_visible(False)
+    ax3.set_xlabel('Linear bin', size=14)
 
-ax4 = ax3.twiny()
-param_vals = param_bin_map.lasso_param.sort_values(ascending=False).astype(str)
-ax4.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
-ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
+    ax4 = ax3.twiny()
+    param_vals = param_bin_map.lasso_param.sort_values(ascending=False).astype(str)
+    ax4.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
+    ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
 
-unique_param_vals = param_vals.astype(float).unique().tolist()
-print(unique_param_vals)
-for ix, row in sgd_param_bin_map.iterrows():
-    bin_ix = int(row.nz_linear_bin)
-    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-    ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-ax3.set_ylim(-0.1, 1.1)
-ax3.set_yticks([0, 1])
+    unique_param_vals = param_vals.astype(float).unique().tolist()
+    print(unique_param_vals)
+    for ix, row in sgd_param_bin_map.iterrows():
+        bin_ix = int(row.nz_linear_bin)
+        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+        ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+    ax3.set_ylim(-0.1, 1.1)
+    ax3.set_yticks([0, 1])
 
 plt.tight_layout()
 
@@ -492,64 +495,67 @@ fig, axarr = plt.subplots(2, 1)
 
 param_q_map = perf_coefs_df.loc[:, ['lasso_param', 'nz_quantile']]
 
-# ax1 is the bin axis for liblinear
-ax1 = axarr[0]
-ax1.scatter(x=param_q_map.nz_quantile.astype(int).values,
-            y=[0] * param_q_map.shape[0])
-ax1.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
-             param_q_map.nz_quantile.astype(int).max() + 0.5)
-ax1.set_xticks(param_q_map.nz_quantile.astype(int).unique())
-ax1.get_yaxis().set_visible(False)
-ax1.set_xlabel('Quantile')
+with sns.plotting_context('notebook', font_scale=1.1):
+    # ax1 is the bin axis for liblinear
+    ax1 = axarr[0]
+    ax1.scatter(x=param_q_map.nz_quantile.astype(int).values,
+                y=[0] * param_q_map.shape[0])
+    ax1.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
+                 param_q_map.nz_quantile.astype(int).max() + 0.5)
+    ax1.set_xticks(param_q_map.nz_quantile.astype(int).unique())
+    ax1.tick_params(axis='x', labelsize=12)
+    ax1.get_yaxis().set_visible(False)
+    ax1.set_xlabel('Quantile', size=14)
 
-ax2 = ax1.twiny()
-param_vals = param_q_map.lasso_param.sort_values(ascending=True).astype(str)
-ax2.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
-ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
+    ax2 = ax1.twiny()
+    param_vals = param_q_map.lasso_param.sort_values(ascending=True).astype(str)
+    ax2.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
+    ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
 
-def bins_to_coords(bins):
-    # TODO document
-    x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], len(perf_coefs_df.nz_quantile.unique())+1)
-    # https://stackoverflow.com/a/23856065
-    x_mid = (x[1:] + x[:-1]) / 2
-    return {b: x_mid[int(b)-1] for b in bins}
+    def bins_to_coords(bins):
+        # TODO document
+        x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], len(perf_coefs_df.nz_quantile.unique())+1)
+        # https://stackoverflow.com/a/23856065
+        x_mid = (x[1:] + x[:-1]) / 2
+        return {b: x_mid[int(b)-1] for b in bins}
 
-# iterate through all (param, bin) coordinates and use bin to index
-qs = param_q_map.nz_quantile.astype(int).sort_values(ascending=True).unique().tolist()
-b_to_c = bins_to_coords(qs)
+    # iterate through all (param, bin) coordinates and use bin to index
+    qs = param_q_map.nz_quantile.astype(int).sort_values(ascending=True).unique().tolist()
+    b_to_c = bins_to_coords(qs)
 
-unique_param_vals = param_vals.astype(float).unique().tolist()
-print(unique_param_vals)
-for ix, row in ll_param_q_map.iterrows():
-    bin_ix = int(row.nz_quantile)
-    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-    ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-ax1.set_ylim(-0.1, 1.1)
-ax1.set_yticks([0, 1])
+    unique_param_vals = param_vals.astype(float).unique().tolist()
+    print(unique_param_vals)
+    for ix, row in ll_param_q_map.iterrows():
+        bin_ix = int(row.nz_quantile)
+        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+        ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+    ax1.set_ylim(-0.1, 1.1)
+    ax1.set_yticks([0, 1])
 
-# ax3 is the bin axis for SGD
-ax3 = axarr[1]
-ax3.scatter(x=param_q_map.nz_quantile.astype(int).values,
-            y=[0] * param_q_map.shape[0])
-ax3.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
-             param_q_map.nz_quantile.astype(int).max() + 0.5)
-ax3.set_xticks(param_q_map.nz_quantile.astype(int).unique())
-ax3.get_yaxis().set_visible(False)
-ax3.set_xlabel('Quantile')
+    # ax3 is the bin axis for SGD
+    ax3 = axarr[1]
+    ax3.scatter(x=param_q_map.nz_quantile.astype(int).values,
+                y=[0] * param_q_map.shape[0])
+    ax3.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
+                 param_q_map.nz_quantile.astype(int).max() + 0.5)
+    ax3.set_xticks(param_q_map.nz_quantile.astype(int).unique())
+    ax3.tick_params(axis='x', labelsize=12)
+    ax3.get_yaxis().set_visible(False)
+    ax3.set_xlabel('Quantile', size=14)
 
-ax4 = ax3.twiny()
-param_vals = param_q_map.lasso_param.sort_values(ascending=False).astype(str)
-ax4.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
-ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
+    ax4 = ax3.twiny()
+    param_vals = param_q_map.lasso_param.sort_values(ascending=False).astype(str)
+    ax4.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
+    ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
 
-unique_param_vals = param_vals.astype(float).unique().tolist()
-print(unique_param_vals)
-for ix, row in sgd_param_q_map.iterrows():
-    bin_ix = int(row.nz_quantile)
-    lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-    ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-ax3.set_ylim(-0.1, 1.1)
-ax3.set_yticks([0, 1])
+    unique_param_vals = param_vals.astype(float).unique().tolist()
+    print(unique_param_vals)
+    for ix, row in sgd_param_q_map.iterrows():
+        bin_ix = int(row.nz_quantile)
+        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
+        ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
+    ax3.set_ylim(-0.1, 1.1)
+    ax3.set_yticks([0, 1])
 
 plt.tight_layout()
 
@@ -637,7 +643,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
-    g.set_titles('Gene: {}, optimizer: {{col_name}}; decile binning'.format(plot_gene), y=1.05)
+    g.set_titles('Gene: {}, optimizer: {{col_name}}, decile binning'.format(plot_gene), y=1.05)
 
 plt.tight_layout(w_pad=10)
 
@@ -792,7 +798,7 @@ coefs_df = pd.concat((ll_coefs_df, sgd_coefs_df)).reset_index(drop=True)
 
 sns.histplot(data=coefs_df, x='abs+1', hue='optimizer', bins=200,
              log_scale=(True, True), alpha=0.65)
-plt.xlabel(r'$\log_{10}($absolute value of coefficient + 1$)$')
+plt.xlabel(r'$\log_{10}(|$coefficient$|$ + 1$)$')
 plt.ylabel(r'$\log_{10}($count$)$')
 plt.title(f'Log-log coefficient magnitude distribution, {plot_gene}', y=1.03)
 
