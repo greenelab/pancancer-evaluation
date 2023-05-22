@@ -208,7 +208,6 @@ def save_results_lasso_penalty(results_dir,
     # NOTE: these filenames follow the following convention:
     #       any experiment identified by a gene and a cancer type has
     #       the identifier {gene}_{cancer_type}, in this order
-    print(check_file)
     coef_df.to_csv(
         check_file, sep="\t", index=False, compression="gzip",
         float_format="%.5g"
@@ -491,6 +490,7 @@ def check_gene_file(gene_dir,
                     num_features,
                     mlp=False,
                     batch_size=None,
+                    lr_schedule=None,
                     max_iter=None,
                     learning_rate=None,
                     dropout=None,
@@ -507,6 +507,7 @@ def check_gene_file(gene_dir,
                                         predictor,
                                         signal,
                                         feature_selection,
+                                        lr_schedule,
                                         s=seed,
                                         n=num_features,
                                         c=lasso_penalty,

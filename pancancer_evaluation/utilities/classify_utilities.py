@@ -395,6 +395,7 @@ def run_cv_stratified(data_model,
                       lasso_penalty=None,
                       max_iter=None,
                       use_sgd=False,
+                      sgd_lr_schedule='optimal',
                       params={}):
     """
     Run stratified cross-validation experiments for a given identifier, then
@@ -529,7 +530,8 @@ def run_cv_stratified(data_model,
                         seed=data_model.seed,
                         n_folds=cfg.folds,
                         max_iter=(max_iter if max_iter is not None else cfg.max_iter),
-                        use_sgd=use_sgd
+                        use_sgd=use_sgd,
+                        sgd_lr_schedule=sgd_lr_schedule
                     )
                     if lasso_penalty is not None:
                         (cv_pipeline, labels, preds) = model_results

@@ -32,7 +32,8 @@ def train_classifier(X_train,
                      l1_ratios=None,
                      c_values=None,
                      n_folds=5,
-                     max_iter=1000):
+                     max_iter=1000,
+                     sgd_lr_schedule='optimal'):
     """
     Train a linear (logistic regression) classifier
 
@@ -81,7 +82,8 @@ def train_classifier(X_train,
                 lasso_penalty,
                 n_folds=n_folds,
                 max_iter=max_iter,
-                use_sgd=use_sgd
+                use_sgd=use_sgd,
+                sgd_lr_schedule=sgd_lr_schedule
             )
 
         else:
@@ -163,10 +165,20 @@ def train_lasso(X_train,
                 lasso_penalty,
                 n_folds=5,
                 max_iter=1000,
-                use_sgd=False):
+                use_sgd=False,
+                sgd_lr_schedule='optimal'):
 
     import pancancer_evaluation.config as cfg
     if use_sgd or cfg.lasso_sgd:
+
+        def get_eta0(lr_schedule):
+            eta0 = 0.0
+            if lr_schedule in ['invscaling', 'adaptive']:
+                eta0 = 0.1
+            elif lr_schedule == 'constant':
+                eta0 = 0.005
+            return eta0
+
         estimator = SGDClassifier(
             random_state=seed,
             class_weight='balanced',
@@ -175,6 +187,8 @@ def train_lasso(X_train,
             loss="log_loss",
             max_iter=max_iter,
             tol=1e-3,
+            learning_rate=sgd_lr_schedule,
+            eta0=get_eta0(sgd_lr_schedule)
         )
     else:
         from sklearn.linear_model import LogisticRegression

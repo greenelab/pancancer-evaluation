@@ -94,12 +94,19 @@ def load_prediction_results_lasso_range(results_dir,
         gene_dir = os.path.join(results_dir, gene_name)
         if not os.path.isdir(gene_dir): continue
         for results_file in os.listdir(gene_dir):
-            if not ('classify_metrics' in results_file): continue
+            if not ('classify' in results_file): continue
+            if not ('metrics' in results_file): continue
             if results_file[0] == '.': continue
             full_results_file = os.path.join(gene_dir, results_file)
             gene_results_df = pd.read_csv(full_results_file, sep='\t')
             gene_results_df['experiment'] = experiment_descriptor
-            lasso_param = results_file.split('_')[-3].replace('c', '')
+            try:
+                seed = int(results_file.split('_')[-5].replace('s', ''))
+                lasso_param = results_file.split('_')[-3].replace('c', '')
+            except ValueError:
+                # new filename format
+                seed = int(results_file.split('_')[-4].replace('s', ''))
+                lasso_param = results_file.split('_')[-2].replace('c', '')
             gene_results_df['lasso_param'] = lasso_param
             if identifier_from_fname:
                 identifier = results_file.split('_')[0]
@@ -429,8 +436,13 @@ def generate_nonzero_coefficients_lasso_range(results_dir, gene=None, nonzero_on
             # use negative indexing since some feature selection methods
             # have underscores in them - indexing from the back of the
             # filename is safer/more consistent
-            seed = int(coefs_file.split('_')[-5].replace('s', ''))
-            lasso_param = coefs_file.split('_')[-3].replace('c', '')
+            try:
+                seed = int(coefs_file.split('_')[-5].replace('s', ''))
+                lasso_param = coefs_file.split('_')[-3].replace('c', '')
+            except ValueError:
+                # new filename format
+                seed = int(coefs_file.split('_')[-4].replace('s', ''))
+                lasso_param = coefs_file.split('_')[-2].replace('c', '')
             full_coefs_file = os.path.join(gene_dir, coefs_file)
             coefs_df = pd.read_csv(full_coefs_file, sep='\t')
             if all_features is None:
