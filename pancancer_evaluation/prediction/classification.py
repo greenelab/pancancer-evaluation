@@ -169,6 +169,17 @@ def train_lasso(X_train,
                 sgd_lr_schedule='optimal'):
 
     import pancancer_evaluation.config as cfg
+
+    from sklearn.model_selection import train_test_split
+
+    subtrain_ixs, valid_ixs = train_test_split(
+        np.arange(X_train.shape[0]),
+        test_size=(1 / n_folds),
+        shuffle=True
+    )
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
     if use_sgd or cfg.lasso_sgd:
 
         def get_eta0(lr_schedule):
@@ -179,6 +190,40 @@ def train_lasso(X_train,
                 eta0 = 0.005
             return eta0
 
+        if sgd_lr_schedule == 'constant_search':
+            # in this case, do a grid search to find the best constant learning rate
+            # this only uses the train/valid split, test data isn't used at all here
+            clf_parameters = {
+                "classify__eta0": cfg.constant_search_lr,
+            }
+            clf_pipeline = Pipeline(
+                steps=[
+                    (
+                        "classify",
+                        SGDClassifier(
+                            random_state=seed,
+                            class_weight="balanced",
+                            penalty='l1',
+                            alpha=lasso_penalty,
+                            loss="log_loss",
+                            max_iter=max_iter,
+                            tol=1e-3,
+                            learning_rate='constant'
+                        ),
+                    )
+                ]
+            )
+            cv_pipeline = GridSearchCV(
+                estimator=clf_pipeline,
+                param_grid=clf_parameters,
+                n_jobs=-1,
+                cv=((subtrain_ixs, valid_ixs),),
+                scoring='average_precision',
+                return_train_score=True,
+            )
+            cv_pipeline.fit(X=X_train, y=y_train.status)
+            eta0 = cv_pipeline.best_params_['classify__eta0']
+
         estimator = SGDClassifier(
             random_state=seed,
             class_weight='balanced',
@@ -187,8 +232,12 @@ def train_lasso(X_train,
             loss="log_loss",
             max_iter=max_iter,
             tol=1e-3,
-            learning_rate=sgd_lr_schedule,
-            eta0=get_eta0(sgd_lr_schedule)
+            learning_rate=(
+                'constant' if sgd_lr_schedule == 'constant_search' else sgd_lr_schedule
+            ),
+            eta0=(
+                eta0 if sgd_lr_schedule == 'constant_search' else get_eta0(sgd_lr_schedule)
+            )
         )
     else:
         from sklearn.linear_model import LogisticRegression
@@ -202,17 +251,6 @@ def train_lasso(X_train,
             tol=1e-3,
         )
 
-    from sklearn.model_selection import train_test_split
-
-    subtrain_ixs, valid_ixs = train_test_split(
-        np.arange(X_train.shape[0]),
-        test_size=(1 / n_folds),
-        shuffle=True
-    )
-    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
-    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
-
-    # Fit the model
     estimator.fit(X=X_subtrain, y=y_subtrain.status)
 
     # Get all performance results

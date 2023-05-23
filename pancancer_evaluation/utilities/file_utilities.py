@@ -224,6 +224,17 @@ def save_results_lasso_penalty(results_dir,
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
 
+    if 'gene_loss' in results:
+        loss_df = pd.concat(results['gene_loss'])
+        output_file = construct_filename(results_dir,
+                                         'loss_values',
+                                         '.tsv',
+                                         identifier,
+                                         cancer_type,
+                                         *args,
+                                         **kwargs)
+        loss_df.to_csv(output_file, sep='\t')
+
 
 def save_results_mlp(results_dir,
                      check_file,

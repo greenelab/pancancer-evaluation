@@ -155,3 +155,5 @@ lasso_sgd = False
 mlp_folds = -1
 mlp_search_n_iter = 10
 mlp_max_iter = 200
+
+constant_search_lr = [0.000005, 0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.01]

@@ -420,7 +420,7 @@ def run_cv_stratified(data_model,
             'gene_aupr': [],
             'gene_coef': []
         }
-        if model == 'mlp':
+        if model == 'mlp' or (lasso and lasso_penalty is not None):
             results['gene_loss'] = []
     elif predictor == 'regress':
         results = {
@@ -485,72 +485,72 @@ def run_cv_stratified(data_model,
             predictor=predictor
         )
 
-        try:
-            # also ignore warnings here, same deal as above
-            classifiers_list = {
-                'lr': clf.train_classifier,
-                'mlp': clf.train_mlp_lr
-            }
-            models_list = {
-                'classify': classifiers_list[model],
-                'regress': reg.train_regressor,
-            }
-            train_model = models_list[predictor]
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # set the hyperparameters
-                train_model_params = apply_model_params(train_model,
-                                                        ridge,
-                                                        lasso,
-                                                        lasso_penalty,
-                                                        model=model)
-                # TODO: this is pretty complicated
-                if model == 'mlp':
-                    model_results = train_model_params(
-                        X_train=X_train_df,
-                        X_test=X_test_df,
-                        y_train=y_train_df,
-                        y_test=y_test_df,
-                        seed=data_model.seed,
-                        n_folds=cfg.mlp_folds,
-                        max_iter=cfg.mlp_max_iter,
-                        hparams=params
-                    )
-                    (net, labels, preds) = model_results
+        # try:
+        # also ignore warnings here, same deal as above
+        classifiers_list = {
+            'lr': clf.train_classifier,
+            'mlp': clf.train_mlp_lr
+        }
+        models_list = {
+            'classify': classifiers_list[model],
+            'regress': reg.train_regressor,
+        }
+        train_model = models_list[predictor]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # set the hyperparameters
+            train_model_params = apply_model_params(train_model,
+                                                    ridge,
+                                                    lasso,
+                                                    lasso_penalty,
+                                                    model=model)
+            # TODO: this is pretty complicated
+            if model == 'mlp':
+                model_results = train_model_params(
+                    X_train=X_train_df,
+                    X_test=X_test_df,
+                    y_train=y_train_df,
+                    y_test=y_test_df,
+                    seed=data_model.seed,
+                    n_folds=cfg.mlp_folds,
+                    max_iter=cfg.mlp_max_iter,
+                    hparams=params
+                )
+                (net, labels, preds) = model_results
+                (y_train_df,
+                 y_cv_df) = labels
+                (y_pred_train,
+                 y_pred_cv,
+                 y_pred_test) = preds
+            else:
+                model_results = train_model_params(
+                    X_train=X_train_df,
+                    X_test=X_test_df,
+                    y_train=y_train_df,
+                    seed=data_model.seed,
+                    n_folds=cfg.folds,
+                    max_iter=(max_iter if max_iter is not None else cfg.max_iter),
+                    use_sgd=use_sgd,
+                    sgd_lr_schedule=sgd_lr_schedule
+                )
+                if lasso_penalty is not None:
+                    (cv_pipeline, labels, preds) = model_results
                     (y_train_df,
                      y_cv_df) = labels
                     (y_pred_train,
                      y_pred_cv,
                      y_pred_test) = preds
                 else:
-                    model_results = train_model_params(
-                        X_train=X_train_df,
-                        X_test=X_test_df,
-                        y_train=y_train_df,
-                        seed=data_model.seed,
-                        n_folds=cfg.folds,
-                        max_iter=(max_iter if max_iter is not None else cfg.max_iter),
-                        use_sgd=use_sgd,
-                        sgd_lr_schedule=sgd_lr_schedule
-                    )
-                    if lasso_penalty is not None:
-                        (cv_pipeline, labels, preds) = model_results
-                        (y_train_df,
-                         y_cv_df) = labels
-                        (y_pred_train,
-                         y_pred_cv,
-                         y_pred_test) = preds
-                    else:
-                        y_cv_df = None
-                        (cv_pipeline,
-                         y_pred_train,
-                         y_pred_test,
-                         y_pred_cv) = model_results
-        except ValueError:
-            raise OneClassError(
-                'Only one class present in test set for identifier: {}\n'.format(
-                    identifier)
-            )
+                    y_cv_df = None
+                    (cv_pipeline,
+                     y_pred_train,
+                     y_pred_test,
+                     y_pred_cv) = model_results
+        # except ValueError:
+        #     raise OneClassError(
+        #         'Only one class present in test set for identifier: {}\n'.format(
+        #             identifier)
+        #     )
 
         # get coefficients
         if model != 'mlp':
@@ -597,6 +597,15 @@ def run_cv_stratified(data_model,
                     loss_df = get_loss_breakdown(y_train_df,
                                                  y_pred_train,
                                                  params['lasso_penalty'][0],
+                                                 weight,
+                                                 data_model.seed,
+                                                 fold_no)
+                    results['gene_loss'].append(loss_df)
+                elif (lasso and lasso_penalty is not None):
+                    weight = cv_pipeline.coef_
+                    loss_df = get_loss_breakdown(y_train_df,
+                                                 y_pred_train,
+                                                 lasso_penalty,
                                                  weight,
                                                  data_model.seed,
                                                  fold_no)

@@ -54,7 +54,7 @@ def process_args():
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--sgd', action='store_true')
     p.add_argument('--sgd_lr_schedule', default='optimal',
-                   choices=['constant', 'optimal', 'adaptive', 'invscaling'])
+                   choices=['constant', 'optimal', 'adaptive', 'invscaling', 'constant_search'])
     p.add_argument('--shuffle_labels', action='store_true')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
