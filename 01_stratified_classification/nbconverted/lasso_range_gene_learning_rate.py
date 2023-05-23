@@ -7,7 +7,7 @@
 # 
 # In this script we want to compare their performance and model selection dynamics across different levels of regularization, in depth for a single gene in our cancer gene set.
 
-# In[2]:
+# In[1]:
 
 
 import os
@@ -29,7 +29,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 
 
-# In[3]:
+# In[2]:
 
 
 results_dirs = {
@@ -41,6 +41,9 @@ results_dirs = {
     ),
     'constant': (
         os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant', 'gene')
+    ),
+    'constant_search': (
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_search', 'gene')
     ),
     'invscaling': (
         os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_invscaling', 'gene')
@@ -54,7 +57,7 @@ metric = 'aupr'
 
 # ### Get performance information for each lasso penalty
 
-# In[7]:
+# In[3]:
 
 
 all_perf_df = []
@@ -79,7 +82,7 @@ print(all_perf_df.shape)
 all_perf_df.head()
 
 
-# In[11]:
+# In[4]:
 
 
 sns.set_style('ticks')
@@ -91,19 +94,19 @@ plot_df = (
 )
 plot_df.lasso_param = plot_df.lasso_param.astype(float)
 
-with sns.plotting_context('notebook', font_scale=1.6):
+with sns.plotting_context('notebook', font_scale=1.8):
     g = sns.relplot(
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
         marker='o', kind='line', col='lr_schedule',
-        col_wrap=2, height=5, aspect=1.6,
+        col_wrap=3, height=5, aspect=1.6,
         facet_kws={'sharex': False, 'sharey': False}
     )
     g.set(xscale='log', xlim=(10e-7, 10), ylim=(-0.05, 1.05))
     g.set_xlabels('LASSO parameter (lower = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.1, 0.5], frameon=True)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.05, 0.5], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
@@ -112,14 +115,14 @@ with sns.plotting_context('notebook', font_scale=1.6):
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
 
-plt.tight_layout(w_pad=5, h_pad=5)
+plt.tight_layout(w_pad=2, h_pad=2)
 
 
 # ### Get nonzero coefficient info, and bin models by nonzero coefficients
 # 
 # We'll try doing this both linearly (just 10 evenly spaced bins) and based on the deciles of the nonzero coefficient distributions.
 
-# In[23]:
+# In[5]:
 
 
 all_coefs_df = []
@@ -149,7 +152,7 @@ print(all_coefs_df.shape)
 all_coefs_df.head()
 
 
-# In[36]:
+# In[6]:
 
 
 sns.set_style('ticks')
