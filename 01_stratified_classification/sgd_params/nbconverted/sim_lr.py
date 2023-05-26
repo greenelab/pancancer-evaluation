@@ -12,7 +12,7 @@ from sklearn.datasets import make_classification
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import roc_auc_score, average_precision_score, log_loss
-from sklearn.model_selection import KFold
+from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.preprocessing import StandardScaler
 
 
@@ -113,8 +113,41 @@ def get_eta0(lr_schedule):
         eta0 = 0.005
     return eta0
 
+def get_eta0_constant_search(
+    X_train,
+    y_train,
+    penalty=None,
+    sgd_param=None,
+    eta0_range=[0.000005, 0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.01]
+):
+    clf_parameters = {'eta0': eta0_range}
+    if penalty is None:
+        sgd = SGDClassifier(
+            loss='log_loss',
+            random_state=seed,
+            learning_rate='constant'
+        )
+    else:
+        sgd = SGDClassifier(
+            loss='log_loss',
+            random_state=seed,
+            penalty=penalty,
+            alpha=sgd_param,
+            learning_rate='constant'
+        )
+    cv_pipeline = GridSearchCV(
+        estimator=sgd,
+        param_grid=clf_parameters,
+        cv=3,
+        scoring='average_precision',
+        return_train_score=True
+    )
+    cv_pipeline.fit(X=X_train, y=y_train)
+    return cv_pipeline.best_params_['eta0']
+    
 
-# In[7]:
+
+# In[8]:
 
 
 results = []
@@ -122,6 +155,7 @@ results_cols = None
 seeds = [42, 1]
 coefs = {
     'constant': [],
+    'constant_search': [],
     'optimal': [],
     'invscaling': [],
     'adaptive': []
@@ -138,12 +172,15 @@ for seed in seeds:
 
         for lr_schedule in coefs.keys():
             
-            eta0 = get_eta0(lr_schedule)
+            if lr_schedule == 'constant_search':
+                eta0 = get_eta0_constant_search(X_train, y_train)
+            else:
+                eta0 = get_eta0(lr_schedule)
             
             sgd = SGDClassifier(
                 loss='log_loss',
                 random_state=seed,
-                learning_rate=lr_schedule,
+                learning_rate=lr_schedule.split('_')[0],
                 eta0=eta0
             ).fit(X_train, y_train)
 
@@ -170,7 +207,7 @@ print(results_df.shape)
 results_df.head()
 
 
-# In[8]:
+# In[9]:
 
 
 # get coefficient vector magnitudes
@@ -188,7 +225,7 @@ print(baseline_coefs_df.shape)
 baseline_coefs_df.head()
 
 
-# In[9]:
+# In[10]:
 
 
 sns.set({'figure.figsize': (10, 6)})
@@ -197,7 +234,7 @@ sns.boxplot(data=results_df.sort_values(by='metric', ascending=False),
             x='metric', y='value', hue='lr_schedule')
 
 
-# In[10]:
+# In[13]:
 
 
 results = []
@@ -205,6 +242,7 @@ results_cols = None
 
 coefs = {
     'constant': [],
+    'constant_search': [],
     'optimal': [],
     'invscaling': [],
     'adaptive': []
@@ -229,15 +267,21 @@ for seed in seeds:
 
         for lr_schedule in coefs.keys():
             
-            eta0 = get_eta0(lr_schedule)
-            
             for sgd_param in sgd_params:
+                
+                if lr_schedule == 'constant_search':
+                    eta0 = get_eta0_constant_search(
+                        X_train, y_train, penalty='l1', sgd_param=sgd_param
+                    )
+                else:
+                    eta0 = get_eta0(lr_schedule)
+                    
                 sgd = (
                     SGDClassifier(loss='log_loss',
                                   penalty='l1',
                                   alpha=sgd_param,
                                   random_state=seed,
-                                  learning_rate=lr_schedule,
+                                  learning_rate=lr_schedule.split('_')[0],
                                   eta0=eta0,
                                   max_iter=500)
                 ).fit(X_train, y_train)
@@ -270,7 +314,7 @@ print(results_df.shape)
 results_df.head()
 
 
-# In[11]:
+# In[14]:
 
 
 sns.set_style('ticks')
@@ -283,7 +327,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         x='lasso_param', y='value', hue='metric',
         hue_order=['train_aupr', 'test_aupr'],
         marker='o', kind='line', col='lr_schedule',
-        col_wrap=2, height=5, aspect=1.6,
+        col_wrap=3, height=5, aspect=1.6,
         facet_kws={'sharex': False}
     )
     g.set(xscale='log', xlim=(10e-9, 10), ylim=(-0.05, 1.05))
@@ -301,7 +345,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
 plt.tight_layout()
 
 
-# In[12]:
+# In[15]:
 
 
 # get coefficient vector magnitudes
@@ -319,7 +363,7 @@ print(coefs_df.shape)
 coefs_df.head()
 
 
-# In[13]:
+# In[16]:
 
 
 sns.set_style('ticks')
@@ -329,7 +373,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=coefs_df,
         x='lasso_param', y='sum_coefs',
         marker='o', kind='line', col='lr_schedule',
-        col_wrap=2, height=5, aspect=1.6,
+        col_wrap=3, height=5, aspect=1.6,
         facet_kws={'sharex': False}
     )
     g.set(xscale='log', yscale='log', xlim=(10e-9, 10))
