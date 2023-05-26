@@ -38,7 +38,6 @@ sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_search', 'gene'
 )
 
-plot_gene = 'EGFR'
 metric = 'aupr'
 
 output_plots = False
@@ -279,7 +278,7 @@ print(all_top_optimizer_diff_df.best.value_counts())
 all_top_optimizer_diff_df.head()
 
 
-# In[26]:
+# In[12]:
 
 
 sns.set({'figure.figsize': (10, 3)})
@@ -404,4 +403,137 @@ color_boxes(plt.gca())
 
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_per_gene.png'), bbox_inches='tight')
+
+
+# ### Get difference between "best" and "largest" (least regularized) models
+# 
+# We can use this to determine how much a model overfits: that is, as model complexity increases, how much (or if at all) performance decreases from its peak.
+
+# In[19]:
+
+
+def get_top_largest_diff(gene):
+    # TODO: put some of repeated code in functions
+    ll_top_lasso_param = ll_top_df.loc[gene, 'lasso_param']
+    sgd_top_lasso_param = sgd_top_df.loc[gene, 'lasso_param']
+    
+    ll_mean_test_perf_df = (
+        ll_perf_df[(ll_perf_df.gene == gene) &
+                   (ll_perf_df.data_type == 'test') &
+                   (ll_perf_df.signal == 'signal')]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+    )
+    sgd_mean_test_perf_df = (
+        sgd_perf_df[(sgd_perf_df.gene == gene) &
+                    (sgd_perf_df.data_type == 'test') &
+                    (sgd_perf_df.signal == 'signal')]
+          .groupby(['lasso_param'])
+          .agg(np.mean)
+          .drop(columns=['seed', 'fold'])
+          .rename(columns={'auroc': 'mean_auroc', 'aupr': 'mean_aupr'})
+    )
+    
+    # use maximum liblinear parameter = largest (least regularized) model
+    ll_top_largest_diff = (
+        ll_mean_test_perf_df.loc[ll_top_lasso_param, 'mean_aupr'] -
+        ll_mean_test_perf_df.loc[ll_perf_df.lasso_param.max(), 'mean_aupr']
+    )
+    # use minimum SGD parameter = largest (least regularized) model
+    sgd_top_largest_diff = (
+        sgd_mean_test_perf_df.loc[sgd_top_lasso_param, 'mean_aupr'] -
+        sgd_mean_test_perf_df.loc[sgd_perf_df.lasso_param.min(), 'mean_aupr']
+    )
+    
+    return [gene,
+            ll_top_lasso_param,
+            sgd_top_lasso_param,
+            ll_top_largest_diff,
+            sgd_top_largest_diff]
+
+print(get_top_largest_diff('PTEN'))
+
+
+# In[20]:
+
+
+all_top_largest_diff_df = []
+
+for gene in ll_perf_df.gene.unique():
+    all_top_largest_diff_df.append(
+        get_top_largest_diff(gene)
+    )
+        
+all_top_largest_diff_df = pd.DataFrame(
+    all_top_largest_diff_df,
+    columns=['gene',
+             'll_top_lasso_param',
+             'sgd_top_lasso_param',
+             'll_top_largest_diff',
+             'sgd_top_largest_diff']
+)
+
+all_top_largest_diff_df['largest_diff'] = 'liblinear'
+all_top_largest_diff_df.loc[
+    all_top_largest_diff_df.ll_top_largest_diff < all_top_largest_diff_df.sgd_top_largest_diff,
+    'largest_diff'
+] = 'SGD'
+# this probably won't happen but just in case
+all_top_largest_diff_df.loc[
+    all_top_largest_diff_df.ll_top_largest_diff == all_top_largest_diff_df.sgd_top_largest_diff,
+    'largest_diff'
+] = 'equal'
+
+print(all_top_largest_diff_df.largest_diff.value_counts())
+all_top_largest_diff_df.head()
+
+
+# In[21]:
+
+
+plot_df = (all_top_largest_diff_df
+    .rename(columns={'ll_top_largest_diff': 'liblinear',
+                     'sgd_top_largest_diff': 'SGD'})
+    .melt(
+        id_vars=['gene', 'll_top_lasso_param', 'sgd_top_lasso_param', 'largest_diff'],
+        var_name='optimizer',
+        value_name='top_largest_diff'
+    )
+)
+
+plot_df.head()
+
+
+# In[22]:
+
+
+sns.set({'figure.figsize': (7, 3)})
+sns.set_style('whitegrid')
+
+sns.violinplot(data=plot_df, x='optimizer', y='top_largest_diff', cut=0)
+plt.title('Difference between best and largest model, across genes', y=1.05)
+plt.xlabel('Optimizer')
+plt.ylabel('AUPR(best model) - AUPR(largest model)')
+
+
+# In[23]:
+
+
+# genes that overfit the most using liblinear
+(all_top_largest_diff_df
+  .sort_values(by='ll_top_largest_diff', ascending=False)
+  .head(10)
+)
+
+
+# In[24]:
+
+
+# genes that overfit the most using SGD
+(all_top_largest_diff_df
+  .sort_values(by='sgd_top_largest_diff', ascending=False)
+  .head(10)
+)
 

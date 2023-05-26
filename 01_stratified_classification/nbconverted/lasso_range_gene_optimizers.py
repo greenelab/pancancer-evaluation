@@ -37,7 +37,7 @@ ll_results_dir = os.path.join(
 )
 
 sgd_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_adaptive_loss', 'gene'
 )
 
 plot_gene = 'KRAS'
