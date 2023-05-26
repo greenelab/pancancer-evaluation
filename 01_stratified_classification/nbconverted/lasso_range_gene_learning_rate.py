@@ -51,6 +51,10 @@ results_dirs = {
 }
 lr_schedules = list(results_dirs.keys())
 
+ll_results_dir = os.path.join(
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll', 'gene'
+)
+
 plot_gene = 'KRAS'
 metric = 'aupr'
 
@@ -85,11 +89,35 @@ all_perf_df.head()
 # In[4]:
 
 
+# load liblinear data to use as a baseline
+ll_perf_df = au.load_prediction_results_lasso_range(ll_results_dir,
+                                                    'stratified',
+                                                    gene=plot_gene)
+ll_perf_df = (
+    ll_perf_df[ll_perf_df.gene == plot_gene]
+    .drop(columns=['holdout_cancer_type', 'experiment'])
+    .copy()
+)
+
+# get mean performance for each lasso parameter
+ll_mean_perf_df = (
+    ll_perf_df[ll_perf_df.data_type == 'test']
+      .drop(columns=['gene', 'signal', 'data_type'])
+      .groupby('lasso_param')
+      .agg([np.mean, np.std])
+).loc[:, 'aupr']
+ 
+ll_mean_perf_df.head()
+
+
+# In[8]:
+
+
 sns.set_style('ticks')
 
 plot_df = (
     all_perf_df[(all_perf_df.signal == 'signal')]
-      .sort_values(by=['lasso_param'])
+      .sort_values(by=['lr_schedule', 'lasso_param'])
       .reset_index(drop=True)
 )
 plot_df.lasso_param = plot_df.lasso_param.astype(float)
@@ -103,6 +131,8 @@ with sns.plotting_context('notebook', font_scale=1.8):
         col_wrap=3, height=5, aspect=1.6,
         facet_kws={'sharex': False, 'sharey': False}
     )
+    for i, ax in enumerate(g.axes):
+        ax.axhline(ll_mean_perf_df['mean'].max(), linestyle='--', color='black')
     g.set(xscale='log', xlim=(10e-7, 10), ylim=(-0.05, 1.05))
     g.set_xlabels('LASSO parameter (lower = less regularization)')
     g.set_ylabels(f'{metric.upper()}')
@@ -122,7 +152,7 @@ plt.tight_layout(w_pad=2, h_pad=2)
 # 
 # We'll try doing this both linearly (just 10 evenly spaced bins) and based on the deciles of the nonzero coefficient distributions.
 
-# In[5]:
+# In[6]:
 
 
 all_coefs_df = []
@@ -152,7 +182,7 @@ print(all_coefs_df.shape)
 all_coefs_df.head()
 
 
-# In[6]:
+# In[7]:
 
 
 sns.set_style('ticks')

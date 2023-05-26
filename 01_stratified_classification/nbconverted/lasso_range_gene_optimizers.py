@@ -37,10 +37,10 @@ ll_results_dir = os.path.join(
 )
 
 sgd_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_search', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr', 'gene'
 )
 
-plot_gene = 'ERBB2'
+plot_gene = 'KRAS'
 metric = 'aupr'
 
 output_plots = False
@@ -525,4 +525,82 @@ coefs_df = pd.concat((ll_coefs_df, sgd_coefs_df)).reset_index(drop=True)
 
 sns.histplot(data=coefs_df, x='coef', hue='optimizer', bins=50, multiple='stack')
 plt.xlabel('Coefficient')
+
+
+# ### Plot loss values
+# 
+# We want to separate the log-likelihood loss (data loss) from the weight penalty (regularization term) in the logistic regression loss function, to see if that breakdown is any different between optimizers.
+
+# In[23]:
+
+
+# get loss function values from file
+def get_loss_values(results_dir, optimizer):
+    loss_df = pd.DataFrame()
+    for gene_name in os.listdir(results_dir):
+        if plot_gene not in gene_name: continue
+        gene_dir = os.path.join(results_dir, gene_name)
+        if not os.path.isdir(gene_dir): continue
+        for results_file in os.listdir(gene_dir):
+            if not 'loss_values' in results_file: continue
+            if results_file[0] == '.': continue
+            full_results_file = os.path.join(gene_dir, results_file)
+            gene_loss_df = pd.read_csv(full_results_file, sep='\t', index_col=0)
+            seed = int(results_file.split('_')[-5].replace('s', ''))
+            lasso_param = float(results_file.split('_')[-3].replace('c', ''))
+            gene_loss_df['lasso_param'] = lasso_param
+            gene_loss_df['optimizer'] = optimizer
+            loss_df = pd.concat((loss_df, gene_loss_df))
+    return loss_df.reset_index(drop=True)
+
+
+# In[24]:
+
+
+ll_loss_df = get_loss_values(ll_results_dir, 'liblinear')
+# apply a correction to liblinear l1 penalties
+# TODO: explain if necessary
+ll_loss_df['l1_penalty'] = (ll_loss_df.l1_penalty / (ll_loss_df.lasso_param ** 2))
+
+sgd_loss_df = get_loss_values(sgd_results_dir, 'SGD')
+loss_df = pd.concat((ll_loss_df, sgd_loss_df)).reset_index(drop=True)
+
+loss_df['total_loss'] = loss_df.log_loss + loss_df.l1_penalty
+loss_df = loss_df.melt(
+    id_vars=['optimizer', 'seed', 'fold', 'lasso_param'],
+    var_name='loss_component',
+    value_name='loss_value'
+)
+    
+print(loss_df.optimizer.unique())
+loss_df.head()
+
+
+# In[25]:
+
+
+sns.set_style('ticks')
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.relplot(
+        data=loss_df,
+        x='lasso_param', y='loss_value', hue='loss_component',
+        hue_order=['log_loss', 'l1_penalty', 'total_loss'],
+        marker='o', kind='line', col='optimizer',
+        col_wrap=2, height=5, aspect=1.6,
+        facet_kws={'sharex': False}
+    )
+    g.set(xscale='log', yscale='log')
+    g.axes[0].set_xlim((10e-4, 10e6))
+    g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
+    g.axes[1].set_xlim((10e-8, 10e2))
+    g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
+    g.set_ylabels('Loss value')
+    g.set_titles('Optimizer: {col_name}')
+    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
+    g._legend.set_title('Loss component')
+     
+    plt.suptitle(f'LASSO parameter vs. training loss, {plot_gene}', y=1.0)
+
+plt.tight_layout()
 

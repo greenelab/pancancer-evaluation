@@ -31,17 +31,17 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 ll_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll_lr_range', 'gene'
 )
 
 sgd_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_search', 'gene'
 )
 
 plot_gene = 'EGFR'
 metric = 'aupr'
 
-output_plots = True
+output_plots = False
 output_plots_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
 )
@@ -279,18 +279,18 @@ print(all_top_optimizer_diff_df.best.value_counts())
 all_top_optimizer_diff_df.head()
 
 
-# In[12]:
+# In[26]:
 
 
-sns.set({'figure.figsize': (10, 2.75)})
+sns.set({'figure.figsize': (10, 3)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff, binwidth=0.025, binrange=(-0.1, 0.45))
-plt.xlim(-0.1, 0.45)
+sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff, binwidth=0.0125, binrange=(-0.2, 0.2))
+plt.xlim(-0.2, 0.2)
 plt.title('Differences between liblinear and SGD optimizers, across all Vogelstein genes', size=14, y=1.05)
 plt.xlabel('AUPR(liblinear) - AUPR(SGD)', size=13)
 plt.ylabel('Count', size=13)
-plt.yticks(np.arange(0, 15, 2))
+plt.yticks(np.arange(0, 25, 5))
 plt.gca().axvline(0, color='black', linestyle='--')
 
 if output_plots:
