@@ -34,7 +34,7 @@ ll_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll_lr_range', 'gene'
 )
 
-lr_schedule = 'adaptive'
+lr_schedule = 'optimal'
 sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', f'optimizer_compare_sgd_lr_{lr_schedule}', 'gene'
 )
@@ -279,15 +279,18 @@ print(all_top_optimizer_diff_df.best.value_counts())
 all_top_optimizer_diff_df.head()
 
 
-# In[12]:
+# In[25]:
 
 
 sns.set({'figure.figsize': (8, 4)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff, binwidth=0.0125, binrange=(-0.2, 0.2))
+sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff, binwidth=0.0125, binrange=(-0.2, 0.45))
 # plt.xlim(-0.15, 0.15)
-plt.title('Difference between optimizers, across all genes', size=16, y=1.05)
+if lr_schedule == 'constant_search':
+    plt.title('Difference between optimizers, across all genes', size=16, y=1.05)
+else:
+    plt.title(f'Difference between optimizers, {lr_schedule} learning rate schedule', size=16, y=1.05)
 plt.xlabel('AUPR(liblinear) - AUPR(SGD)', size=13)
 plt.ylabel('Count', size=13)
 plt.yticks(np.arange(0, 25, 5))

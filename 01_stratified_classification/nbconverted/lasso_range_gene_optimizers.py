@@ -302,6 +302,20 @@ ll_perf_df.head()
 # In[11]:
 
 
+# get mean performance for each lasso parameter
+ll_mean_perf_df = (
+    ll_perf_df[ll_perf_df.data_type == 'test']
+      .drop(columns=['gene', 'signal', 'data_type'])
+      .groupby('lasso_param')
+      .agg([np.mean, np.std])
+).loc[:, 'aupr']
+ 
+ll_mean_perf_df.head()
+
+
+# In[12]:
+
+
 sgd_perf_df = au.load_prediction_results_lasso_range(sgd_results_dir,
                                                      'stratified',
                                                      gene=plot_gene)
@@ -313,7 +327,30 @@ sgd_perf_df = (
 sgd_perf_df.head()
 
 
-# In[12]:
+# In[13]:
+
+
+# get mean performance for each lasso parameter
+sgd_mean_perf_df = (
+    sgd_perf_df[sgd_perf_df.data_type == 'test']
+      .drop(columns=['gene', 'signal', 'data_type'])
+      .groupby('lasso_param')
+      .agg([np.mean, np.std])
+).loc[:, 'aupr']
+ 
+sgd_mean_perf_df.head()
+
+
+# In[14]:
+
+
+print('liblinear:', ll_mean_perf_df['mean'].max(),
+      '( param =', ll_mean_perf_df['mean'].idxmax(), ')')
+print('sgd:', sgd_mean_perf_df['mean'].max(),
+      '( param =', sgd_mean_perf_df['mean'].idxmax(), ')')
+
+
+# In[15]:
 
 
 sns.set_style('ticks')
@@ -324,6 +361,8 @@ ll_plot_df = (
       .reset_index(drop=True)
 )
 ll_plot_df.lasso_param = ll_plot_df.lasso_param.astype(float)
+# invert liblinear lasso param, to put plots on same x-axis
+ll_plot_df.lasso_param = 1 / ll_plot_df.lasso_param
 
 sgd_plot_df = (
     sgd_perf_df[(sgd_perf_df.signal == 'signal')]
@@ -347,12 +386,16 @@ with sns.plotting_context('notebook', font_scale=1.6):
         facet_kws={'sharex': False, 'sharey': False}
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
-    g.axes[0].set_xlim((10e-4, 10e6))
+    g.axes[0].set_xlabel('1 / liblinear LASSO parameter (lower = less regularization)', labelpad=10)
+    g.axes[0].set_xlim((10e-8, 10e2))
     g.axes[0].set_ylim((-0.05, 1.05))
-    g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
+    # plot best mean SGD performance as dotted line on LL plot
+    g.axes[0].axhline(sgd_mean_perf_df['mean'].max(), linestyle='--', color='black')
+    g.axes[1].set_xlabel('SGD LASSO parameter (lower = less regularization)', labelpad=10)
     g.axes[1].set_xlim((10e-8, 10e2))
     g.axes[1].set_ylim((-0.05, 1.05))
+    # plot best mean LL performance as dotted line on SGD plot
+    g.axes[1].axhline(ll_mean_perf_df['mean'].max(), linestyle='--', color='black')
     for ax in g.axes.flat:
         ax.set_ylabel(f'{metric.upper()}', visible=True)
     sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
@@ -361,8 +404,6 @@ with sns.plotting_context('notebook', font_scale=1.6):
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
     g.set_titles(f'Gene: {plot_gene}, optimizer: {{col_name}}', y=1.05)
-     
-    # plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
 
 plt.tight_layout(w_pad=5)
 
@@ -374,7 +415,7 @@ if output_plots:
 # 
 # Even though SGD seems to have lots of nonzero coefficients, it's possible that lots of them are close to 0, or effectively 0. We'll plot the coefficient magnitudes on the same axis as the liblinear coefficients, to get a sense of this.
 
-# In[13]:
+# In[16]:
 
 
 # plot coefficient distributions for this seed/fold
@@ -382,7 +423,7 @@ plot_seed = 42
 plot_fold = 0
 
 
-# In[14]:
+# In[17]:
 
 
 ll_nz_coefs_df['optimizer'] = 'liblinear'
@@ -392,7 +433,7 @@ nz_coefs_df = pd.concat((ll_nz_coefs_df, sgd_nz_coefs_df))
 nz_coefs_df.head()
 
 
-# In[15]:
+# In[18]:
 
 
 perf_coefs_df = (plot_df
@@ -405,7 +446,7 @@ print(perf_coefs_df.shape)
 perf_coefs_df.head()
 
 
-# In[16]:
+# In[19]:
 
 
 # get top-performing lasso param for each gene,
@@ -423,7 +464,7 @@ ll_mean_perf_df = (
 ll_mean_perf_df.head()
 
 
-# In[17]:
+# In[20]:
 
 
 # get top-performing lasso param for each gene,
@@ -441,7 +482,7 @@ sgd_mean_perf_df = (
 sgd_mean_perf_df.head()
 
 
-# In[18]:
+# In[21]:
 
 
 ll_top_lasso_param = ll_mean_perf_df.iloc[0, :].lasso_param
@@ -449,7 +490,7 @@ sgd_top_lasso_param = sgd_mean_perf_df.iloc[0, :].lasso_param
 print(ll_top_lasso_param, sgd_top_lasso_param)
 
 
-# In[19]:
+# In[22]:
 
 
 # get coefficient info for liblinear
@@ -477,7 +518,7 @@ ll_coefs_df['abs+1'] = abs(ll_coefs_df.coef) + 1
 ll_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[20]:
+# In[23]:
 
 
 # get coefficient info for sgd
@@ -506,7 +547,7 @@ sgd_coefs_df['abs+1'] = abs(sgd_coefs_df.coef) + 1
 sgd_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[21]:
+# In[24]:
 
 
 sns.set({'figure.figsize': (8, 3)})
@@ -521,7 +562,7 @@ plt.ylabel(r'$\log_{10}($count$)$')
 plt.title(f'Log-log coefficient magnitude distribution, {plot_gene}', y=1.03)
 
 
-# In[22]:
+# In[25]:
 
 
 sns.set({'figure.figsize': (10, 4)})
@@ -537,7 +578,7 @@ plt.xlabel('Coefficient')
 # 
 # We want to separate the log-likelihood loss (data loss) from the weight penalty (regularization term) in the logistic regression loss function, to see if that breakdown is any different between optimizers.
 
-# In[23]:
+# In[26]:
 
 
 # get loss function values from file
@@ -560,13 +601,21 @@ def get_loss_values(results_dir, optimizer):
     return loss_df.reset_index(drop=True)
 
 
-# In[24]:
+# In[27]:
 
 
 ll_loss_df = get_loss_values(ll_results_dir, 'liblinear')
+
 # apply a correction to liblinear l1 penalties
-# TODO: explain if necessary
+# in the classification code, the l1 penalty is currently calculated as the
+# sum of weights times the lasso parameter, but for liblinear we actually
+# want to multiply by 1/(lasso parameter).
+# multiplying the result by 1/(lasso parameter)^2 achieves this and makes the l1
+# scale comparable with SGD.
 ll_loss_df['l1_penalty'] = (ll_loss_df.l1_penalty / (ll_loss_df.lasso_param ** 2))
+
+# invert the liblinear lasso penalty, to plot on the same scale as SGD
+ll_loss_df.lasso_param = 1 / ll_loss_df.lasso_param
 
 sgd_loss_df = get_loss_values(sgd_results_dir, 'SGD')
 loss_df = pd.concat((ll_loss_df, sgd_loss_df)).reset_index(drop=True)
@@ -582,7 +631,7 @@ print(loss_df.optimizer.unique())
 loss_df.head()
 
 
-# In[25]:
+# In[28]:
 
 
 sns.set_style('ticks')
@@ -597,10 +646,10 @@ with sns.plotting_context('notebook', font_scale=1.6):
         facet_kws={'sharex': False}
     )
     g.set(xscale='log', yscale='log')
-    g.axes[0].set_xlim((10e-4, 10e6))
-    g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
+    g.axes[0].set_xlim((10e-8, 10e2))
+    g.axes[0].set_xlabel('1 / liblinear LASSO parameter (lower = less regularization)')
     g.axes[1].set_xlim((10e-8, 10e2))
-    g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
+    g.axes[1].set_xlabel('SGD LASSO parameter (lower = less regularization)')
     for ax in g.axes.flat:
         ax.set_ylabel('Loss value', visible=True)
         ax.tick_params(labelleft=True)
