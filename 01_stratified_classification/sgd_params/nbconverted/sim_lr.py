@@ -19,14 +19,29 @@ from sklearn.preprocessing import StandardScaler
 # In[2]:
 
 
+# simulation parameters
+# number of simulated samples
 n = 200
+
+# number of simulated features
 p = 500
+
+# number of features that are informative, i.e. correlated with the label
 n_informative = 20
+
+# number of features that are redundant (linear combinations of informative features)
 n_redundant = 20
+
+# number of clusters per class (higher = more difficult classification problem)
 n_clusters_per_class = 2
+
+# class imbalance ([0.5, 0.5] = balanced, more imbalanced = more difficult)
 class_weights = [0.6, 0.4]
 
+# whether to standardize features before fitting classifiers
 standardize = True
+
+# whether to take PCA of features (i.e. de-correlate classifier input) before fitting classifiers
 preprocess_pca = False
 
 
