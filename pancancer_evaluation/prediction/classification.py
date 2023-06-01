@@ -32,7 +32,8 @@ def train_classifier(X_train,
                      l1_ratios=None,
                      c_values=None,
                      n_folds=5,
-                     max_iter=1000):
+                     max_iter=1000,
+                     sgd_lr_schedule='optimal'):
     """
     Train a linear (logistic regression) classifier
 
@@ -45,6 +46,8 @@ def train_classifier(X_train,
     l1_ratios: list of l1 mixing parameters to perform cross validation over
     n_folds: int of how many folds of cross validation to perform
     max_iter: the maximum number of iterations to test until convergence
+    sgd_lr_schedule: learning rate schedule to use for SGD classifier, if use_sgd is True
+                     (options: 'constant', 'constant_search', 'optimal', 'invscaling', 'adaptive')
 
     Returns
     ------
@@ -81,7 +84,8 @@ def train_classifier(X_train,
                 lasso_penalty,
                 n_folds=n_folds,
                 max_iter=max_iter,
-                use_sgd=use_sgd
+                use_sgd=use_sgd,
+                sgd_lr_schedule=sgd_lr_schedule
             )
 
         else:
@@ -163,10 +167,65 @@ def train_lasso(X_train,
                 lasso_penalty,
                 n_folds=5,
                 max_iter=1000,
-                use_sgd=False):
+                use_sgd=False,
+                sgd_lr_schedule='optimal'):
 
     import pancancer_evaluation.config as cfg
+
+    from sklearn.model_selection import train_test_split
+
+    subtrain_ixs, valid_ixs = train_test_split(
+        np.arange(X_train.shape[0]),
+        test_size=(1 / n_folds),
+        shuffle=True
+    )
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
     if use_sgd or cfg.lasso_sgd:
+
+        def get_eta0(lr_schedule):
+            eta0 = 0.0
+            if lr_schedule in ['invscaling', 'adaptive']:
+                eta0 = 0.1
+            elif lr_schedule == 'constant':
+                eta0 = 0.005
+            return eta0
+
+        if sgd_lr_schedule == 'constant_search':
+            # in this case, do a grid search to find the best constant learning rate
+            # this only uses the train/valid split, test data isn't used at all here
+            clf_parameters = {
+                "classify__eta0": cfg.constant_search_lr,
+            }
+            clf_pipeline = Pipeline(
+                steps=[
+                    (
+                        "classify",
+                        SGDClassifier(
+                            random_state=seed,
+                            class_weight="balanced",
+                            penalty='l1',
+                            alpha=lasso_penalty,
+                            loss="log_loss",
+                            max_iter=max_iter,
+                            tol=1e-3,
+                            learning_rate='constant'
+                        ),
+                    )
+                ]
+            )
+            cv_pipeline = GridSearchCV(
+                estimator=clf_pipeline,
+                param_grid=clf_parameters,
+                n_jobs=-1,
+                cv=((subtrain_ixs, valid_ixs),),
+                scoring='average_precision',
+                return_train_score=True,
+            )
+            cv_pipeline.fit(X=X_train, y=y_train.status)
+            eta0 = cv_pipeline.best_params_['classify__eta0']
+
         estimator = SGDClassifier(
             random_state=seed,
             class_weight='balanced',
@@ -175,6 +234,12 @@ def train_lasso(X_train,
             loss="log_loss",
             max_iter=max_iter,
             tol=1e-3,
+            learning_rate=(
+                'constant' if sgd_lr_schedule == 'constant_search' else sgd_lr_schedule
+            ),
+            eta0=(
+                eta0 if sgd_lr_schedule == 'constant_search' else get_eta0(sgd_lr_schedule)
+            )
         )
     else:
         from sklearn.linear_model import LogisticRegression
@@ -188,17 +253,6 @@ def train_lasso(X_train,
             tol=1e-3,
         )
 
-    from sklearn.model_selection import train_test_split
-
-    subtrain_ixs, valid_ixs = train_test_split(
-        np.arange(X_train.shape[0]),
-        test_size=(1 / n_folds),
-        shuffle=True
-    )
-    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
-    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
-
-    # Fit the model
     estimator.fit(X=X_subtrain, y=y_subtrain.status)
 
     # Get all performance results
@@ -207,6 +261,109 @@ def train_lasso(X_train,
     y_predict_test = estimator.decision_function(X_test)
 
     return (estimator, 
+            (y_subtrain, y_valid),
+            (y_predict_train, y_predict_valid, y_predict_test))
+
+
+def train_mlp_lr(X_train,
+                 X_test,
+                 y_train,
+                 y_test,
+                 seed,
+                 hparams={},
+                 n_folds=3,
+                 max_iter=100,
+                 search_n_iter=20):
+
+    import torch.optim
+    from skorch import NeuralNetBinaryClassifier
+    from skorch.callbacks import Callback, EpochScoring
+    from skorch.dataset import ValidSplit
+    from pancancer_evaluation.prediction.nn_models import SingleLayer
+
+    # default hyperparameter search options
+    # will be overridden by any existing entries in search_hparams
+    default_hparams = {
+        'batch_size': [50],
+        'learning_rate': [0.0001],
+        'lasso_penalty': [0.0]
+    }
+    for k, v in default_hparams.items():
+        hparams.setdefault(k, v)
+
+    model = SingleLayer(input_size=X_train.shape[1])
+
+    clf_parameters = {
+        'lr': hparams['learning_rate'],
+        'lambda1': hparams['lasso_penalty'],
+        'module__input_size': [X_train.shape[1]],
+     }
+
+    class LassoClassifier(NeuralNetBinaryClassifier):
+        # https://skorch.readthedocs.io/en/latest/user/customization.html#methods-starting-with-get
+        def __init__(self, *args, lambda1=0.01, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.lambda1 = lambda1
+
+        def get_loss(self, y_pred, y_true, X=None, training=False):
+            loss = super().get_loss(y_pred, y_true, X=X, training=training)
+            loss += self.lambda1 * sum([w.abs().sum() for w in self.module_.parameters()])
+            return loss
+
+    print(hparams)
+
+    from sklearn.model_selection import train_test_split
+    subtrain_ixs, valid_ixs = train_test_split(
+        np.arange(X_train.shape[0]),
+        test_size=0.2,
+        random_state=seed,
+        shuffle=True
+    )
+
+    # define callback for scoring test set, to run each epoch
+    class ScoreData(Callback):
+        def __init__(self, X, y):
+            self.X = X
+            self.y = y
+
+        def on_epoch_end(self, net, **kwargs):
+            y_pred = net.predict_proba(self.X)[:, 1]
+            net.history.record(
+                'test_aupr',
+                average_precision_score(self.y, y_pred)
+            )
+
+    net = LassoClassifier(
+        model,
+        max_epochs=max_iter,
+        batch_size=hparams['batch_size'][0],
+        optimizer=torch.optim.SGD,
+        iterator_train__shuffle=True,
+        verbose=0,
+        train_split=ValidSplit(cv=((subtrain_ixs, valid_ixs),)),
+        device='cuda',
+        lr=hparams['learning_rate'][0],
+        lambda1=hparams['lasso_penalty'][0]
+    )
+
+    net.fit(X_train.values.astype(np.float32),
+            y_train.status.values.astype(np.float32))
+
+    X_subtrain, X_valid = X_train.iloc[subtrain_ixs, :], X_train.iloc[valid_ixs, :]
+    y_subtrain, y_valid = y_train.iloc[subtrain_ixs, :], y_train.iloc[valid_ixs, :]
+
+    # Get all performance results
+    y_predict_train = net.predict_proba(
+        X_subtrain.values.astype(np.float32)
+    )[:, 1]
+    y_predict_valid = net.predict_proba(
+        X_valid.values.astype(np.float32)
+    )[:, 1]
+    y_predict_test = net.predict_proba(
+        X_test.values.astype(np.float32)
+    )[:, 1]
+
+    return (net,
             (y_subtrain, y_valid),
             (y_predict_train, y_predict_valid, y_predict_test))
 

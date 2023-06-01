@@ -41,6 +41,9 @@ def process_args():
                         'before applying primary feature selection method. this '
                         'can help to speed up more complicated feature selection '
                         'approaches')
+    p.add_argument('--max_iter', type=int, default=None,
+                   help='explicitly specify max number of optimizer iterations, '
+                        'default is in config file')
     p.add_argument('--num_features', type=int, default=cfg.num_features_raw,
                    help='if included, select this number of features, using '
                         'feature selection method specified in feature_selection')
@@ -50,6 +53,8 @@ def process_args():
                    help='where to write results to')
     p.add_argument('--seed', type=int, default=cfg.default_seed)
     p.add_argument('--sgd', action='store_true')
+    p.add_argument('--sgd_lr_schedule', default='optimal',
+                   choices=['constant', 'optimal', 'adaptive', 'invscaling', 'constant_search'])
     p.add_argument('--shuffle_labels', action='store_true')
     p.add_argument('--verbose', action='store_true')
     args = p.parse_args()
@@ -121,7 +126,9 @@ if __name__ == '__main__':
                                                 args.seed,
                                                 args.feature_selection,
                                                 args.num_features,
-                                                args.lasso_penalty)
+                                                args.max_iter,
+                                                lasso_penalty=args.lasso_penalty,
+                                                lr_schedule=args.sgd_lr_schedule)
                 tcga_data.process_data_for_gene(gene,
                                                 classification,
                                                 gene_dir,
@@ -158,7 +165,9 @@ if __name__ == '__main__':
                                             shuffle_labels,
                                             lasso=True,
                                             lasso_penalty=args.lasso_penalty,
-                                            use_sgd=args.sgd)
+                                            max_iter=args.max_iter,
+                                            use_sgd=args.sgd,
+                                            sgd_lr_schedule=args.sgd_lr_schedule)
             except NoTestSamplesError:
                 if args.verbose:
                     print('Skipping due to no test samples: gene {}'.format(
@@ -182,11 +191,14 @@ if __name__ == '__main__':
                                               results,
                                               gene,
                                               None,
-                                              shuffle_labels,
-                                              args.seed,
+                                              'classify',
+                                              ('shuffled' if args.shuffle_labels else 'signal'),
                                               args.feature_selection,
-                                              args.num_features,
-                                              args.lasso_penalty)
+                                              args.sgd_lr_schedule,
+                                              s=args.seed,
+                                              n=args.num_features,
+                                              c=args.lasso_penalty,
+                                              i=args.max_iter)
 
             if gene_log_df is not None:
                 fu.write_log_file(gene_log_df, args.log_file)

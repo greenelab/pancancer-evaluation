@@ -389,10 +389,14 @@ def run_cv_stratified(data_model,
                       num_folds,
                       shuffle_labels,
                       predictor='classify',
+                      model='lr',
                       ridge=False,
                       lasso=False,
                       lasso_penalty=None,
-                      use_sgd=False):
+                      max_iter=None,
+                      use_sgd=False,
+                      sgd_lr_schedule='optimal',
+                      params={}):
     """
     Run stratified cross-validation experiments for a given identifier, then
     write the results to files in the results directory. If the relevant
@@ -416,6 +420,8 @@ def run_cv_stratified(data_model,
             'gene_aupr': [],
             'gene_coef': []
         }
+        if model == 'mlp' or (lasso and lasso_penalty is not None):
+            results['gene_loss'] = []
     elif predictor == 'regress':
         results = {
             'gene_metrics': [],
@@ -481,39 +487,64 @@ def run_cv_stratified(data_model,
 
         try:
             # also ignore warnings here, same deal as above
-            train_model = {
-                'classify': clf.train_classifier,
+            classifiers_list = {
+                'lr': clf.train_classifier,
+                'mlp': clf.train_mlp_lr
+            }
+            models_list = {
+                'classify': classifiers_list[model],
                 'regress': reg.train_regressor,
-            }[predictor]
+            }
+            train_model = models_list[predictor]
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # set the hyperparameters
                 train_model_params = apply_model_params(train_model,
                                                         ridge,
                                                         lasso,
-                                                        lasso_penalty)
-                model_results = train_model_params(
-                    X_train=X_train_df,
-                    X_test=X_test_df,
-                    y_train=y_train_df,
-                    seed=data_model.seed,
-                    n_folds=cfg.folds,
-                    max_iter=cfg.max_iter,
-                    use_sgd=use_sgd
-                )
-                if lasso_penalty is not None:
-                    (cv_pipeline, labels, preds) = model_results
+                                                        lasso_penalty,
+                                                        model=model)
+                if model == 'mlp':
+                    model_results = train_model_params(
+                        X_train=X_train_df,
+                        X_test=X_test_df,
+                        y_train=y_train_df,
+                        y_test=y_test_df,
+                        seed=data_model.seed,
+                        n_folds=cfg.mlp_folds,
+                        max_iter=cfg.mlp_max_iter,
+                        hparams=params
+                    )
+                    (net, labels, preds) = model_results
                     (y_train_df,
                      y_cv_df) = labels
                     (y_pred_train,
                      y_pred_cv,
                      y_pred_test) = preds
                 else:
-                    y_cv_df = None
-                    (cv_pipeline,
-                     y_pred_train,
-                     y_pred_test,
-                     y_pred_cv) = model_results
+                    model_results = train_model_params(
+                        X_train=X_train_df,
+                        X_test=X_test_df,
+                        y_train=y_train_df,
+                        seed=data_model.seed,
+                        n_folds=cfg.folds,
+                        max_iter=(max_iter if max_iter is not None else cfg.max_iter),
+                        use_sgd=use_sgd,
+                        sgd_lr_schedule=sgd_lr_schedule
+                    )
+                    if lasso_penalty is not None:
+                        (cv_pipeline, labels, preds) = model_results
+                        (y_train_df,
+                         y_cv_df) = labels
+                        (y_pred_train,
+                         y_pred_cv,
+                         y_pred_test) = preds
+                    else:
+                        y_cv_df = None
+                        (cv_pipeline,
+                         y_pred_train,
+                         y_pred_test,
+                         y_pred_cv) = model_results
         except ValueError:
             raise OneClassError(
                 'Only one class present in test set for identifier: {}\n'.format(
@@ -521,15 +552,29 @@ def run_cv_stratified(data_model,
             )
 
         # get coefficients
-        coef_df = extract_coefficients(
-            cv_pipeline=cv_pipeline,
-            feature_names=X_train_df.columns,
-            signal=signal,
-            seed=data_model.seed,
-            name=predictor
-        )
-        coef_df = coef_df.assign(identifier=identifier)
-        coef_df = coef_df.assign(fold=fold_no)
+        if model != 'mlp':
+            coef_df = extract_coefficients(
+                cv_pipeline=cv_pipeline,
+                feature_names=X_train_df.columns,
+                signal=signal,
+                seed=data_model.seed,
+                name=predictor
+            )
+            coef_df = coef_df.assign(identifier=identifier)
+            coef_df = coef_df.assign(fold=fold_no)
+        else:
+            # element 0 is the weights, element 1 is the bias
+            weight = [w for w in net.module_.parameters()][0].cpu().detach().numpy().flatten()
+            coef_df = (
+                pd.DataFrame.from_dict({"feature": X_train_df.columns,
+                                        "weight": weight})
+                  .assign(abs=lambda df: df.weight.abs())
+                  .sort_values("abs", ascending=False)
+                  .reset_index(drop=True)
+                  .assign(signal=signal, seed=data_model.seed)
+            )
+            coef_df = coef_df.assign(identifier=identifier)
+            coef_df = coef_df.assign(fold=fold_no)
 
         try:
             if predictor == 'classify':
@@ -545,6 +590,23 @@ def run_cv_stratified(data_model,
                 results['gene_auc'].append(gene_auc_df)
                 results['gene_aupr'].append(gene_aupr_df)
                 results['gene_coef'].append(coef_df)
+                if model == 'mlp':
+                    loss_df = get_loss_breakdown(y_train_df,
+                                                 y_pred_train,
+                                                 params['lasso_penalty'][0],
+                                                 weight,
+                                                 data_model.seed,
+                                                 fold_no)
+                    results['gene_loss'].append(loss_df)
+                elif (lasso and lasso_penalty is not None):
+                    weight = cv_pipeline.coef_
+                    loss_df = get_loss_breakdown(y_train_df,
+                                                 y_pred_train,
+                                                 lasso_penalty,
+                                                 weight,
+                                                 data_model.seed,
+                                                 fold_no)
+                    results['gene_loss'].append(loss_df)
             elif predictor == 'regress':
                 metric_df = reg.get_metrics(
                     y_train_df,
@@ -877,11 +939,31 @@ def apply_model_params(train_model,
     elif model == 'mlp':
         return partial(
             train_model,
-            search_hparams={},
             search_n_iter=cfg.mlp_search_n_iter
         )
     else:
         raise NotImplementedError(f'model {model} not implemented')
+
+
+def get_loss_breakdown(y_train_df,
+                       y_pred_train,
+                       lasso_penalty,
+                       weights,
+                       seed,
+                       fold):
+    from sklearn.metrics import log_loss
+
+    log_loss_train = log_loss(y_train_df.status.values, y_pred_train)
+    l1_train = get_l1_penalty(lasso_penalty, weights)
+
+    return pd.DataFrame(
+        [[seed, fold, log_loss_train, l1_train]],
+        columns=['seed', 'fold', 'log_loss', 'l1_penalty']
+    )
+
+
+def get_l1_penalty(lasso_penalty, weights):
+    return lasso_penalty * np.sum(np.absolute(weights))
 
 
 @contextlib.contextmanager

@@ -9,6 +9,50 @@ import pandas as pd
 
 from pancancer_evaluation.exceptions import ResultsFileExistsError
 
+def construct_filename(output_dir,
+                       file_descriptor,
+                       extension,
+                       *args,
+                       **kwargs):
+    """Construct a filename from varying experimental parameters.
+
+    The format of the filename will roughly look like this:
+    {output_dir}/{a}_{k}_{file_descriptor}{extension}
+    where a = '_'.join([ar for ar in args]),
+          k = '_'.join(['{k}{v} for k, v in kwargs.items()])
+
+    For example:
+    >>> construct_filename('output_dir', 'output', '.tsv',
+    ...                    'expression', 'signal',
+    ...                    s=42, n=5000)
+    output_dir/expression_signal_s42_n5000_classify_output.tsv
+
+    Also note that if a parameter has a value of None, it will be silently
+    skipped in the output filename.
+    """
+    if len(args) == 0 and len(kwargs) == 0:
+        return Path(output_dir,
+                    '{}{}'.format(file_descriptor, extension))
+    elif len(args) == 0:
+        return Path(output_dir,
+                    '{}_{}{}'.format('_'.join([f'{k}{v}' for k, v in kwargs.items()
+                                                          if v is not None]),
+                                     file_descriptor,
+                                     extension))
+    elif len(kwargs) == 0:
+        return Path(output_dir,
+                    '{}_{}{}'.format('_'.join([ar for ar in args if ar is not None]),
+                                     file_descriptor,
+                                     extension))
+    else:
+        return Path(output_dir,
+                    '{}_{}_{}{}'.format('_'.join([ar for ar in args if ar is not None]),
+                                        '_'.join([f'{k}{v}' for k, v in kwargs.items()
+                                                             if v is not None]),
+                                        file_descriptor,
+                                        extension))
+
+
 def save_results_stratified(results_dir,
                             check_file,
                             results,
@@ -33,22 +77,41 @@ def save_results_stratified(results_dir,
             float_format="%.5g"
         )
 
-        output_file = Path(
-            results_dir, "{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
-                gene, signal, feature_selection, seed, num_features)).resolve()
+        output_file = construct_filename(results_dir,
+                                         'auc_threshold_metrics',
+                                         '.tsv.gz',
+                                         gene,
+                                         predictor,
+                                         signal,
+                                         feature_selection,
+                                         s=seed,
+                                         n=num_features)
         auc_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
 
-        output_file = Path(
-            results_dir, "{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
-                gene, signal, feature_selection, seed, num_features)).resolve()
+        output_file = construct_filename(results_dir,
+                                         'aupr_threshold_metrics',
+                                         '.tsv.gz',
+                                         gene,
+                                         predictor,
+                                         signal,
+                                         feature_selection,
+                                         s=seed,
+                                         n=num_features)
         aupr_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
 
-    output_file = Path(results_dir, "{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
-        gene, signal, feature_selection, seed, num_features, predictor)).resolve()
+    output_file = construct_filename(results_dir,
+                                     'metrics',
+                                     '.tsv.gz',
+                                     gene,
+                                     predictor,
+                                     signal,
+                                     feature_selection,
+                                     s=seed,
+                                     n=num_features)
     metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -79,20 +142,30 @@ def save_results_cancer_type(results_dir,
         #       any experiment identified by a gene and a cancer type has
         #       the identifier {gene}_{cancer_type}, in this order
 
-        output_file = Path(
-            results_dir, "{}_{}_{}_{}_s{}_n{}_auc_threshold_metrics.tsv.gz".format(
-                identifier, cancer_type, signal, feature_selection, seed, num_features
-            )
-        ).resolve()
+        output_file = construct_filename(results_dir,
+                                         'auc_threshold_metrics',
+                                         '.tsv.gz',
+                                         identifier,
+                                         cancer_type,
+                                         predictor,
+                                         signal,
+                                         feature_selection,
+                                         s=seed,
+                                         n=num_features)
         auc_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
 
-        output_file = Path(
-            results_dir, "{}_{}_{}_{}_s{}_n{}_aupr_threshold_metrics.tsv.gz".format(
-                identifier, cancer_type, signal, feature_selection, seed, num_features
-            )
-        ).resolve()
+        output_file = construct_filename(results_dir,
+                                         'aupr_threshold_metrics',
+                                         '.tsv.gz',
+                                         identifier,
+                                         cancer_type,
+                                         predictor,
+                                         signal,
+                                         feature_selection,
+                                         s=seed,
+                                         n=num_features)
         aupr_df.to_csv(
             output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
         )
@@ -103,12 +176,16 @@ def save_results_cancer_type(results_dir,
         float_format="%.5g"
     )
 
-    output_file = Path(
-        results_dir, "{}_{}_{}_{}_s{}_n{}_{}_metrics.tsv.gz".format(
-            identifier, cancer_type, signal, feature_selection,
-            seed, num_features, predictor
-        )
-    ).resolve()
+    output_file = construct_filename(results_dir,
+                                     'metrics',
+                                     '.tsv.gz',
+                                     identifier,
+                                     cancer_type,
+                                     predictor,
+                                     signal,
+                                     feature_selection,
+                                     s=seed,
+                                     n=num_features)
     metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
@@ -119,14 +196,8 @@ def save_results_lasso_penalty(results_dir,
                                results,
                                identifier,
                                cancer_type,
-                               shuffle_labels,
-                               seed,
-                               feature_selection,
-                               num_features,
-                               lasso_penalty,
-                               predictor='classify'):
-
-    signal = 'shuffled' if shuffle_labels else 'signal'
+                               *args,
+                               **kwargs):
 
     metrics_df = pd.concat(results['gene_metrics'])
     coef_df = pd.concat(results['gene_coef'])
@@ -142,23 +213,27 @@ def save_results_lasso_penalty(results_dir,
         float_format="%.5g"
     )
 
-    if cancer_type is None:
-        output_file = Path(
-            results_dir, "{}_{}_{}_s{}_n{}_c{}_{}_metrics.tsv.gz".format(
-                identifier, signal, feature_selection,
-                seed, num_features, lasso_penalty, predictor
-            )
-        ).resolve()
-    else:
-        output_file = Path(
-            results_dir, "{}_{}_{}_{}_s{}_n{}_c{}_{}_metrics.tsv.gz".format(
-                identifier, cancer_type, signal, feature_selection,
-                seed, num_features, lasso_penalty, predictor
-            )
-        ).resolve()
+    output_file = construct_filename(results_dir,
+                                     'metrics',
+                                     '.tsv.gz',
+                                     identifier,
+                                     cancer_type,
+                                     *args,
+                                     **kwargs)
     metrics_df.to_csv(
         output_file, sep="\t", index=False, compression="gzip", float_format="%.5g"
     )
+
+    if 'gene_loss' in results:
+        loss_df = pd.concat(results['gene_loss'])
+        output_file = construct_filename(results_dir,
+                                         'loss_values',
+                                         '.tsv',
+                                         identifier,
+                                         cancer_type,
+                                         *args,
+                                         **kwargs)
+        loss_df.to_csv(output_file, sep='\t')
 
 
 def save_results_mlp(results_dir,
@@ -169,10 +244,12 @@ def save_results_mlp(results_dir,
                      seed,
                      feature_selection,
                      num_features,
+                     batch_size=None,
                      learning_rate=None,
                      dropout=None,
                      h1_size=None,
                      weight_decay=None,
+                     lasso_penalty=None,
                      predictor='classify'):
 
     signal = 'shuffled' if shuffle_labels else 'signal'
@@ -189,10 +266,12 @@ def save_results_mlp(results_dir,
         identifier, signal, feature_selection, seed, num_features
     )
     stem = get_stem_from_params(
+        batch_size,
         learning_rate,
         dropout,
         h1_size,
         weight_decay,
+        lasso_penalty,
         stem_prefix,
         predictor
     )
@@ -205,15 +284,16 @@ def save_results_mlp(results_dir,
         params_df = pd.concat(results['gene_param_grid'])
         output_file = Path(results_dir, stem + 'param_grid.tsv.gz').resolve()
         params_df.to_csv(output_file, sep='\t')
-    else:
-        params_df = None
 
     if 'learning_curves' in results:
         lc_df = pd.concat(results['learning_curves'])
         output_file = Path(results_dir, stem + 'learning_curves.tsv.gz').resolve()
         lc_df.to_csv(output_file, sep='\t')
-    else:
-        lc_df = None
+
+    if 'gene_loss' in results:
+        loss_df = pd.concat(results['gene_loss'])
+        output_file = Path(results_dir, stem + 'loss_values.tsv').resolve()
+        loss_df.to_csv(output_file, sep='\t')
 
 
 def save_results_cross_cancer(output_dir,
@@ -419,28 +499,41 @@ def check_gene_file(gene_dir,
                     seed,
                     feature_selection,
                     num_features,
-                    lasso_penalty=None,
+                    mlp=False,
+                    batch_size=None,
+                    lr_schedule=None,
+                    max_iter=None,
                     learning_rate=None,
                     dropout=None,
                     h1_size=None,
                     weight_decay=None,
+                    lasso_penalty=None,
                     predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    if lasso_penalty is not None:
-        check_file = Path(
-            gene_dir, "{}_{}_{}_s{}_n{}_c{}_{}_coefficients.tsv.gz".format(
-                gene, signal, feature_selection, seed,
-                num_features, lasso_penalty, predictor
-            )).resolve()
+    if not mlp and lasso_penalty is not None:
+        check_file = construct_filename(gene_dir,
+                                        'coefficients',
+                                        '.tsv.gz',
+                                        gene,
+                                        predictor,
+                                        signal,
+                                        feature_selection,
+                                        lr_schedule,
+                                        s=seed,
+                                        n=num_features,
+                                        c=lasso_penalty,
+                                        i=max_iter)
     else:
         stem_prefix = '{}_{}_{}_s{}_n{}_'.format(
             gene, signal, feature_selection, seed, num_features
         )
         stem = get_stem_from_params(
+            batch_size,
             learning_rate,
             dropout,
             h1_size,
             weight_decay,
+            lasso_penalty,
             stem_prefix,
             predictor
         )
@@ -465,18 +558,17 @@ def check_cancer_type_file(results_dir,
     #       any experiment identified by an identifier and a cancer type has
     #       the format {identifier}_{cancer_type}, in this order
     signal = 'shuffled' if shuffle_labels else 'signal'
-    if lasso_penalty is not None:
-        check_file = Path(
-            results_dir, "{}_{}_{}_{}_s{}_n{}_c{}_{}_coefficients.tsv.gz".format(
-                identifier, cancer_type, signal, feature_selection, seed,
-                num_features, lasso_penalty, predictor
-            )).resolve()
-    else:
-        check_file = Path(
-            results_dir, "{}_{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
-                identifier, cancer_type, signal, feature_selection,
-                seed, num_features, predictor
-            )).resolve()
+    check_file = construct_filename(results_dir,
+                                    'coefficients',
+                                    '.tsv.gz',
+                                    identifier,
+                                    cancer_type,
+                                    predictor,
+                                    signal,
+                                    feature_selection,
+                                    s=seed,
+                                    n=num_features,
+                                    c=lasso_penalty)
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for identifier: {}\n'.format(identifier)
@@ -492,11 +584,16 @@ def check_purity_file(output_dir,
                       num_features,
                       predictor='classify'):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    check_file = Path(
-        output_dir, "purity_{}_{}_{}_s{}_n{}_{}_coefficients.tsv.gz".format(
-            cancer_type, signal, feature_selection, seed,
-            num_features, predictor
-        )).resolve()
+    check_file = construct_filename(results_dir,
+                                    'coefficients',
+                                    '.tsv.gz',
+                                    'purity',
+                                    cancer_type,
+                                    predictor,
+                                    signal,
+                                    feature_selection,
+                                    s=seed,
+                                    n=num_features)
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for cancer type: {}\n'.format(cancer_type)
@@ -512,11 +609,16 @@ def check_msi_file(output_dir,
                    num_features,
                    lasso_penalty):
     signal = 'shuffled' if shuffle_labels else 'signal'
-    check_file = Path(
-        output_dir, "msi_{}_{}_{}_s{}_n{}_c{}_coefficients.tsv.gz".format(
-            cancer_type, signal, feature_selection,
-            seed, num_features, lasso_penalty
-        )).resolve()
+    check_file = construct_filename(results_dir,
+                                    'coefficients',
+                                    '.tsv.gz',
+                                    'msi',
+                                    cancer_type,
+                                    predictor,
+                                    signal,
+                                    feature_selection,
+                                    s=seed,
+                                    n=num_features)
     if check_status(check_file):
         raise ResultsFileExistsError(
             'Results file already exists for cancer type: {}\n'.format(cancer_type)
@@ -594,21 +696,27 @@ def check_status(file):
     return os.path.isfile(file)
 
 
-def get_stem_from_params(learning_rate,
+def get_stem_from_params(batch_size,
+                         learning_rate,
                          dropout,
                          h1_size,
                          weight_decay,
+                         lasso_penalty,
                          stem_prefix,
                          predictor):
+    stem = stem_prefix
+    if batch_size is not None:
+        stem += f'bs{batch_size}_'
     if learning_rate is not None:
-        stem = stem_prefix + f'lr{learning_rate}_{predictor}_'
-    elif dropout is not None:
-        stem = stem_prefix + f'd{dropout}_{predictor}_'
-    elif h1_size is not None:
-        stem = stem_prefix + f'h{h1_size}_{predictor}_'
-    elif weight_decay is not None:
-        stem = stem_prefix + f'w{weight_decay}_{predictor}_'
-    else:
-        stem = stem_prefix + f'{predictor}_'
+        stem += f'lr{learning_rate}_'
+    if dropout is not None:
+        stem += f'd{dropout}_'
+    if h1_size is not None:
+        stem += f'h{h1_size}_'
+    if weight_decay is not None:
+        stem += f'w{weight_decay}_'
+    if lasso_penalty is not None:
+        stem += f'c{lasso_penalty}_'
+    stem += f'{predictor}_'
     return stem
 

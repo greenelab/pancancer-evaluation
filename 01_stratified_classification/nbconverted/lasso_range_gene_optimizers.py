@@ -33,23 +33,23 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 ll_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll_lr_range', 'gene'
 )
 
 sgd_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_adaptive_loss', 'gene'
 )
 
 plot_gene = 'KRAS'
 metric = 'aupr'
 
-output_plots = True
+output_plots = False
 output_plots_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
 )
 
 
-# ### Get coefficient information for each lasso penalty
+# ### Get nonzero coefficient information for each lasso penalty
 
 # In[3]:
 
@@ -119,6 +119,7 @@ axarr[0].set_title('liblinear optimizer', size=16)
 axarr[0].set_xlabel('')
 axarr[0].set_ylabel('Number of nonzero coefficients', size=13)
 axarr[0].tick_params(axis='both', labelsize=12)
+axarr[0].tick_params(axis='x', rotation=45)
 
 sns.boxplot(
     data=sgd_nz_coefs_df.sort_values(by=['lasso_param']),
@@ -128,6 +129,7 @@ axarr[1].set_title('SGD optimizer', size=16)
 axarr[1].set_xlabel('LASSO parameter', size=13)
 axarr[1].set_ylabel('Number of nonzero coefficients', size=13)
 axarr[1].tick_params(axis='both', labelsize=12)
+axarr[1].tick_params(axis='x', rotation=45)
 
 # color the boxplot lines/edges rather than the box fill
 # this makes it easier to discern colors at the extremes; i.e. very many or few nonzero coefs
@@ -164,9 +166,117 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefs_count.svg'), bbox_inches='tight')
 
 
-# ### Get performance information for each lasso penalty
+# ### Get coefficient magnitude information for each lasso penalty
 
 # In[6]:
+
+
+ll_sum_coefs_df = []
+sgd_sum_coefs_df = []
+
+for coef_info in au.generate_nonzero_coefficients_lasso_range(ll_results_dir,
+                                                              gene=plot_gene,
+                                                              nonzero_only=False):
+    (gene,
+     cancer_type,
+     seed,
+     lasso_param,
+     coefs_list) = coef_info
+    for fold_no, coefs in enumerate(coefs_list):
+        ll_sum_coefs_df.append(['liblinear', seed, fold_no, lasso_param,
+                                np.sum(np.absolute(list(zip(*coefs))[1]))+1])
+        
+for coef_info in au.generate_nonzero_coefficients_lasso_range(sgd_results_dir,
+                                                              gene=plot_gene,
+                                                              nonzero_only=False):
+    (gene,
+     cancer_type,
+     seed,
+     lasso_param,
+     coefs_list) = coef_info
+    for fold_no, coefs in enumerate(coefs_list):
+        sgd_sum_coefs_df.append(['SGD', seed, fold_no, lasso_param,
+                                 np.sum(np.absolute(list(zip(*coefs))[1]))+1])
+    
+ll_sum_coefs_df = pd.DataFrame(
+    ll_sum_coefs_df,
+    columns=['optimizer', 'seed', 'fold', 'lasso_param', 'sum_coefs']
+)
+sgd_sum_coefs_df = pd.DataFrame(
+    sgd_sum_coefs_df,
+    columns=['optimizer', 'seed', 'fold', 'lasso_param', 'sum_coefs']
+)
+all_coefs_df = pd.concat((ll_sum_coefs_df, sgd_sum_coefs_df)).reset_index(drop=True)
+all_coefs_df.lasso_param = all_coefs_df.lasso_param.astype(float)
+all_coefs_df.sort_values(by='lasso_param')
+
+print(all_coefs_df.optimizer.unique())
+print(all_coefs_df.shape)
+all_coefs_df.head()
+
+
+# In[7]:
+
+
+sns.set({'figure.figsize': (10, 6)})
+sns.set_style('ticks')
+
+with sns.plotting_context('notebook', font_scale=1.5):
+    g = sns.lineplot(
+        data=all_coefs_df,
+        x='lasso_param', y='sum_coefs', hue='optimizer',
+        hue_order=['liblinear', 'SGD'], marker='o'
+    )
+    g.set(xscale='log', yscale='log', xlim=(10e-8, 10e6), ylim=(10e-2, 10e4))
+    g.set_xlabel('LASSO parameter (lower = less regularization)')
+    g.set_ylabel('Sum of coefficient weights + 1')
+    plt.legend(title='Optimizer')
+    plt.title(f'LASSO parameter vs. sum of coefficient weights, {plot_gene}', y=1.03)
+
+plt.tight_layout()
+
+
+# In[8]:
+
+
+# plot coef magnitudes on same axis
+# C = 1 / alpha, so we can just invert one of the parameter axes
+all_coefs_df['param_same_axis'] = all_coefs_df.lasso_param
+
+sgd_params = all_coefs_df.loc[all_coefs_df.optimizer == 'SGD', 'lasso_param']
+(all_coefs_df
+   .loc[all_coefs_df.optimizer == 'SGD', 'param_same_axis'] 
+) = 1 / sgd_params
+
+print(all_coefs_df.param_same_axis.sort_values().unique())
+
+
+# In[9]:
+
+
+sns.set({'figure.figsize': (10, 6)})
+sns.set_style('ticks')
+
+with sns.plotting_context('notebook', font_scale=1.5):
+    g = sns.lineplot(
+        data=all_coefs_df,
+        x='param_same_axis', y='sum_coefs', hue='optimizer',
+        hue_order=['liblinear', 'SGD'], marker='o'
+    )
+    g.set(xscale='log', yscale='log', xlim=(10e-4, 10e6), ylim=(10e-2, 10e4))
+    g.set_xlabel('Lower = less regularization')
+    g.set_ylabel('Sum of coefficient weights + 1')
+    handles, labels = plt.gca().get_legend_handles_labels()
+    new_labels = ['liblinear (param)', r'SGD (1 / param)']
+    plt.legend(title='Optimizer', handles=handles, labels=new_labels)
+    plt.title(f'LASSO parameter vs. sum of coefficient weights, {plot_gene}', y=1.03)
+
+plt.tight_layout()
+
+
+# ### Get performance information for each lasso penalty
+
+# In[10]:
 
 
 ll_perf_df = au.load_prediction_results_lasso_range(ll_results_dir,
@@ -180,7 +290,7 @@ ll_perf_df = (
 ll_perf_df.head()
 
 
-# In[7]:
+# In[11]:
 
 
 sgd_perf_df = au.load_prediction_results_lasso_range(sgd_results_dir,
@@ -194,7 +304,7 @@ sgd_perf_df = (
 sgd_perf_df.head()
 
 
-# In[8]:
+# In[12]:
 
 
 sns.set_style('ticks')
@@ -229,13 +339,13 @@ with sns.plotting_context('notebook', font_scale=1.6):
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
     g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
-    g.axes[0].set_xlim((10e-4, 10e2))
+    g.axes[0].set_xlim((10e-4, 10e6))
     g.axes[0].set_ylim((-0.05, 1.05))
     g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
-    g.axes[1].set_xlim((10e-7, 10))
+    g.axes[1].set_xlim((10e-8, 10e2))
     g.axes[1].set_ylim((-0.05, 1.05))
     g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.035, 0.55], frameon=True)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
@@ -244,17 +354,25 @@ with sns.plotting_context('notebook', font_scale=1.6):
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
 
-plt.tight_layout(w_pad=10)
+plt.tight_layout(w_pad=5)
 
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_vs_perf.svg'), bbox_inches='tight')
 
 
-# ### Get nonzero coefficient info, and bin models by nonzero coefficients
+# ### Plot coefficient magnitudes
 # 
-# We'll try doing this both linearly (just 10 evenly spaced bins) and based on the deciles of the nonzero coefficient distributions.
+# Even though SGD seems to have lots of nonzero coefficients, it's possible that lots of them are close to 0, or effectively 0. We'll plot the coefficient magnitudes on the same axis as the liblinear coefficients, to get a sense of this.
 
-# In[9]:
+# In[13]:
+
+
+# plot coefficient distributions for this seed/fold
+plot_seed = 42
+plot_fold = 0
+
+
+# In[14]:
 
 
 ll_nz_coefs_df['optimizer'] = 'liblinear'
@@ -264,7 +382,7 @@ nz_coefs_df = pd.concat((ll_nz_coefs_df, sgd_nz_coefs_df))
 nz_coefs_df.head()
 
 
-# In[10]:
+# In[15]:
 
 
 perf_coefs_df = (plot_df
@@ -277,416 +395,8 @@ print(perf_coefs_df.shape)
 perf_coefs_df.head()
 
 
-# In[11]:
-
-
-sns.set({'figure.figsize': (10, 5)})
-sns.set_style('ticks')
-sns.histplot(perf_coefs_df.nz_coefs, bins=10)
-plt.title(f'Nonzero coefficient distribution for {plot_gene}')
-plt.xlabel('Number of nonzero coefficients')
-
-quantiles_df = []
-ax = plt.gca()
-
-# visualize quantile boundaries
-for q in np.linspace(0.1, 0.9, 9):
-    quantiles_df.append([q, perf_coefs_df.nz_coefs.quantile(q)])
-    ax.axvline(x=perf_coefs_df.nz_coefs.quantile(q),
-                      color='black', linestyle='--')
-    
-# visualize linear bins
-for b in np.linspace(0, perf_coefs_df.nz_coefs.max(), 11):
-    ax.axvline(x=b, color='grey', linestyle=':')
-    
-# create custom legend for bin boundary lines
-legend_handles = [
-    Line2D([0], [0], color='black', linestyle='--'),
-    Line2D([0], [0], color='grey', linestyle=':'),
-]
-legend_labels = ['deciles', 'evenly spaced\nlinear bins']
-l = ax.legend(legend_handles, legend_labels, title='Bin type',
-              loc='lower left', bbox_to_anchor=(1.01, 0.4))
-ax.add_artist(l)
-
-if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefs_dist.svg'), bbox_inches='tight')
-    
-quantiles_df = pd.DataFrame(quantiles_df, columns=['quantile', 'value'])
-quantiles_df
-
-
-# ### Map regularization parameters to bins
-# 
-# We just want to visualize which parameters map to which bins, in both the linear and decile cases.
-
-# In[12]:
-
-
-# TODO: figure out 0 quantile general solution
-perf_coefs_df['nz_linear_bin'] = pd.cut(
-    perf_coefs_df.nz_coefs,
-    bins=np.linspace(0, perf_coefs_df.nz_coefs.max(), 11),
-    labels=[f'{q}' for q in range(1, 11)],
-    include_lowest=True
-)
-
-print(perf_coefs_df.nz_linear_bin.unique().sort_values())
-perf_coefs_df.head()
-
-
-# In[13]:
-
-
-ll_param_bin_map = (perf_coefs_df
-    [perf_coefs_df.optimizer == 'liblinear']
-).loc[:, ['lasso_param', 'nz_linear_bin']]
-
-(ll_param_bin_map
-   .drop_duplicates()
-   .groupby('lasso_param')
-)['nz_linear_bin'].apply(list)
-
-
-# In[14]:
-
-
-sgd_param_bin_map = (perf_coefs_df
-    [perf_coefs_df.optimizer == 'SGD']
-).loc[:, ['lasso_param', 'nz_linear_bin']]
-
-(sgd_param_bin_map
-   .drop_duplicates()
-   .groupby('lasso_param')
-)['nz_linear_bin'].apply(list)
-
-
-# In[15]:
-
-
-sns.set({'figure.figsize': (15, 5)})
-sns.set_style('ticks')
-
-fig, axarr = plt.subplots(2, 1)
-
-param_bin_map = perf_coefs_df.loc[:, ['lasso_param', 'nz_linear_bin']]
-
-# ax1 is the bin axis for liblinear
-with sns.plotting_context('notebook', font_scale=1.1):
-    ax1 = axarr[0]
-    ax1.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
-                y=[0] * param_bin_map.shape[0])
-    ax1.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
-                 param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
-    ax1.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
-    ax1.tick_params(axis='x', labelsize=12)
-    ax1.get_yaxis().set_visible(False)
-    ax1.set_xlabel('Linear bin', size=14)
-
-    ax2 = ax1.twiny()
-    param_vals = param_bin_map.lasso_param.sort_values(ascending=True).astype(str)
-    ax2.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
-    ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
-
-    def bins_to_coords(bins):
-        # TODO document
-        x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], 11)
-        # https://stackoverflow.com/a/23856065
-        x_mid = (x[1:] + x[:-1]) / 2
-        return {b: x_mid[int(b)-1] for b in bins}
-
-    # iterate through all (param, bin) coordinates and use bin to index
-    bins = param_bin_map.nz_linear_bin.astype(int).sort_values(ascending=True).unique().tolist()
-    b_to_c = bins_to_coords(bins)
-
-    unique_param_vals = param_vals.astype(float).unique().tolist()
-    for ix, row in ll_param_bin_map.iterrows():
-        bin_ix = int(row.nz_linear_bin)
-        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-        ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-    ax1.set_ylim(-0.1, 1.1)
-    ax1.set_yticks([0, 1])
-
-    # ax3 is the bin axis for SGD
-    ax3 = axarr[1]
-    ax3.scatter(x=param_bin_map.nz_linear_bin.astype(int).values,
-                y=[0] * param_bin_map.shape[0])
-    ax3.set_xlim(param_bin_map.nz_linear_bin.astype(int).min() - 0.5,
-                 param_bin_map.nz_linear_bin.astype(int).max() + 0.5)
-    ax3.set_xticks(param_bin_map.nz_linear_bin.astype(int).unique())
-    ax3.tick_params(axis='x', labelsize=12)
-    ax3.get_yaxis().set_visible(False)
-    ax3.set_xlabel('Linear bin', size=14)
-
-    ax4 = ax3.twiny()
-    param_vals = param_bin_map.lasso_param.sort_values(ascending=False).astype(str)
-    ax4.scatter(x=param_vals, y=[1] * param_bin_map.shape[0])
-    ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
-
-    unique_param_vals = param_vals.astype(float).unique().tolist()
-    print(unique_param_vals)
-    for ix, row in sgd_param_bin_map.iterrows():
-        bin_ix = int(row.nz_linear_bin)
-        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-        ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-    ax3.set_ylim(-0.1, 1.1)
-    ax3.set_yticks([0, 1])
-
-plt.tight_layout()
-
-
 # In[16]:
 
-
-# sometimes there are enough classifiers with O nonzero coefficients, or the
-# max number of coefficients, such that they are covered by a whole decile
-# in that case, we drop the duplicate deciles and combine them into one (so we'll
-# have e.g. 9 bins instead of 10 deciles)
-range_bounds = (0.0, float(perf_coefs_df.nz_coefs.max()))
-print(range_bounds)
-
-num_quantiles = quantiles_df[~quantiles_df.value.isin(range_bounds)].shape[0]
-print(num_quantiles, 'unique quantiles')
-
-perf_coefs_df['nz_quantile'] = pd.qcut(
-    perf_coefs_df.nz_coefs,
-    q=np.linspace(0, 1, 11),
-    labels=[f'{q}' for q in range(1, num_quantiles+2)],
-    duplicates='drop'
-)
-
-print(perf_coefs_df.nz_quantile.unique().sort_values())
-perf_coefs_df.head()
-
-
-# In[17]:
-
-
-ll_param_q_map = (perf_coefs_df
-    [perf_coefs_df.optimizer == 'liblinear']                  
-).loc[:, ['lasso_param', 'nz_quantile']]
-
-(ll_param_q_map
-   .drop_duplicates()
-   .groupby('lasso_param')
-)['nz_quantile'].apply(list)
-
-
-# In[18]:
-
-
-sgd_param_q_map = (perf_coefs_df
-    [perf_coefs_df.optimizer == 'SGD']                  
-).loc[:, ['lasso_param', 'nz_quantile']]
-
-(sgd_param_q_map
-   .drop_duplicates()
-   .groupby('lasso_param')
-)['nz_quantile'].apply(list)
-
-
-# In[19]:
-
-
-sns.set({'figure.figsize': (15, 5)})
-sns.set_style('ticks')
-
-fig, axarr = plt.subplots(2, 1)
-
-param_q_map = perf_coefs_df.loc[:, ['lasso_param', 'nz_quantile']]
-
-with sns.plotting_context('notebook', font_scale=1.1):
-    # ax1 is the bin axis for liblinear
-    ax1 = axarr[0]
-    ax1.scatter(x=param_q_map.nz_quantile.astype(int).values,
-                y=[0] * param_q_map.shape[0])
-    ax1.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
-                 param_q_map.nz_quantile.astype(int).max() + 0.5)
-    ax1.set_xticks(param_q_map.nz_quantile.astype(int).unique())
-    ax1.tick_params(axis='x', labelsize=12)
-    ax1.get_yaxis().set_visible(False)
-    ax1.set_xlabel('Quantile', size=14)
-
-    ax2 = ax1.twiny()
-    param_vals = param_q_map.lasso_param.sort_values(ascending=True).astype(str)
-    ax2.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
-    ax2.set_xlabel('LASSO parameter, liblinear', labelpad=10)
-
-    def bins_to_coords(bins):
-        # TODO document
-        x = np.linspace(ax2.get_xlim()[0], ax2.get_xlim()[1], len(perf_coefs_df.nz_quantile.unique())+1)
-        # https://stackoverflow.com/a/23856065
-        x_mid = (x[1:] + x[:-1]) / 2
-        return {b: x_mid[int(b)-1] for b in bins}
-
-    # iterate through all (param, bin) coordinates and use bin to index
-    qs = param_q_map.nz_quantile.astype(int).sort_values(ascending=True).unique().tolist()
-    b_to_c = bins_to_coords(qs)
-
-    unique_param_vals = param_vals.astype(float).unique().tolist()
-    print(unique_param_vals)
-    for ix, row in ll_param_q_map.iterrows():
-        bin_ix = int(row.nz_quantile)
-        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-        ax2.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-    ax1.set_ylim(-0.1, 1.1)
-    ax1.set_yticks([0, 1])
-
-    # ax3 is the bin axis for SGD
-    ax3 = axarr[1]
-    ax3.scatter(x=param_q_map.nz_quantile.astype(int).values,
-                y=[0] * param_q_map.shape[0])
-    ax3.set_xlim(param_q_map.nz_quantile.astype(int).min() - 0.5,
-                 param_q_map.nz_quantile.astype(int).max() + 0.5)
-    ax3.set_xticks(param_q_map.nz_quantile.astype(int).unique())
-    ax3.tick_params(axis='x', labelsize=12)
-    ax3.get_yaxis().set_visible(False)
-    ax3.set_xlabel('Quantile', size=14)
-
-    ax4 = ax3.twiny()
-    param_vals = param_q_map.lasso_param.sort_values(ascending=False).astype(str)
-    ax4.scatter(x=param_vals, y=[1] * param_q_map.shape[0])
-    ax4.set_xlabel('LASSO parameter, SGD (in reverse order)', labelpad=10)
-
-    unique_param_vals = param_vals.astype(float).unique().tolist()
-    print(unique_param_vals)
-    for ix, row in sgd_param_q_map.iterrows():
-        bin_ix = int(row.nz_quantile)
-        lasso_param_ix = unique_param_vals.index(row.lasso_param) 
-        ax4.plot([b_to_c[bin_ix], lasso_param_ix], [0, 1], 'bo:')
-    ax3.set_ylim(-0.1, 1.1)
-    ax3.set_yticks([0, 1])
-
-plt.tight_layout()
-
-if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_to_decile.svg'), bbox_inches='tight')
-
-
-# ### Plot performance vs. nonzero coefficient bin
-# 
-# This allows us to compare liblinear and SGD using variation on the same axis (sparsity/number of nonzero coefficients), rather than comparing in parameter space since the regularization parameters vary in opposite directions.
-
-# In[20]:
-
-
-sns.set_style('ticks')
-
-ll_plot_df = (
-    perf_coefs_df[(perf_coefs_df.optimizer == 'liblinear')]
-      .sort_values(by=['nz_linear_bin'])
-      .reset_index(drop=True)
-)
-
-sgd_plot_df = (
-    perf_coefs_df[(perf_coefs_df.optimizer == 'sgd')]
-      .sort_values(by=['nz_linear_bin'])
-      .reset_index(drop=True)
-)
-
-plot_df = pd.concat((ll_plot_df, sgd_plot_df))
-
-with sns.plotting_context('notebook', font_scale=1.6):
-    g = sns.relplot(
-        data=perf_coefs_df,
-        x='nz_linear_bin', y=metric, hue='data_type',
-        hue_order=['train', 'cv', 'test'],
-        marker='o', kind='line', col='optimizer',
-        col_wrap=2, height=5, aspect=1.6,
-        facet_kws={'sharex': False}
-    )
-    g.axes[0].set_xlabel('Bin (increasing number of nonzero coefficients)')
-    g.axes[0].set_xlim((0, perf_coefs_df.nz_linear_bin.max()))
-    g.axes[0].set_ylim((-0.05, 1.05))
-    g.axes[1].set_xlabel('Bin (increasing number of nonzero coefficients)')
-    g.axes[1].set_xlim((0, perf_coefs_df.nz_linear_bin.max()))
-    g.axes[1].set_ylim((-0.05, 1.05))
-    g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
-    g._legend.set_title('Dataset')
-    new_labels = ['train', 'holdout', 'test']
-    for t, l in zip(g._legend.texts, new_labels):
-        t.set_text(l)
-    g.set_titles('Optimizer: {col_name}')
-     
-    plt.suptitle(
-        f'Number of nonzero coefficients vs. {metric.upper()}, linear binning, {plot_gene}',
-        y=1.0
-    )
-
-plt.tight_layout(w_pad=10)
-
-
-# In[21]:
-
-
-sns.set_style('ticks')
-
-with sns.plotting_context('notebook', font_scale=1.6):
-    g = sns.relplot(
-        data=perf_coefs_df,
-        x='nz_quantile', y=metric, hue='data_type',
-        hue_order=['train', 'cv', 'test'],
-        marker='o', kind='line', col='optimizer',
-        col_wrap=2, height=5, aspect=1.6,
-        facet_kws={'sharex': False}
-    )
-    g.axes[0].set_xlabel('Bin (increasing number of nonzero coefficients)')
-    g.axes[0].set_xlim((0, perf_coefs_df.nz_quantile.max()))
-    g.axes[0].set_ylim((-0.05, 1.05))
-    g.axes[1].set_xlabel('Bin (increasing number of nonzero coefficients)')
-    g.axes[1].set_xlim((0, perf_coefs_df.nz_quantile.max()))
-    g.axes[1].set_ylim((-0.05, 1.05))
-    g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
-    g._legend.set_title('Dataset')
-    new_labels = ['train', 'holdout', 'test']
-    for t, l in zip(g._legend.texts, new_labels):
-        t.set_text(l)
-    g.set_titles('Gene: {}, optimizer: {{col_name}}, decile binning'.format(plot_gene), y=1.05)
-
-plt.tight_layout(w_pad=10)
-
-if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_decile_vs_perf.svg'), bbox_inches='tight')
-
-
-# ### Plot coefficient magnitudes
-# 
-# Even though SGD seems to have lots of nonzero coefficients, it's possible that lots of them are close to 0, or effectively 0. We'll plot the coefficient magnitudes on the same axis as the liblinear coefficients, to get a sense of this.
-
-# In[22]:
-
-
-decile_perf_df = (perf_coefs_df
-    [perf_coefs_df.data_type == 'test']
-    .groupby(['optimizer', 'nz_quantile'])
-    .agg(np.mean)
-    .drop(columns=['seed', 'fold', 'lasso_param'])
-)
-
-print(decile_perf_df.shape)
-decile_perf_df.loc['liblinear', :]
-
-
-# In[23]:
-
-
-decile_perf_df.loc['SGD', :]
-
-
-# In[24]:
-
-
-# plot coefficient distributions for this seed/fold
-plot_seed = 42
-plot_fold = 0
-
-
-# In[25]:
-
-
-ll_top_df = []
 
 # get top-performing lasso param for each gene,
 # based on mean performance across seeds/folds
@@ -703,10 +413,8 @@ ll_mean_perf_df = (
 ll_mean_perf_df.head()
 
 
-# In[26]:
+# In[17]:
 
-
-sgd_top_df = []
 
 # get top-performing lasso param for each gene,
 # based on mean performance across seeds/folds
@@ -723,7 +431,7 @@ sgd_mean_perf_df = (
 sgd_mean_perf_df.head()
 
 
-# In[27]:
+# In[18]:
 
 
 ll_top_lasso_param = ll_mean_perf_df.iloc[0, :].lasso_param
@@ -731,7 +439,7 @@ sgd_top_lasso_param = sgd_mean_perf_df.iloc[0, :].lasso_param
 print(ll_top_lasso_param, sgd_top_lasso_param)
 
 
-# In[28]:
+# In[19]:
 
 
 # get coefficient info for liblinear
@@ -759,7 +467,7 @@ ll_coefs_df['abs+1'] = abs(ll_coefs_df.coef) + 1
 ll_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[29]:
+# In[20]:
 
 
 # get coefficient info for sgd
@@ -788,7 +496,7 @@ sgd_coefs_df['abs+1'] = abs(sgd_coefs_df.coef) + 1
 sgd_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[30]:
+# In[21]:
 
 
 sns.set({'figure.figsize': (8, 3)})
@@ -807,7 +515,7 @@ if output_plots:
                 bbox_inches='tight')
 
 
-# In[31]:
+# In[22]:
 
 
 sns.set({'figure.figsize': (10, 4)})
@@ -815,8 +523,84 @@ sns.set_style('whitegrid')
 
 coefs_df = pd.concat((ll_coefs_df, sgd_coefs_df)).reset_index(drop=True)
 
-sns.histplot(data=coefs_df, x='coef', hue='optimizer', bins=30, multiple='stack')
+sns.histplot(data=coefs_df, x='coef', hue='optimizer', bins=50, multiple='stack')
 plt.xlabel('Coefficient')
 
 
-# So it does look like the SGD coefficient magnitudes are actually just larger: in other words, all of the gene coefficients are contributing to the final model, unlike liblinear where most of them are 0 (or $10^0$ on the log axis).
+# ### Plot loss values
+# 
+# We want to separate the log-likelihood loss (data loss) from the weight penalty (regularization term) in the logistic regression loss function, to see if that breakdown is any different between optimizers.
+
+# In[23]:
+
+
+# get loss function values from file
+def get_loss_values(results_dir, optimizer):
+    loss_df = pd.DataFrame()
+    for gene_name in os.listdir(results_dir):
+        if plot_gene not in gene_name: continue
+        gene_dir = os.path.join(results_dir, gene_name)
+        if not os.path.isdir(gene_dir): continue
+        for results_file in os.listdir(gene_dir):
+            if not 'loss_values' in results_file: continue
+            if results_file[0] == '.': continue
+            full_results_file = os.path.join(gene_dir, results_file)
+            gene_loss_df = pd.read_csv(full_results_file, sep='\t', index_col=0)
+            seed = int(results_file.split('_')[-5].replace('s', ''))
+            lasso_param = float(results_file.split('_')[-3].replace('c', ''))
+            gene_loss_df['lasso_param'] = lasso_param
+            gene_loss_df['optimizer'] = optimizer
+            loss_df = pd.concat((loss_df, gene_loss_df))
+    return loss_df.reset_index(drop=True)
+
+
+# In[24]:
+
+
+ll_loss_df = get_loss_values(ll_results_dir, 'liblinear')
+# apply a correction to liblinear l1 penalties
+# TODO: explain if necessary
+ll_loss_df['l1_penalty'] = (ll_loss_df.l1_penalty / (ll_loss_df.lasso_param ** 2))
+
+sgd_loss_df = get_loss_values(sgd_results_dir, 'SGD')
+loss_df = pd.concat((ll_loss_df, sgd_loss_df)).reset_index(drop=True)
+
+loss_df['total_loss'] = loss_df.log_loss + loss_df.l1_penalty
+loss_df = loss_df.melt(
+    id_vars=['optimizer', 'seed', 'fold', 'lasso_param'],
+    var_name='loss_component',
+    value_name='loss_value'
+)
+    
+print(loss_df.optimizer.unique())
+loss_df.head()
+
+
+# In[25]:
+
+
+sns.set_style('ticks')
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.relplot(
+        data=loss_df,
+        x='lasso_param', y='loss_value', hue='loss_component',
+        hue_order=['log_loss', 'l1_penalty', 'total_loss'],
+        marker='o', kind='line', col='optimizer',
+        col_wrap=2, height=5, aspect=1.6,
+        facet_kws={'sharex': False}
+    )
+    g.set(xscale='log', yscale='log')
+    g.axes[0].set_xlim((10e-4, 10e6))
+    g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
+    g.axes[1].set_xlim((10e-8, 10e2))
+    g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
+    g.set_ylabels('Loss value')
+    g.set_titles('Optimizer: {col_name}')
+    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
+    g._legend.set_title('Loss component')
+     
+    plt.suptitle(f'LASSO parameter vs. training loss, {plot_gene}', y=1.0)
+
+plt.tight_layout()
+
