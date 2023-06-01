@@ -33,17 +33,21 @@ paper_figures_dir = os.path.join(cfg.repo_root, '01_stratified_classification', 
 
 
 fig_1 = Figure(
-    "925", "485",
+    "925", "500",
     etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_decile_vs_perf.svg')
-    ).scale(0.65).move(30, 10),
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_parameter_vs_perf.svg')
+    ).scale(0.65).move(20, 10),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist.svg')
-    ).move(150, 260),
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_constant_search.svg')
+    ).scale(0.8).move(25, 255),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_best_vs_largest_constant_search.svg')
+    ).scale(0.85).move(470, 255),
     Text("A", 15, 25, size=22, weight="bold", font="Arial"),
-    Text("B", 450, 25, size=22, weight="bold", font="Arial"),
-    Text("C", 140, 270, size=22, weight="bold", font="Arial"),
+    Text("B", 425, 25, size=22, weight="bold", font="Arial"),
+    Text("C", 15, 270, size=22, weight="bold", font="Arial"),
+    Text("D", 435, 270, size=22, weight="bold", font="Arial"),
 )
 display(fig_1)
 
@@ -72,16 +76,15 @@ get_ipython().system('inkscape --export-png={f1_png} {f1_svg} -d 200')
 
 
 fig_2 = Figure(
-    "450", "450",
+    "900", "465",
     etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_coef_count_dist.svg')
-    ).scale(0.9).move(20, 10),
-    SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_coefficient_magnitudes.svg')
-    ).scale(0.9).move(0, 230),
-    Text("A", 10, 25, size=22, weight="bold", font="Arial"),
-    Text("B", 10, 240, size=22, weight="bold", font="Arial"),
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_learning_rate_schedule_compare.svg')
+    ).scale(0.6).move(20, 10),
+    Text("A", 10, 60, size=22, weight="bold", font="Arial"),
+    Text("B", 395, 60, size=22, weight="bold", font="Arial"),
+    Text("C", 10, 260, size=22, weight="bold", font="Arial"),
+    Text("D", 395, 260, size=22, weight="bold", font="Arial"),
 )
 display(fig_2)
 
@@ -100,6 +103,45 @@ fig_2.save(f2_svg)
 
 # use inkscape command line to save as PNG
 get_ipython().system('inkscape --export-png={f2_png} {f2_svg} -d 200')
+
+
+# In[9]:
+
+
+fig_3 = Figure(
+    "1000", "515",
+    etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_coef_count_dist.svg')
+    ).scale(1.0).move(20, 10),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_coef_weights.svg')
+    ).scale(0.65).move(515, 10),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_loss_curves.svg')
+    ).scale(0.65).move(40, 250),
+    Text("A", 10, 25, size=22, weight="bold", font="Arial"),
+    Text("B", 490, 25, size=22, weight="bold", font="Arial"),
+    Text("C", 10, 300, size=22, weight="bold", font="Arial"),
+    Text("D", 465, 300, size=22, weight="bold", font="Arial"),
+)
+display(fig_3)
+
+
+# In[10]:
+
+
+f3_svg = str(os.path.join(paper_figures_dir, 'figure_3.svg'))
+f3_png = str(os.path.join(paper_figures_dir, 'figure_3.png'))
+
+fig_3.save(f3_svg)
+
+
+# In[11]:
+
+
+# use inkscape command line to save as PNG
+get_ipython().system('inkscape --export-png={f3_png} {f3_svg} -d 200')
 
 
 # ### Supplementary Figure 1

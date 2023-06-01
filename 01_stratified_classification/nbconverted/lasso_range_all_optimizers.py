@@ -34,13 +34,14 @@ ll_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll_lr_range', 'gene'
 )
 
+lr_schedule = 'adaptive'
 sgd_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_search', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', f'optimizer_compare_sgd_lr_{lr_schedule}', 'gene'
 )
 
 metric = 'aupr'
 
-output_plots = False
+output_plots = True
 output_plots_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
 )
@@ -281,20 +282,21 @@ all_top_optimizer_diff_df.head()
 # In[12]:
 
 
-sns.set({'figure.figsize': (10, 3)})
+sns.set({'figure.figsize': (8, 4)})
 sns.set_style('whitegrid')
 
 sns.histplot(all_top_optimizer_diff_df.ll_sgd_diff, binwidth=0.0125, binrange=(-0.2, 0.2))
-plt.xlim(-0.2, 0.2)
-plt.title('Differences between liblinear and SGD optimizers, across all Vogelstein genes', size=14, y=1.05)
+# plt.xlim(-0.15, 0.15)
+plt.title('Difference between optimizers, across all genes', size=16, y=1.05)
 plt.xlabel('AUPR(liblinear) - AUPR(SGD)', size=13)
 plt.ylabel('Count', size=13)
 plt.yticks(np.arange(0, 25, 5))
 plt.gca().axvline(0, color='black', linestyle='--')
+plt.gca().tick_params(axis='both', labelsize=13)
 
 if output_plots:
     os.makedirs(output_plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_diff_dist.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_diff_dist_{lr_schedule}.svg'), bbox_inches='tight')
 
 
 # In[13]:
@@ -355,7 +357,7 @@ plt.xlabel('Optimizer')
 plt.ylabel('Number of nonzero coefficients')
 
 if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_dist.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_dist_{lr_schedule}.svg'), bbox_inches='tight')
 
 
 # In[18]:
@@ -402,7 +404,7 @@ def color_boxes(ax):
 color_boxes(plt.gca())
 
 if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_per_gene.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_coef_count_per_gene_{lr_schedule}.png'), bbox_inches='tight')
 
 
 # ### Get difference between "best" and "largest" (least regularized) models
@@ -509,13 +511,17 @@ plot_df.head()
 # In[22]:
 
 
-sns.set({'figure.figsize': (7, 3)})
+sns.set({'figure.figsize': (8, 3.75)})
 sns.set_style('whitegrid')
 
 sns.violinplot(data=plot_df, x='optimizer', y='top_largest_diff', cut=0)
-plt.title('Difference between best and largest model, across genes', y=1.05)
-plt.xlabel('Optimizer')
-plt.ylabel('AUPR(best model) - AUPR(largest model)')
+plt.title('Difference between best and largest model, across all genes', y=1.05, size=14)
+plt.xlabel('Optimizer', size=14)
+plt.ylabel('AUPR(best model) - AUPR(largest model)', size=12)
+plt.gca().tick_params(axis='both', labelsize=13)
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_optimizers_best_vs_largest_{lr_schedule}.svg'), bbox_inches='tight')
 
 
 # In[23]:

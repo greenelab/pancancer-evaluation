@@ -34,20 +34,20 @@ get_ipython().run_line_magic('autoreload', '2')
 
 results_dirs = {
     'optimal': (
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr', 'gene')
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_optimal_range', 'gene')
     ),
     'adaptive': (
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_adaptive', 'gene')
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_adaptive_range', 'gene')
     ),
     'constant': (
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant', 'gene')
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_range', 'gene')
     ),
     'constant_search': (
         os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_constant_search', 'gene')
     ),
-    'invscaling': (
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_invscaling', 'gene')
-    )
+    # 'invscaling': (
+    #     os.path.join(cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_invscaling', 'gene')
+    # )
 }
 lr_schedules = list(results_dirs.keys())
 
@@ -57,6 +57,11 @@ ll_results_dir = os.path.join(
 
 plot_gene = 'KRAS'
 metric = 'aupr'
+
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
+)
 
 
 # ### Get performance information for each lasso penalty
@@ -110,7 +115,7 @@ ll_mean_perf_df = (
 ll_mean_perf_df.head()
 
 
-# In[8]:
+# In[5]:
 
 
 sns.set_style('ticks')
@@ -128,24 +133,30 @@ with sns.plotting_context('notebook', font_scale=1.8):
         x='lasso_param', y=metric, hue='data_type',
         hue_order=['train', 'cv', 'test'],
         marker='o', kind='line', col='lr_schedule',
-        col_wrap=3, height=5, aspect=1.6,
+        col_wrap=2, height=5, aspect=1.6,
         facet_kws={'sharex': False, 'sharey': False}
     )
     for i, ax in enumerate(g.axes):
         ax.axhline(ll_mean_perf_df['mean'].max(), linestyle='--', color='black')
     g.set(xscale='log', xlim=(10e-7, 10), ylim=(-0.05, 1.05))
-    g.set_xlabels('LASSO parameter (lower = less regularization)')
-    g.set_ylabels(f'{metric.upper()}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.05, 0.5], frameon=True)
+    # set labels individually, by default seaborn set_xlabels/set_ylabels hide inner ones
+    for ax in g.axes.flat:
+        ax.set_xlabel('LASSO parameter (lower = less regularization)', visible=True)
+        ax.set_ylabel(f'{metric.upper()}', visible=True)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.075, 0.5], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
     g.set_titles('Learning rate schedule: {col_name}')
      
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
+    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}, SGD optimizer', y=1.025)
 
-plt.tight_layout(w_pad=2, h_pad=2)
+plt.tight_layout(w_pad=4, h_pad=5)
+
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_learning_rate_schedule_compare.svg'), bbox_inches='tight')
 
 
 # ### Get nonzero coefficient info, and bin models by nonzero coefficients
@@ -200,4 +211,7 @@ with sns.plotting_context('notebook', font_scale=1.0):
     plt.title(f'LASSO parameter vs. sum of coefficient weights, {plot_gene}', y=1.03)
 
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_learning_rate_schedule_coefs.svg'), bbox_inches='tight')
 

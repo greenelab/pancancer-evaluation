@@ -36,14 +36,20 @@ ll_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_ll_lr_range', 'gene'
 )
 
+lr_schedule = 'constant_search'
+if lr_schedule == 'constant_search':
+    fname = f'optimizer_compare_sgd_lr_{lr_schedule}'
+else:
+    fname = f'optimizer_compare_sgd_lr_{lr_schedule}_range'
+
 sgd_results_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'results', 'optimizer_compare_sgd_lr_adaptive_loss', 'gene'
+    cfg.repo_root, '01_stratified_classification', 'results', fname, 'gene'
 )
 
 plot_gene = 'KRAS'
 metric = 'aupr'
 
-output_plots = False
+output_plots = True
 output_plots_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
 )
@@ -163,7 +169,7 @@ plt.tight_layout()
 
 if output_plots:
     os.makedirs(output_plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefs_count.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{lr_schedule}_coefs_count.svg'), bbox_inches='tight')
 
 
 # ### Get coefficient magnitude information for each lasso penalty
@@ -243,10 +249,10 @@ plt.tight_layout()
 # C = 1 / alpha, so we can just invert one of the parameter axes
 all_coefs_df['param_same_axis'] = all_coefs_df.lasso_param
 
-sgd_params = all_coefs_df.loc[all_coefs_df.optimizer == 'SGD', 'lasso_param']
+ll_params = all_coefs_df.loc[all_coefs_df.optimizer == 'liblinear', 'lasso_param']
 (all_coefs_df
-   .loc[all_coefs_df.optimizer == 'SGD', 'param_same_axis'] 
-) = 1 / sgd_params
+   .loc[all_coefs_df.optimizer == 'liblinear', 'param_same_axis'] 
+) = 1 / ll_params
 
 print(all_coefs_df.param_same_axis.sort_values().unique())
 
@@ -254,7 +260,7 @@ print(all_coefs_df.param_same_axis.sort_values().unique())
 # In[9]:
 
 
-sns.set({'figure.figsize': (10, 6)})
+sns.set({'figure.figsize': (10, 5)})
 sns.set_style('ticks')
 
 with sns.plotting_context('notebook', font_scale=1.5):
@@ -263,15 +269,18 @@ with sns.plotting_context('notebook', font_scale=1.5):
         x='param_same_axis', y='sum_coefs', hue='optimizer',
         hue_order=['liblinear', 'SGD'], marker='o'
     )
-    g.set(xscale='log', yscale='log', xlim=(10e-4, 10e6), ylim=(10e-2, 10e4))
+    g.set(xscale='log', yscale='log', xlim=(10e-8, 10e2), ylim=(10e-2, 10e4))
     g.set_xlabel('Lower = less regularization')
     g.set_ylabel('Sum of coefficient weights + 1')
     handles, labels = plt.gca().get_legend_handles_labels()
-    new_labels = ['liblinear (param)', r'SGD (1 / param)']
+    new_labels = ['liblinear (1 / param)', r'SGD (unchanged param)']
     plt.legend(title='Optimizer', handles=handles, labels=new_labels)
     plt.title(f'LASSO parameter vs. sum of coefficient weights, {plot_gene}', y=1.03)
 
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{lr_schedule}_coef_weights.svg'), bbox_inches='tight')
 
 
 # ### Get performance information for each lasso penalty
@@ -344,20 +353,21 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
     g.axes[1].set_xlim((10e-8, 10e2))
     g.axes[1].set_ylim((-0.05, 1.05))
-    g.set_ylabels(f'{metric.upper()}')
+    for ax in g.axes.flat:
+        ax.set_ylabel(f'{metric.upper()}', visible=True)
     sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
     g._legend.set_title('Dataset')
     new_labels = ['train', 'holdout', 'test']
     for t, l in zip(g._legend.texts, new_labels):
         t.set_text(l)
-    g.set_titles('Optimizer: {col_name}')
+    g.set_titles(f'Gene: {plot_gene}, optimizer: {{col_name}}', y=1.05)
      
-    plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
+    # plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.0)
 
 plt.tight_layout(w_pad=5)
 
 if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_parameter_vs_perf.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{lr_schedule}_parameter_vs_perf.svg'), bbox_inches='tight')
 
 
 # ### Plot coefficient magnitudes
@@ -510,10 +520,6 @@ plt.xlabel(r'$\log_{10}(|$coefficient$|$ + 1$)$')
 plt.ylabel(r'$\log_{10}($count$)$')
 plt.title(f'Log-log coefficient magnitude distribution, {plot_gene}', y=1.03)
 
-if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_coefficient_magnitudes.svg'),
-                bbox_inches='tight')
-
 
 # In[22]:
 
@@ -595,12 +601,17 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.axes[0].set_xlabel('LASSO parameter (higher = less regularization)')
     g.axes[1].set_xlim((10e-8, 10e2))
     g.axes[1].set_xlabel('LASSO parameter (lower = less regularization)')
-    g.set_ylabels('Loss value')
+    for ax in g.axes.flat:
+        ax.set_ylabel('Loss value', visible=True)
+        ax.tick_params(labelleft=True)
     g.set_titles('Optimizer: {col_name}')
-    sns.move_legend(g, "center", bbox_to_anchor=[1.045, 0.55], frameon=True)
+    sns.move_legend(g, "center", bbox_to_anchor=[1.05, 0.5], frameon=True)
     g._legend.set_title('Loss component')
      
-    plt.suptitle(f'LASSO parameter vs. training loss, {plot_gene}', y=1.0)
+    plt.suptitle(f'LASSO parameter vs. training loss, {plot_gene}', y=1.05)
 
-plt.tight_layout()
+plt.tight_layout(w_pad=8)
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{lr_schedule}_loss_curves.svg'), bbox_inches='tight')
 
