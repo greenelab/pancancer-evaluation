@@ -46,6 +46,8 @@ def train_classifier(X_train,
     l1_ratios: list of l1 mixing parameters to perform cross validation over
     n_folds: int of how many folds of cross validation to perform
     max_iter: the maximum number of iterations to test until convergence
+    sgd_lr_schedule: learning rate schedule to use for SGD classifier, if use_sgd is True
+                     (options: 'constant', 'constant_search', 'optimal', 'invscaling', 'adaptive')
 
     Returns
     ------

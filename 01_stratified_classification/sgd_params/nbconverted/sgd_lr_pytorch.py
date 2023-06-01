@@ -53,6 +53,7 @@ def load_prediction_results_sgd_pytorch(results_dir, gene):
             #     identifier = results_file.split('_')[0]
             #     gene_results_df['identifier'] = identifier
             results_df = pd.concat((results_df, gene_results_df))
+    assert not results_df.empty, f'gene {gene} not found in results'
     return results_df
 
 
