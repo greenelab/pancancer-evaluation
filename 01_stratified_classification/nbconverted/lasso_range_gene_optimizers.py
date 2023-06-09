@@ -37,10 +37,7 @@ ll_results_dir = os.path.join(
 )
 
 lr_schedule = 'constant_search'
-if lr_schedule == 'constant_search':
-    fname = f'optimizer_compare_sgd_lr_{lr_schedule}'
-else:
-    fname = f'optimizer_compare_sgd_lr_{lr_schedule}_range'
+fname = f'optimizer_compare_sgd_lr_{lr_schedule}'
 
 sgd_results_dir = os.path.join(
     cfg.repo_root, '01_stratified_classification', 'results', fname, 'gene'
@@ -51,7 +48,7 @@ metric = 'aupr'
 
 output_plots = True
 output_plots_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
+    cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'figshare'
 )
 
 
@@ -109,7 +106,7 @@ sgd_nz_coefs_df = sgd_nz_coefs_df[sgd_nz_coefs_df.gene == plot_gene].copy()
 sgd_nz_coefs_df.head()
 
 
-# In[5]:
+# In[29]:
 
 
 sns.set({'figure.figsize': (12, 10)})
@@ -161,7 +158,7 @@ color_boxes(axarr[0])
 color_boxes(axarr[1])
 
 plt.suptitle(
-    f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}',
+    f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}, {lr_schedule}',
     size=18, y=0.995
 )
 

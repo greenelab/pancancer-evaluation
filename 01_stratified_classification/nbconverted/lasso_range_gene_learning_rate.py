@@ -214,9 +214,9 @@ sns.set_style('ticks')
 
 with sns.plotting_context('notebook', font_scale=1.0):
     g = sns.lineplot(
-        data=all_coefs_df,
+        data=all_coefs_df.sort_values(by='lr_schedule'),
         x='lasso_param', y='sum_coefs', hue='lr_schedule',
-        hue_order=lr_schedules + ['liblinear'], marker='o',
+        hue_order=sorted(lr_schedules) + ['liblinear'], marker='o',
     )
     g.set(xscale='log', yscale='log', xlim=(10e-8, 10e2), ylim=(10e-2, 10e7))
     g.set_xlabel('LASSO parameter (lower = less regularization)')
@@ -287,7 +287,7 @@ sns.set_style('ticks')
 
 with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.relplot(
-        data=all_loss_df,
+        data=all_loss_df[all_loss_df.lr_schedule != 'constant_search'].sort_values(by='lr_schedule'),
         x='lasso_param', y='loss_value', hue='loss_component',
         hue_order=['log_loss', 'l1_penalty', 'total_loss'],
         marker='o', kind='line', col='lr_schedule',

@@ -112,11 +112,11 @@ fig_3 = Figure(
     "1000", "515",
     etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_coef_count_dist.svg')
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_coef_count_dist_constant_search.svg')
     ).scale(1.0).move(20, 10),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_coef_weights.svg')
-    ).scale(0.65).move(515, 10),
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_coef_sum_dist_constant_search.svg')
+    ).scale(1.0).move(515, 10),
     SVG(
         os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_loss_curves.svg')
     ).scale(0.65).move(40, 250),
@@ -150,17 +150,11 @@ get_ipython().system('inkscape --export-png={f3_png} {f3_svg} -d 200')
 
 
 supp_f1 = Figure(
-    "1000", "570",
+    "675", "555",
     etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_adaptive.svg')
-    ).scale(0.9).move(20, 10),
-    SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_constant.svg')
-    ).scale(0.9).move(495, 10),
-    SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_optimal.svg')
-    ).scale(0.9).move(20, 285),
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_coefs_count.svg')
+    ).scale(0.75).move(20, 10),
 )
 
 display(supp_f1)
@@ -182,15 +176,26 @@ supp_f1.save(supp_f1_svg)
 get_ipython().system('inkscape --export-png={supp_f1_png} {supp_f1_svg} -d 200')
 
 
+# ### Supplementary Figure 2
+
 # In[15]:
 
 
 supp_f2 = Figure(
-    "1000", "510",
+    "1000", "570",
     etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
     SVG(
-        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_learning_rate_schedule_losses.svg')
-    ).scale(0.65).move(20, 10),
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_adaptive.svg')
+    ).scale(0.9).move(20, 10),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_constant.svg')
+    ).scale(0.9).move(495, 10),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_invscaling.svg')
+    ).scale(0.9).move(20, 285),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'all_optimizers_diff_dist_optimal.svg')
+    ).scale(0.9).move(495, 285),
 )
 
 display(supp_f2)
@@ -211,6 +216,8 @@ supp_f2.save(supp_f2_svg)
 # use inkscape command line to save as PNG
 get_ipython().system('inkscape --export-png={supp_f2_png} {supp_f2_svg} -d 200')
 
+
+# ### Supplementary Figure 3
 
 # In[18]:
 
@@ -240,4 +247,36 @@ supp_f3.save(supp_f3_svg)
 
 # use inkscape command line to save as PNG
 get_ipython().system('inkscape --export-png={supp_f3_png} {supp_f3_svg} -d 200')
+
+
+# ### Supplementary Figure 4
+
+# In[21]:
+
+
+supp_f4 = Figure(
+    "1000", "510",
+    etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
+    SVG(
+        os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_learning_rate_schedule_losses.svg')
+    ).scale(0.65).move(20, 10),
+)
+
+display(supp_f4)
+
+
+# In[22]:
+
+
+supp_f4_svg = str(os.path.join(paper_figures_dir, 'supp_figure_4.svg'))
+supp_f4_png = str(os.path.join(paper_figures_dir, 'supp_figure_4.png'))
+
+supp_f4.save(supp_f4_svg)
+
+
+# In[23]:
+
+
+# use inkscape command line to save as PNG
+get_ipython().system('inkscape --export-png={supp_f4_png} {supp_f4_svg} -d 200')
 
