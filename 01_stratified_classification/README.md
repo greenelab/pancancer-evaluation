@@ -22,4 +22,4 @@ A more detailed description of the results and takeaways can be found in the man
 
 ## Setup and testing pipeline
 
-To set up the environment for running the code in this repo, use the conda environment described in the [parent directory](https://github.com/greenelab/pancancer-evaluation/). The parent directory README also contains instructions for running tests to ensure the repo/environment are set up correctly.
+To set up the environment for running the code in this repo, use the conda environment described in the [parent directory](https://github.com/greenelab/pancancer-evaluation#setup). The parent directory README also contains instructions for running tests to ensure the repo/environment are set up correctly.
