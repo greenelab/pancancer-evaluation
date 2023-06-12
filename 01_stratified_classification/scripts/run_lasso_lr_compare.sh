@@ -11,28 +11,35 @@ genes=(
 )
 
 sgd_lasso_penalties=(
-  "0.000001"
-  "0.000005"
-  "0.00001"
-  "0.00005"
-  "0.0001"
-  "0.0005"
-  "0.001"
-  "0.005"
-  "0.01"
-  "0.05"
-  "0.1"
-  "0.5"
-  "1"
-  "5"
-  "10"
+  "1.00e-07"
+  "3.16e-07"
+  "1.00e-06"
+  "3.16e-06"
+  "1.00e-05"
+  "3.16e-05"
+  "1.00e-04"
+  "3.16e-04"
+  "1.00e-03"
+  "3.16e-03"
+  "1.00e-02"
+  "3.16e-02"
+  "1.00e-01"
+  "3.16e-01"
+  "1.00e+00"
+  "3.16e+00"
+  "1.00e+01"
+  "3.16e+01"
+  "1.00e+02"
+  "3.16e+02"
+  "1.00e+03"
+  "3.16e+03"
 )
 sgd_lr_schedules=(
-  # "constant"
-  # "optimal"
-  # "adaptive"
+  "constant"
+  "optimal"
+  "adaptive"
   # "invscaling"
-  "constant_search"
+  # "constant_search"
 )
 
 seed=42
@@ -41,7 +48,7 @@ for gene in "${genes[@]}"; do
 
     for lr_schedule in "${sgd_lr_schedules[@]}"; do
 
-        SGD_RESULTS_DIR="./01_stratified_classification/results/optimizer_compare_sgd_lr_${lr_schedule}"
+        SGD_RESULTS_DIR="./01_stratified_classification/results/optimizer_compare_sgd_lr_${lr_schedule}_range"
         SGD_ERRORS_DIR="./optimizer_compare_sgd_lr_${lr_schedule}_errors"
 
         mkdir -p $SGD_ERRORS_DIR

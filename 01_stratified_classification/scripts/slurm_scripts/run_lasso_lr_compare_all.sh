@@ -27,7 +27,7 @@ cmd="sbatch --parsable 01_stratified_classification/scripts/slurm_scripts/run_la
 echo "Running: $cmd"
 slurm_id=`$cmd`
 
-start_ix=$1
+start_ix=$2
 let start_ix++
 for ix in $(seq $start_ix $3); do
     gene=${genes[${ix}]}
