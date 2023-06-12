@@ -2,7 +2,8 @@
 
 Manuscript: https://greenelab.github.io/optimizer-manuscript/
 
-This (sub-)repository contains code related to our manuscript "Optimizer’s dilemma: optimization strongly influences model selection in transcriptomic prediction". Here, we use the implementation in the `pancancer-evaluation` parent repo to train mutation prediction classifiers on train/holdout/test sets that are _stratified by cancer type_, and plot the results in the associated notebooks.
+This (sub-)repository contains code related to our manuscript "Optimizer’s dilemma: optimization strongly influences model selection in transcriptomic prediction".
+Here, we use the implementation in the `pancancer-evaluation` parent repo to train mutation prediction classifiers on train/holdout/test sets that are _stratified by cancer type_, and plot the results in the associated notebooks.
 
 A more detailed description of the results and takeaways can be found in the manuscript linked above.
 
@@ -22,4 +23,5 @@ A more detailed description of the results and takeaways can be found in the man
 
 ## Setup and testing pipeline
 
-To set up the environment for running the code in this repo, use the conda environment described in the [parent directory](https://github.com/greenelab/pancancer-evaluation#setup). The parent directory README also contains instructions for running tests to ensure the repo/environment are set up correctly.
+To set up the environment for running the code in this repo, use the conda environment described in the [parent directory](https://github.com/greenelab/pancancer-evaluation#setup).
+The parent directory README also contains instructions for running tests to ensure the repo/environment are set up correctly.
