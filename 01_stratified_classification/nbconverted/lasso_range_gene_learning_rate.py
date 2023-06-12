@@ -269,6 +269,15 @@ for lr_schedule in lr_schedules:
     
 all_loss_df = pd.concat(all_loss_df)
 all_loss_df['total_loss'] = all_loss_df.log_loss + all_loss_df.l1_penalty
+
+# round 0 values to machine epsilon
+# this is the bound on floating point rounding error; i.e. any float between
+# 0 and this number would be indistinguishable from float(0)
+print(np.finfo(np.float64).eps)
+all_loss_df.loc[all_loss_df.log_loss == 0, 'log_loss'] = np.finfo(np.float64).eps
+all_loss_df.loc[all_loss_df.l1_penalty == 0, 'l1_penalty'] = np.finfo(np.float64).eps
+all_loss_df.loc[all_loss_df.total_loss == 0, 'total_loss'] = np.finfo(np.float64).eps
+
 all_loss_df = all_loss_df.melt(
     id_vars=['lr_schedule', 'seed', 'fold', 'lasso_param'],
     var_name='loss_component',

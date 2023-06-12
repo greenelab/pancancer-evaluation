@@ -106,7 +106,7 @@ sgd_nz_coefs_df = sgd_nz_coefs_df[sgd_nz_coefs_df.gene == plot_gene].copy()
 sgd_nz_coefs_df.head()
 
 
-# In[29]:
+# In[5]:
 
 
 sns.set({'figure.figsize': (12, 10)})
@@ -618,6 +618,15 @@ sgd_loss_df = get_loss_values(sgd_results_dir, 'SGD')
 loss_df = pd.concat((ll_loss_df, sgd_loss_df)).reset_index(drop=True)
 
 loss_df['total_loss'] = loss_df.log_loss + loss_df.l1_penalty
+
+# round 0 values to machine epsilon
+# this is the bound on floating point rounding error; i.e. any float between
+# 0 and this number would be indistinguishable from float(0)
+print(np.finfo(np.float64).eps)
+loss_df.loc[loss_df.log_loss == 0, 'log_loss'] = np.finfo(np.float64).eps
+loss_df.loc[loss_df.l1_penalty == 0, 'l1_penalty'] = np.finfo(np.float64).eps
+loss_df.loc[loss_df.total_loss == 0, 'total_loss'] = np.finfo(np.float64).eps
+
 loss_df = loss_df.melt(
     id_vars=['optimizer', 'seed', 'fold', 'lasso_param'],
     var_name='loss_component',
