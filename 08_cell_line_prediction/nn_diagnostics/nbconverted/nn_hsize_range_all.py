@@ -31,7 +31,7 @@ num_genes = 16042
 seed = 42
 
 
-# In[6]:
+# In[3]:
 
 
 hsize_df = []
@@ -61,34 +61,14 @@ print(np.sort(hsize_df.gene.unique()))
 hsize_df.head()
 
 
-# In[6]:
-
-
-hsize_df = pd.concat(hsize_dfs.values())
-print(hsize_df.shape)
-hsize_df.head()
-
-
-# In[7]:
-
-
-last_epoch = hsize_df.epoch.max()
-perf_df = (hsize_df[hsize_df.epoch == last_epoch]
-    .drop(columns=['epoch'])
-)
-                      
-print(perf_df.shape)
-perf_df.head()
-
-
-# In[8]:
+# In[4]:
 
 
 # plot hidden layer size as a categorical variable vs. performance
-sns.set({'figure.figsize': (10, 8)})
+sns.set({'figure.figsize': (10, 5)})
 sns.set_style('ticks')
 
-plot_df = (perf_df
+plot_df = (hsize_df
     .sort_values(by=['hsize'])
     .reset_index(drop=True)
 )
@@ -97,7 +77,7 @@ plot_df.hsize = plot_df.hsize.astype(int)
 with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.pointplot(
         data=plot_df,
-        x='hsize', y='value', hue='dataset',
+        x='hsize', y='aupr', hue='data_type',
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
@@ -109,37 +89,93 @@ with sns.plotting_context('notebook', font_scale=1.6):
     dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
     ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
-    plt.title(f'Hidden layer size vs. AUPR, {plot_gene}', y=1.025)
+    plt.title(f'Hidden layer size vs. AUPR, average over all genes', y=1.025)
+
+
+# In[5]:
+
+
+test_ranks_df = (hsize_df[(hsize_df.data_type == 'test') &
+                          (hsize_df.signal == 'signal')]
+    .groupby(['gene', 'hsize'])
+    .agg(np.mean)
+    .loc[:, ['aupr']]
+    .reset_index()
+)
+
+test_ranks_df['gene_rank'] = (
+    test_ranks_df.groupby('gene').aupr.rank(method='dense', ascending=False)
+)
+
+test_ranks_df.head(10)
+
+
+# In[6]:
+
+
+plot_df = (test_ranks_df
+    .groupby(['hsize', 'gene_rank'])
+    .count()
+    .loc[:, ['gene']]
+    .reset_index()
+    .rename(columns={'gene': 'gene_count'})
+)
+plot_df.hsize = plot_df.hsize.astype(int)
+plot_df.gene_rank = plot_df.gene_rank.astype(int)
+plot_df.sort_values(by=['hsize', 'gene_rank'])
+
+plot_df.head()
+
+
+# In[7]:
+
+
+sns.set_style('ticks')
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.catplot(
+        data=plot_df, kind='bar',
+        x='hsize', y='gene_count', hue='gene_rank', height=5, aspect=2.
+    )
+    g.set_xlabels('Hidden layer size')
+    g.set_ylabels('Number of genes')
+    plt.suptitle('Hidden layer size vs. performance rank', y=1.05)
+    sns.move_legend(g, 'center right', frameon=True)
+
+
+# In[8]:
+
+
+plot_df = test_ranks_df.copy()
+plot_df['upper_half'] = (plot_df.gene_rank > 5)
+
+plot_df = (plot_df
+    .groupby(['hsize', 'upper_half'])
+    .count()
+    .loc[:, ['gene']]
+    .reset_index()
+    .rename(columns={'gene': 'gene_count'})
+)
+
+plot_df.hsize = plot_df.hsize.astype(int)
+plot_df.sort_values(by=['hsize', 'upper_half'])
+
+plot_df.head()
 
 
 # In[9]:
 
 
-# plot hidden layer size as a float-valued variable (on a log scale) vs. performance
-sns.set({'figure.figsize': (10, 6)})
 sns.set_style('ticks')
 
-plot_df = (perf_df
-    .sort_values(by=['hsize'])
-    .reset_index(drop=True)
-)
-plot_df.hsize = plot_df.hsize.astype(int)
-
 with sns.plotting_context('notebook', font_scale=1.6):
-    g = sns.lineplot(
-        data=plot_df,
-        x='hsize', y='value', hue='dataset',
-        hue_order=['train', 'cv', 'test'],
-        marker='o'
+    g = sns.catplot(
+        data=plot_df, kind='bar',
+        x='hsize', y='gene_count', hue='upper_half',
+        hue_order=[True, False], height=5, aspect=2.
     )
-    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)))
-    g.set_xlabel(f'Hidden layer size (lower = more regularization)')
-    g.set_ylabel('AUPR')
-        
-    ax = plt.gca()
-    legend_handles, _ = ax.get_legend_handles_labels()
-    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
-    ax.legend(legend_handles, dataset_labels, title='Dataset')
-    sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
-    plt.title(f'Hidden layer size vs. AUPR, {plot_gene}', y=1.025)
+    g.set_xlabels('Hidden layer size')
+    g.set_ylabels('Number of genes')
+    plt.suptitle('Hidden layer size vs. performance above/below median rank', y=1.05)
+    sns.move_legend(g, 'center right', frameon=True)
 
