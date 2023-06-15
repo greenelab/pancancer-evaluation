@@ -47,10 +47,22 @@ plot_gene = 'KRAS'
 metric = 'aupr'
 
 output_plots = True
-output_plots_dir = os.path.join(
-    cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
-    # cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'figshare'
-)
+
+# toggle this in papermill script to generate all results
+figshare = False
+
+
+# In[2]:
+
+
+if figshare:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'figshare'
+    )
+else:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '01_stratified_classification', 'optimizers_plots'
+    )
 
 
 # ### Get nonzero coefficient information for each lasso penalty
