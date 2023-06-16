@@ -113,18 +113,18 @@ test_ranks_df.head(10)
 # In[6]:
 
 
-plot_df = (test_ranks_df
+plot_rank_df = (test_ranks_df
     .groupby(['hsize', 'gene_rank'])
     .count()
     .loc[:, ['gene']]
     .reset_index()
     .rename(columns={'gene': 'gene_count'})
 )
-plot_df.hsize = plot_df.hsize.astype(int)
-plot_df.gene_rank = plot_df.gene_rank.astype(int)
-plot_df.sort_values(by=['hsize', 'gene_rank'])
+plot_rank_df.hsize = plot_rank_df.hsize.astype(int)
+plot_rank_df.gene_rank = plot_rank_df.gene_rank.astype(int)
+plot_rank_df.sort_values(by=['hsize', 'gene_rank'])
 
-plot_df.head()
+plot_rank_df.head()
 
 
 # In[7]:
@@ -134,22 +134,22 @@ sns.set_style('ticks')
 
 with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.catplot(
-        data=plot_df, kind='bar',
+        data=plot_rank_df, kind='bar',
         x='hsize', y='gene_count', hue='gene_rank', height=5, aspect=2.
     )
     g.set_xlabels('Hidden layer size')
     g.set_ylabels('Number of genes')
     plt.suptitle('Hidden layer size vs. performance rank', y=1.05)
-    sns.move_legend(g, 'center right', frameon=True)
+    sns.move_legend(g, 'center right', bbox_to_anchor=(1.025, 0.57), frameon=True)
 
 
 # In[8]:
 
 
-plot_df = test_ranks_df.copy()
-plot_df['upper_half'] = (plot_df.gene_rank > 5)
+plot_upper_half_df = test_ranks_df.copy()
+plot_upper_half_df['upper_half'] = (plot_upper_half_df.gene_rank > 5)
 
-plot_df = (plot_df
+plot_upper_half_df = (plot_upper_half_df
     .groupby(['hsize', 'upper_half'])
     .count()
     .loc[:, ['gene']]
@@ -157,10 +157,10 @@ plot_df = (plot_df
     .rename(columns={'gene': 'gene_count'})
 )
 
-plot_df.hsize = plot_df.hsize.astype(int)
-plot_df.sort_values(by=['hsize', 'upper_half'])
+plot_upper_half_df.hsize = plot_upper_half_df.hsize.astype(int)
+plot_upper_half_df.sort_values(by=['hsize', 'upper_half'])
 
-plot_df.head()
+plot_upper_half_df.head()
 
 
 # In[9]:
@@ -170,14 +170,14 @@ sns.set_style('ticks')
 
 with sns.plotting_context('notebook', font_scale=1.6):
     g = sns.catplot(
-        data=plot_df, kind='bar',
+        data=plot_upper_half_df, kind='bar',
         x='hsize', y='gene_count', hue='upper_half',
         hue_order=[True, False], height=5, aspect=2.
     )
     g.set_xlabels('Hidden layer size')
     g.set_ylabels('Number of genes')
     plt.suptitle('Hidden layer size vs. performance above/below median rank', y=1.05)
-    sns.move_legend(g, 'center right', frameon=True)
+    sns.move_legend(g, 'center right', bbox_to_anchor=(1.025, 0.55), frameon=True)
 
 
 # In[10]:
@@ -246,10 +246,10 @@ print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
 
 
-# In[12]:
+# In[17]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (8, 3)})
 sns.set_style('whitegrid')
 
 sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=20)
@@ -262,7 +262,7 @@ plt.gca().axvline(0, color='black', linestyle='--')
 # In[13]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (8, 3)})
 sns.set_style('whitegrid')
 
 sns.histplot(
