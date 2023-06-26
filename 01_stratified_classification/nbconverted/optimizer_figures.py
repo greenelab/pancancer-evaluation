@@ -150,11 +150,11 @@ get_ipython().system('inkscape --export-png={f3_png} {f3_svg} -d 200')
 
 
 supp_f1 = Figure(
-    "675", "555",
+    "675", "340",
     etree.Element("rect", {"width": "100%", "height": "100%", "fill": "white"}),
     SVG(
         os.path.join(cfg.repo_root, '01_stratified_classification', 'optimizers_plots', 'KRAS_constant_search_coefs_count.svg')
-    ).scale(0.75).move(20, 10),
+    ).scale(0.85).move(20, 10),
 )
 
 display(supp_f1)

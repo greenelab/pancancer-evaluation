@@ -23,7 +23,8 @@ for gene in "${genes[@]}"; do
     cmd="papermill lasso_range_gene_optimizers.ipynb "
     cmd+="${papermill_output_dir}/lasso_range_gene_optimizers.run.ipynb "
     cmd+="-k ${kernel_name} "
-    cmd+="-p plot_gene ${gene}"
+    cmd+="-p plot_gene ${gene} "
+    cmd+="-p figshare True"
     echo "Running: $cmd"
     eval $cmd
 
