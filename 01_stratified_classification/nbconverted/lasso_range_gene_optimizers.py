@@ -52,7 +52,7 @@ output_plots = True
 figshare = False
 
 
-# In[2]:
+# In[3]:
 
 
 if figshare:
@@ -67,7 +67,7 @@ else:
 
 # ### Get nonzero coefficient information for each lasso penalty
 
-# In[3]:
+# In[4]:
 
 
 ll_nz_coefs_df = []
@@ -93,7 +93,7 @@ ll_nz_coefs_df = ll_nz_coefs_df[ll_nz_coefs_df.gene == plot_gene].copy()
 ll_nz_coefs_df.head()
 
 
-# In[4]:
+# In[5]:
 
 
 sgd_nz_coefs_df = []
@@ -119,7 +119,7 @@ sgd_nz_coefs_df = sgd_nz_coefs_df[sgd_nz_coefs_df.gene == plot_gene].copy()
 sgd_nz_coefs_df.head()
 
 
-# In[5]:
+# In[6]:
 
 
 ll_nz_coefs_df['optimizer'] = 'liblinear'
@@ -135,13 +135,15 @@ ll_inv_params = (
     1 / all_nz_coefs_df.loc[all_nz_coefs_df.optimizer == 'liblinear', 'lasso_param']
 ).apply(precision_round)
 all_nz_coefs_df.loc[all_nz_coefs_df.optimizer == 'liblinear', 'lasso_param'] = ll_inv_params
+
+# accidentally fit model for this parameter for liblinear but not SGD, so just drop it
 all_nz_coefs_df = all_nz_coefs_df[all_nz_coefs_df.lasso_param != 3.16e-08]
 
 print(np.sort(all_nz_coefs_df.loc[all_nz_coefs_df.optimizer == 'liblinear'].lasso_param.unique()))
 print(np.sort(all_nz_coefs_df.loc[all_nz_coefs_df.optimizer == 'SGD'].lasso_param.unique()))
 
 
-# In[6]:
+# In[7]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -193,7 +195,7 @@ if output_plots:
 
 # ### Get coefficient magnitude information for each lasso penalty
 
-# In[7]:
+# In[8]:
 
 
 ll_sum_coefs_df = []
@@ -240,7 +242,7 @@ print(all_coefs_df.shape)
 all_coefs_df.head()
 
 
-# In[8]:
+# In[9]:
 
 
 sns.set({'figure.figsize': (10, 6)})
@@ -261,7 +263,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[9]:
+# In[10]:
 
 
 # plot coef magnitudes on same axis
@@ -276,7 +278,7 @@ ll_params = all_coefs_df.loc[all_coefs_df.optimizer == 'liblinear', 'lasso_param
 print(all_coefs_df.param_same_axis.sort_values().unique())
 
 
-# In[10]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (10, 5)})
@@ -304,7 +306,7 @@ if output_plots:
 
 # ### Get performance information for each lasso penalty
 
-# In[11]:
+# In[12]:
 
 
 ll_perf_df = au.load_prediction_results_lasso_range(ll_results_dir,
@@ -318,7 +320,7 @@ ll_perf_df = (
 ll_perf_df.head()
 
 
-# In[12]:
+# In[13]:
 
 
 # get mean performance for each lasso parameter
@@ -332,7 +334,7 @@ ll_mean_perf_df = (
 ll_mean_perf_df.head()
 
 
-# In[13]:
+# In[14]:
 
 
 sgd_perf_df = au.load_prediction_results_lasso_range(sgd_results_dir,
@@ -346,7 +348,7 @@ sgd_perf_df = (
 sgd_perf_df.head()
 
 
-# In[14]:
+# In[15]:
 
 
 # get mean performance for each lasso parameter
@@ -360,7 +362,7 @@ sgd_mean_perf_df = (
 sgd_mean_perf_df.head()
 
 
-# In[15]:
+# In[16]:
 
 
 print('liblinear:', ll_mean_perf_df['mean'].max(),
@@ -369,7 +371,7 @@ print('sgd:', sgd_mean_perf_df['mean'].max(),
       '( param =', sgd_mean_perf_df['mean'].idxmax(), ')')
 
 
-# In[16]:
+# In[17]:
 
 
 sns.set_style('ticks')
@@ -434,7 +436,7 @@ if output_plots:
 # 
 # Even though SGD seems to have lots of nonzero coefficients, it's possible that lots of them are close to 0, or effectively 0. We'll plot the coefficient magnitudes on the same axis as the liblinear coefficients, to get a sense of this.
 
-# In[17]:
+# In[18]:
 
 
 # plot coefficient distributions for this seed/fold
@@ -442,7 +444,7 @@ plot_seed = 42
 plot_fold = 0
 
 
-# In[18]:
+# In[19]:
 
 
 ll_nz_coefs_df['optimizer'] = 'liblinear'
@@ -452,7 +454,7 @@ nz_coefs_df = pd.concat((ll_nz_coefs_df, sgd_nz_coefs_df))
 nz_coefs_df.head()
 
 
-# In[19]:
+# In[20]:
 
 
 perf_coefs_df = (plot_df
@@ -465,7 +467,7 @@ print(perf_coefs_df.shape)
 perf_coefs_df.head()
 
 
-# In[20]:
+# In[21]:
 
 
 # get top-performing lasso param for each gene,
@@ -483,7 +485,7 @@ ll_mean_perf_df = (
 ll_mean_perf_df.head()
 
 
-# In[21]:
+# In[22]:
 
 
 # get top-performing lasso param for each gene,
@@ -501,7 +503,7 @@ sgd_mean_perf_df = (
 sgd_mean_perf_df.head()
 
 
-# In[22]:
+# In[23]:
 
 
 ll_top_lasso_param = ll_mean_perf_df.iloc[0, :].lasso_param
@@ -509,7 +511,7 @@ sgd_top_lasso_param = sgd_mean_perf_df.iloc[0, :].lasso_param
 print(ll_top_lasso_param, sgd_top_lasso_param)
 
 
-# In[23]:
+# In[24]:
 
 
 # get coefficient info for liblinear
@@ -537,7 +539,7 @@ ll_coefs_df['abs+1'] = abs(ll_coefs_df.coef) + 1
 ll_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[24]:
+# In[25]:
 
 
 # get coefficient info for sgd
@@ -566,7 +568,7 @@ sgd_coefs_df['abs+1'] = abs(sgd_coefs_df.coef) + 1
 sgd_coefs_df.sort_values(by='abs+1', ascending=False).head(10)
 
 
-# In[25]:
+# In[26]:
 
 
 sns.set({'figure.figsize': (8, 3)})
@@ -581,7 +583,7 @@ plt.ylabel(r'$\log_{10}($count$)$')
 plt.title(f'Log-log coefficient magnitude distribution, {plot_gene}', y=1.03)
 
 
-# In[26]:
+# In[27]:
 
 
 sns.set({'figure.figsize': (10, 4)})
@@ -597,7 +599,7 @@ plt.xlabel('Coefficient')
 # 
 # We want to separate the log-likelihood loss (data loss) from the weight penalty (regularization term) in the logistic regression loss function, to see if that breakdown is any different between optimizers.
 
-# In[27]:
+# In[28]:
 
 
 # get loss function values from file
@@ -620,7 +622,7 @@ def get_loss_values(results_dir, optimizer):
     return loss_df.reset_index(drop=True)
 
 
-# In[28]:
+# In[29]:
 
 
 ll_loss_df = get_loss_values(ll_results_dir, 'liblinear')
@@ -659,7 +661,7 @@ print(loss_df.optimizer.unique())
 loss_df.head()
 
 
-# In[29]:
+# In[30]:
 
 
 sns.set_style('ticks')
@@ -669,8 +671,10 @@ with sns.plotting_context('notebook', font_scale=1.6):
         data=loss_df,
         x='lasso_param', y='loss_value', hue='loss_component',
         hue_order=['log_loss', 'l1_penalty', 'total_loss'],
+        style='loss_component',
+        style_order=['log_loss', 'l1_penalty', 'total_loss'],
         marker='o', kind='line', col='optimizer',
-        col_wrap=2, height=5, aspect=1.6,
+        col_wrap=2, height=5, aspect=1.6, markersize=8.5, linewidth=3.5,
         facet_kws={'sharex': False}
     )
     g.set(xscale='log', yscale='log')
@@ -684,6 +688,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
     g.set_titles('Optimizer: {col_name}')
     sns.move_legend(g, "center", bbox_to_anchor=[1.05, 0.5], frameon=True)
     g._legend.set_title('Loss component')
+    for legobj in g._legend.legendHandles:
+        legobj.set_linewidth(3.5)
      
     plt.suptitle(f'LASSO parameter vs. training loss, {plot_gene}', y=1.05)
 
