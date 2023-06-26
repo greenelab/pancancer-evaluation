@@ -37,32 +37,36 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
-results_dir = os.path.join(
-    # uncomment to run for TCGA -> CCLE
-    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
-    
-    # uncomment to run for TCGA -> CCLE (using SGD optimizer)
-    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
-    
-    # uncomment to run for CCLE -> TCGA
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
-)
+# gene to plot results for
+plot_gene = 'BRAF'
+
+# direction to plot results for
+# 'ccle_tcga' (train CCLE, test TCGA) or 'tcga_ccle' (train TCGA, test CCLE)
+direction = 'tcga_ccle'
+
+if direction == 'ccle_tcga':
+    results_dir = os.path.join(
+        cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
+    )
+    dataset_labels = ['CCLE (train)', 'CCLE (holdout)', 'TCGA'] 
+else:
+    results_dir = os.path.join(
+        cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    )
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
 
 if 'sgd' in results_dir:
     param_orientation = 'lower'
 else:
     param_orientation = 'higher'
     
-if os.path.split(results_dir)[-1].split('_')[0] == 'ccle':
-    dataset_labels = ['CCLE (train)', 'CCLE (holdout)', 'TCGA'] 
-else:
-    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
-
-# gene to plot results for
-plot_gene = 'EGFR'
-
 # performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
+
+output_plots = False
+output_plots_dir = os.path.join(
+    cfg.repo_root, '08_cell_line_prediction', 'generalization_plots'
+)
 
 
 # ### Get coefficient information for each lasso penalty
@@ -134,6 +138,10 @@ ax.set_yticks(ax.get_yticks()[1:])
 _ = ax.set_yticklabels(ax.get_yticks(), size=12)
 plt.tight_layout()
 
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_nz_coefs.svg'), bbox_inches='tight')
+
 
 # ### Get performance information for each lasso penalty
 
@@ -202,6 +210,9 @@ with sns.plotting_context('notebook', font_scale=1.6):
     sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1))
     
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_parameter_vs_perf.svg'), bbox_inches='tight')
 
 
 # ### Visualize LASSO model selection for the given gene
@@ -260,7 +271,7 @@ compare_df
 
 
 # same plot as before but with the "best"/"smallest" parameters marked
-sns.set({'figure.figsize': (8, 5)})
+sns.set({'figure.figsize': (7, 4)})
 sns.set_style('ticks')
 
 plot_df = (
@@ -270,7 +281,7 @@ plot_df = (
 )
 plot_df.lasso_param = plot_df.lasso_param.astype(float)
 
-with sns.plotting_context('notebook', font_scale=1.6):
+with sns.plotting_context('notebook', font_scale=1.4):
     g = sns.lineplot(
         data=plot_df,
         x='lasso_param', y=metric, hue='data_type',
@@ -301,4 +312,13 @@ with sns.plotting_context('notebook', font_scale=1.6):
     ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_best_vs_smallest.svg'), bbox_inches='tight')
+
+
+# In[ ]:
+
+
+
 

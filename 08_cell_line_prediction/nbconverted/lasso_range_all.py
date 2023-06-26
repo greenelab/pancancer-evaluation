@@ -21,6 +21,7 @@ import itertools as it
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 from scipy.stats import pearsonr, spearmanr
 import seaborn as sns
 
@@ -35,19 +36,26 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
-results_dir = os.path.join(
-    # uncomment to run for TCGA -> CCLE
-    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
-    
-    # uncomment to run for TCGA -> CCLE (using SGD optimizer)
-    # cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle_sgd'
-    
-    # uncomment to run for CCLE -> TCGA
-    cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
-)
+# direction to plot results for
+# 'ccle_tcga' (train CCLE, test TCGA) or 'tcga_ccle' (train TCGA, test CCLE)
+direction = 'ccle_tcga'
+
+if direction == 'ccle_tcga':
+    results_dir = os.path.join(
+        cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
+    )
+else:
+    results_dir = os.path.join(
+        cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
+    )
 
 # performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
+
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '08_cell_line_prediction', 'generalization_plots'
+)
 
 
 # ### Get coefficient information for each lasso penalty
@@ -207,30 +215,44 @@ all_top_smallest_diff_df.head()
 # In[9]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (8, 4)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=12)
+sns.histplot(
+    all_top_smallest_diff_df.top_smallest_diff,
+    binwidth=0.0125, binrange=(-0.2, 0.2)
+)
 plt.xlim(-0.2, 0.2)
 plt.title('Differences between "best" and "smallest good" LASSO parameter')
 plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
 
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_best_vs_smallest.svg'), bbox_inches='tight')
+
 
 # In[10]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (12, 5)})
 sns.set_style('whitegrid')
 
-sns.histplot(
-    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
-    bins=13
-)
-plt.xlim(-0.2, 0.2)
-plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
-plt.xlabel('AUPR(best) - AUPR(smallest good)')
-plt.gca().axvline(0, color='black', linestyle='--')
+with sns.plotting_context('notebook', font_scale=1.5):
+    sns.histplot(
+        all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
+        binwidth=0.0125, binrange=(-0.2, 0.2)
+    )
+    plt.xlim(-0.2, 0.2)
+    if direction == 'ccle_tcga':
+        plt.title('"Best" vs. "smallest good" LASSO parameter, CCLE -> TCGA, without zeroes', y=1.05)
+    else:
+        plt.title('"Best" vs. "smallest good" LASSO parameter, TCGA -> CCLE, without zeroes', y=1.05)
+    plt.xlabel('AUPR(best) - AUPR(smallest good)', labelpad=10)
+    plt.gca().axvline(0, color='black', linestyle='--')
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_best_vs_smallest_no_zeroes.svg'), bbox_inches='tight')
 
 
 # In[11]:
@@ -243,99 +265,6 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).he
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
-
-
-# Here, we want to filter out models that don't significantly outperform a baseline with shuffled labels. (Note that this requires the shuffled baseline data to be generated, which isn't yet the case for the CCLE -> TCGA experiments)
-
-# In[ ]:
-
-
-all_compare_df = []
-for lasso_param in perf_df.lasso_param.unique():
-    print(lasso_param)
-    print(perf_df[perf_df.lasso_param == lasso_param])
-    compare_df = au.compare_results(perf_df[perf_df.lasso_param == lasso_param],
-                                    metric='aupr',
-                                    data_type='cv',
-                                    verbose=True,
-                                    correction=True,
-                                    correction_alpha=0.001)
-    compare_df['lasso_param'] = lasso_param
-    all_compare_df.append(compare_df)
-
-all_compare_df = pd.concat(all_compare_df)
-
-print(all_compare_df.shape)
-print(all_compare_df.reject_null.value_counts())
-all_compare_df.head()
-
-
-# In[ ]:
-
-
-top_compare_df = (all_compare_df
-    .merge(all_top_smallest_diff_df.loc[:, ['gene', 'top_lasso_param']],
-           left_on=['identifier', 'lasso_param'],
-           right_on=['gene', 'top_lasso_param'])
-    .drop(columns=['identifier', 'delta_mean', 'p_value', 'lasso_param'])
-)
-
-smallest_compare_df = (all_compare_df
-    .merge(all_top_smallest_diff_df.loc[:, ['gene', 'smallest_lasso_param']],
-           left_on=['identifier', 'lasso_param'],
-           right_on=['gene', 'smallest_lasso_param'])
-    .drop(columns=['identifier', 'delta_mean', 'p_value', 'lasso_param'])
-)
-
-top_smallest_compare_df = (top_compare_df
-    .merge(smallest_compare_df,
-           left_on=['gene'], right_on=['gene'])
-    .rename(columns={
-        'corr_pval_x': 'top_corr_pval',
-        'reject_null_x': 'top_reject_null',
-        'corr_pval_y': 'smallest_corr_pval',
-        'reject_null_y': 'smallest_reject_null'
-    })
-)
-top_smallest_compare_df['reject_either'] = (
-    top_smallest_compare_df.top_reject_null | top_smallest_compare_df.smallest_reject_null
-)
-top_smallest_compare_df['reject_both'] = (
-    top_smallest_compare_df.top_reject_null & top_smallest_compare_df.smallest_reject_null
-)
-
-print(top_compare_df.shape, smallest_compare_df.shape)
-print(top_smallest_compare_df.reject_either.value_counts())
-print(top_smallest_compare_df.reject_both.value_counts())
-top_smallest_compare_df.head()
-
-
-# In[ ]:
-
-
-reject_both_genes = top_smallest_compare_df[top_smallest_compare_df.reject_both].gene.values
-plot_df = (all_top_smallest_diff_df
-    [all_top_smallest_diff_df.gene.isin(reject_both_genes)]
-)
-
-print(plot_df.shape)
-print(plot_df.best.value_counts())
-plot_df.head()
-
-
-# In[ ]:
-
-
-sns.set({'figure.figsize': (8, 6)})
-sns.set_style('whitegrid')
-
-sns.histplot(
-    plot_df.top_smallest_diff, bins=24
-)
-plt.xlim(-0.2, 0.2)
-plt.title('Differences between "best" and "smallest good" LASSO parameter, well-performing models')
-plt.xlabel('AUPR(best) - AUPR(smallest good)')
-plt.gca().axvline(0, color='black', linestyle='--')
 
 
 # ### Compare TCGA and CCLE performance for each gene
@@ -469,6 +398,13 @@ sns.set({'figure.figsize': (28, 6)})
 sns.set_style('ticks')
 
 # order boxes by median (cv - test) diff per gene
+# order boxes by median (cv - test) diff per gene
+medians = (best_perf_df
+    .groupby(['gene', 'top_lasso_param'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+)['cv_test_aupr_diff'].values
+
 gene_order = (best_perf_df
     .groupby(['gene', 'top_lasso_param'])
     .agg(np.median)
@@ -476,17 +412,23 @@ gene_order = (best_perf_df
 ).index.get_level_values(0).values
 
 with sns.plotting_context('notebook', font_scale=1.5):
+    # map median performance values to colors on scale centered at 0
+    cmap = sns.color_palette('coolwarm', as_cmap=True)
+    norm = Normalize(vmin=-0.8, vmax=0.8)
     ax = sns.boxplot(data=best_perf_df, order=gene_order,
                      x='gene', y='cv_test_aupr_diff',
-                     palette='flare')
-    ax.axhline(0.0, linestyle='--', color='grey')
+                     palette=[cmap(norm(m)) for m in medians])
+    ax.axhline(0.0, linestyle='--', color='black')
     plt.xticks(rotation=90)
     plt.xlabel('Gene')
     
-    if os.path.split(results_dir)[-1].split('_')[0] == 'ccle':
+    if direction == 'ccle_tcga':
         plt.title(f'Difference between CCLE and TCGA mutation prediction performance, by gene', y=1.02)
         plt.ylabel('AUPR(CCLE) - AUPR(TCGA)')
     else:
         plt.title(f'Difference between TCGA and CCLE mutation prediction performance, by gene', y=1.02)
         plt.ylabel('AUPR(TCGA) - AUPR(CCLE)')
+        
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_gene_boxes.svg'), bbox_inches='tight')
 
