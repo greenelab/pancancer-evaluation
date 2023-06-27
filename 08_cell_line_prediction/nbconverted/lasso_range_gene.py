@@ -38,7 +38,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 # gene to plot results for
-plot_gene = 'BRAF'
+plot_gene = 'PIK3CA'
 
 # direction to plot results for
 # 'ccle_tcga' (train CCLE, test TCGA) or 'tcga_ccle' (train TCGA, test CCLE)
@@ -63,7 +63,7 @@ else:
 # performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
 
-output_plots = False
+output_plots = True
 output_plots_dir = os.path.join(
     cfg.repo_root, '08_cell_line_prediction', 'generalization_plots'
 )
@@ -136,6 +136,7 @@ _, xlabels = plt.xticks()
 _ = ax.set_xticklabels(xlabels, size=12)
 ax.set_yticks(ax.get_yticks()[1:])
 _ = ax.set_yticklabels(ax.get_yticks(), size=12)
+plt.gca().tick_params(axis='x', rotation=45)
 plt.tight_layout()
 
 if output_plots:
@@ -170,6 +171,7 @@ sns.boxplot(
           .sort_values(by=['lasso_param'])
     ), x='lasso_param', y=metric
 )
+plt.gca().tick_params(axis='x', rotation=45)
 plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
 plt.tight_layout()
 
@@ -315,10 +317,4 @@ with sns.plotting_context('notebook', font_scale=1.4):
     
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_best_vs_smallest.svg'), bbox_inches='tight')
-
-
-# In[ ]:
-
-
-
 
