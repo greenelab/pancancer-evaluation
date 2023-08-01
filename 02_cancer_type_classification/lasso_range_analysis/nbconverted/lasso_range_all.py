@@ -8,6 +8,7 @@
 
 import os
 import itertools as it
+from math import ceil
 
 import numpy as np
 import pandas as pd
@@ -28,26 +29,19 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_lr_all_features'
+    cfg.repo_root, '02_cancer_type_classification', 'results', 'cancer_type_range'
 )
 
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
-# cutoff to filter out "dummy regressor" over-regularized models
-# these can deflate performance around feature count 0, which can lead to
-# spurious positive correlations between model size and performance
-# set to None for no cutoff
-quantile_cutoff = 0.01
-
 # 'aupr' or 'auroc'
 metric = 'aupr'
 
-# 'pearson', 'spearman', or 'ccc'
-correlation = 'pearson'
-
 output_plots = True
-output_plots_dir = cfg.cancer_type_lasso_range_dir
+output_plots_dir = os.path.join(
+    cfg.repo_root, '02_cancer_type_classification', 'generalization_plots'
+)
 
 
 # ### Get coefficient information for each lasso penalty
@@ -117,14 +111,6 @@ sns.histplot(coefs_perf_df.nz_coefs)
 plt.title('Distribution of feature count across cancer types/folds')
 plt.xlabel('Number of nonzero features')
 
-# calculate quantile cutoff if included
-# models below the cutoff get filtered out in the next cell, here we'll visualize the
-# distribution and a few of the filtered rows
-if quantile_cutoff is not None:
-    nz_coefs_cutoff = coefs_perf_df.nz_coefs.quantile(q=quantile_cutoff)
-    plt.gca().axvline(nz_coefs_cutoff, linestyle='--')
-    print('cutoff:', nz_coefs_cutoff)
-    
 coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 
 
@@ -140,7 +126,7 @@ coefs_perf_df.loc[coefs_perf_df.nz_coefs.sort_values()[:8].index, :]
 # In[7]:
 
 
-def get_top_and_smallest_diff(gene, cancer_type):
+def get_top_and_smallest_diff(gene, cancer_type, top_proportion=0.25):
     top_df = (
         perf_df[(perf_df.gene == gene) &
                 (perf_df.data_type == 'cv') &
@@ -154,16 +140,17 @@ def get_top_and_smallest_diff(gene, cancer_type):
     )
     top_df.index = top_df.index.astype(float)
     top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
-    top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
+    rank_cutoff = ceil(perf_df.lasso_param.unique().shape[0] * top_proportion)
+    params_above_cutoff = top_df.loc[top_df.aupr_rank <= rank_cutoff, :].index
     
     # get parameter with best validation performance
-    top_lasso_param = top_5_lasso[0]
+    top_lasso_param = params_above_cutoff[0]
 
     # get parameter in top 5 validation performance with least nonzero coefficients
     smallest_lasso_param = (
         nz_coefs_df[(nz_coefs_df.gene == gene) & 
                     (nz_coefs_df.cancer_type == cancer_type) &
-                    (nz_coefs_df.lasso_param.isin(top_5_lasso))]
+                    (nz_coefs_df.lasso_param.isin(params_above_cutoff))]
           .groupby(['lasso_param'])
           .agg(np.mean)
           .drop(columns=['seed', 'fold'])
@@ -220,28 +207,56 @@ all_top_smallest_diff_df.head()
 # In[9]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (12, 5)})
 sns.set_style('whitegrid')
 
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff)
-plt.title('Differences between "best" and "smallest good" LASSO parameter')
-plt.xlabel('AUPR(best) - AUPR(smallest good)')
-plt.gca().axvline(0, color='grey', linestyle='--')
+with sns.plotting_context('notebook', font_scale=1.5):
+    sns.histplot(all_top_smallest_diff_df.top_smallest_diff,
+                 binwidth=0.0125, binrange=(-0.2, 0.2))
+    plt.xlim(-0.2, 0.2)
+    plt.title('Differences between "best" and "smallest good" LASSO parameter', y=1.05)
+    plt.xlabel('AUPR(best) - AUPR(smallest good)', labelpad=10)
+    plt.gca().axvline(0, color='grey', linestyle='--')
+
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, 'all_best_vs_smallest_good.svg'),
+                bbox_inches='tight')
 
 
 # In[10]:
 
 
-sns.set({'figure.figsize': (8, 6)})
+sns.set({'figure.figsize': (16, 4)})
 sns.set_style('whitegrid')
 
-sns.histplot(
-    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff
-)
-plt.xlim(-0.2, 0.2)
-plt.title('Differences between "best" and "smallest good" LASSO parameter, without zeroes')
-plt.xlabel('AUPR(best) - AUPR(smallest good)')
-plt.gca().axvline(0, color='black', linestyle='--')
+with sns.plotting_context('notebook', font_scale=1.5):
+    sns.histplot(
+        all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
+        binwidth=0.0125, binrange=(-0.2, 0.2)
+    )
+    plt.xlim(-0.2, 0.2)
+    plt.title('"Best" vs "smallest good" LASSO parameter, TCGA cancer type holdout, without zeroes', y=1.05)
+    plt.xlabel('AUPR(best) - AUPR(smallest good)', labelpad=10)
+    plt.gca().axvline(0, color='black', linestyle='--')
+    
+# one "best" example and one "smallest good" example
+for plot_gene, plot_cancer_type in [('SETD2', 'KIRP'), ('CDKN2A', 'LGG')]:
+    gene_cancer_diff = all_top_smallest_diff_df[
+        (all_top_smallest_diff_df.gene == plot_gene) &
+        (all_top_smallest_diff_df.cancer_type == plot_cancer_type)
+    ].top_smallest_diff.values[0]
+    plt.gca().axvline(gene_cancer_diff, color='grey', linestyle=':', linewidth=3)
+    plt.gca().text(
+        gene_cancer_diff+0.005, 35, 
+        f'{plot_gene}_{plot_cancer_type}',
+        size=14,
+        bbox={'facecolor': 'white', 'edgecolor': 'black'}
+    )
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, 'all_best_vs_smallest_good_no_zeroes.svg'),
+                bbox_inches='tight')
 
 
 # In[11]:
@@ -341,7 +356,7 @@ cancer_type_order = (best_perf_df
     .sort_values(by='cv_test_aupr_diff', ascending=False)
 ).index.get_level_values(0).values
 
-with sns.plotting_context('notebook', font_scale=1.5):
+with sns.plotting_context('notebook', font_scale=1.75):
     # map median performance values to colors on scale centered at 0
     cmap = sns.color_palette('coolwarm', as_cmap=True)
     norm = Normalize(vmin=-0.5, vmax=0.5)
@@ -350,13 +365,56 @@ with sns.plotting_context('notebook', font_scale=1.5):
                      palette=[cmap(norm(m)) for m in medians])
     ax.axhline(0.0, linestyle='--', color='black')
     plt.xticks(rotation=90)
-    plt.xlabel('Gene')
-    plt.title(f'Difference between CV and test performance, by cancer type', y=1.02)
+    plt.xlabel('Cancer type', labelpad=20)
+    plt.title(f'Difference between CV and test performance, by cancer type', size=26, y=1.05)
     plt.ylim(-0.95, 0.95)
     plt.ylabel('AUPR(CV) - AUPR(test)')
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, 'all_cancer_type_diffs.svg'),
+                bbox_inches='tight')
 
 
-# In[22]:
+# In[17]:
+
+
+# plot difference in validation and test performance for each gene
+sns.set({'figure.figsize': (28, 6)})
+sns.set_style('ticks')
+
+# order boxes by median (cv - test) diff per gene
+medians = (best_perf_df
+    .groupby(['gene'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+)['cv_test_aupr_diff'].values
+
+gene_order = (best_perf_df
+    .groupby(['gene'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+).index.get_level_values(0).values
+
+with sns.plotting_context('notebook', font_scale=1.75):
+    # map median performance values to colors on scale centered at 0
+    cmap = sns.color_palette('coolwarm', as_cmap=True)
+    norm = Normalize(vmin=-0.5, vmax=0.5)
+    ax = sns.boxplot(data=best_perf_df, order=gene_order,
+                     x='gene', y='cv_test_aupr_diff',
+                     palette=[cmap(norm(m)) for m in medians])
+    ax.axhline(0.0, linestyle='--', color='black')
+    plt.xticks(rotation=90)
+    plt.xlabel('Gene', labelpad=20)
+    plt.title(f'Difference between CV and test performance, by gene', size=26, y=1.05)
+    plt.ylim(-0.95, 0.95)
+    plt.ylabel('AUPR(CV) - AUPR(test)')
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, 'all_gene_diffs.svg'),
+                bbox_inches='tight')
+
+
+# In[18]:
 
 
 gene_df = (best_perf_df
@@ -375,4 +433,92 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_seq_items', 1000)
 for cancer_type, row in gene_df.iterrows():
     print(cancer_type, row.gene_list)
+
+
+# In[23]:
+
+
+# plot difference in validation and test performance for each gene
+sns.set({'figure.figsize': (12, 4)})
+sns.set_style('ticks')
+
+plot_cancer_type = 'THCA'
+
+# order boxes by median (cv - test) diff per gene
+medians = (best_perf_df[best_perf_df.cancer_type == plot_cancer_type]
+    .groupby(['gene'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+)['cv_test_aupr_diff'].values
+
+gene_order = (best_perf_df[best_perf_df.cancer_type == plot_cancer_type]
+    .groupby(['gene'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+).index.get_level_values(0).values
+
+with sns.plotting_context('notebook', font_scale=1.35):
+    # map median performance values to colors on scale centered at 0
+    cmap = sns.color_palette('coolwarm', as_cmap=True)
+    norm = Normalize(vmin=-0.5, vmax=0.5)
+    ax = sns.boxplot(data=best_perf_df[best_perf_df.cancer_type == plot_cancer_type],
+                     x='gene', y='cv_test_aupr_diff',
+                     order=gene_order,
+                     palette=[cmap(norm(m)) for m in medians])
+    sns.stripplot(data=best_perf_df[best_perf_df.cancer_type == plot_cancer_type],
+                  x='gene', y='cv_test_aupr_diff', order=gene_order, ax=ax, s=10)
+    ax.axhline(0.0, linestyle='--', color='black')
+    plt.xlabel('Cancer type', labelpad=20)
+    plt.xticks(rotation=90)
+    plt.title(f'Difference between CV and test performance, {plot_cancer_type}, by gene', size=16, y=1.05)
+    plt.ylim(-0.95, 0.95)
+    plt.ylabel('AUPR(CV) - AUPR(test)')
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_cancer_type}_cancer_type_diffs_by_gene.svg'),
+                bbox_inches='tight')
+
+
+# In[26]:
+
+
+# plot difference in validation and test performance for each gene
+sns.set({'figure.figsize': (10, 5)})
+sns.set_style('ticks')
+
+plot_gene = 'BRAF'
+
+# order boxes by median (cv - test) diff per gene
+medians = (best_perf_df[best_perf_df.gene == plot_gene]
+    .groupby(['cancer_type'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+)['cv_test_aupr_diff'].values
+
+cancer_type_order = (best_perf_df[best_perf_df.gene == plot_gene]
+    .groupby(['cancer_type'])
+    .agg(np.median)
+    .sort_values(by='cv_test_aupr_diff', ascending=False)
+).index.get_level_values(0).values
+
+with sns.plotting_context('notebook', font_scale=1.4):
+    # map median performance values to colors on scale centered at 0
+    cmap = sns.color_palette('coolwarm', as_cmap=True)
+    norm = Normalize(vmin=-0.7, vmax=0.7)
+    ax = sns.boxplot(data=best_perf_df[best_perf_df.gene == plot_gene],
+                     x='cancer_type', y='cv_test_aupr_diff',
+                     order=cancer_type_order,
+                     palette=[cmap(norm(m)) for m in medians])
+    sns.stripplot(data=best_perf_df[best_perf_df.gene == plot_gene],
+                  x='cancer_type', y='cv_test_aupr_diff', order=cancer_type_order, ax=ax, s=10)
+    ax.axhline(0.0, linestyle='--', color='black')
+    plt.xticks(rotation=90)
+    plt.xlabel('Gene', labelpad=20)
+    plt.title(f'Difference between CV and test performance, {plot_gene}, by cancer type', size=16, y=1.05)
+    plt.ylim(-0.95, 0.95)
+    plt.ylabel('AUPR(CV) - AUPR(test)')
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_gene_diffs_by_cancer_type.svg'),
+                bbox_inches='tight')
 
