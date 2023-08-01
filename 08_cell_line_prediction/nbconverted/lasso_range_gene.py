@@ -17,6 +17,7 @@
 
 import os
 import itertools as it
+from math import ceil
 
 import numpy as np
 import pandas as pd
@@ -200,9 +201,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o',
     )
-    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
-    g.set_title('Holdout cancer type: {col_name}')
-    g.set_xlabel('LASSO parameter (higher = less regularization)')
+    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)), ylim=(-0.05, 1.05))
     g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
@@ -214,7 +213,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
     
 if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_parameter_vs_perf.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_{direction}_parameter_vs_perf.svg'), bbox_inches='tight')
 
 
 # ### Visualize LASSO model selection for the given gene
@@ -229,7 +228,7 @@ if output_plots:
 # In[8]:
 
 
-def get_top_and_smallest_lasso_params(perf_df):
+def get_top_and_smallest_lasso_params(perf_df, top_proportion=0.25):
     top_df = (
         perf_df[(perf_df.data_type == 'cv') &
                 (perf_df.signal == 'signal')]
@@ -241,14 +240,15 @@ def get_top_and_smallest_lasso_params(perf_df):
     )
     top_df.index = top_df.index.astype(float)
     top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
-    top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
+    rank_cutoff = ceil(perf_df.lasso_param.unique().shape[0] * top_proportion)
+    params_above_cutoff = top_df.loc[top_df.aupr_rank <= rank_cutoff, :].index
     
     # get parameter with best validation performance
-    top_lasso_param = top_5_lasso[0]
+    top_lasso_param = params_above_cutoff[0]
 
     # get parameter in top 5 validation performance with least nonzero coefficients
     smallest_lasso_param = (
-        nz_coefs_df[(nz_coefs_df.lasso_param.isin(top_5_lasso))]
+        nz_coefs_df[(nz_coefs_df.lasso_param.isin(params_above_cutoff))]
           .groupby(['lasso_param'])
           .agg(np.mean)
           .drop(columns=['seed', 'fold'])
@@ -265,7 +265,19 @@ def get_top_and_smallest_lasso_params(perf_df):
 # In[9]:
 
 
-compare_df = get_top_and_smallest_lasso_params(perf_df)
+top_test_df = (
+    perf_df[(perf_df.data_type == 'test') &
+            (perf_df.signal == 'signal')]
+      .groupby(['lasso_param'])
+      .agg(np.mean)
+      .drop(columns=['seed', 'fold'])
+      .rename(columns={'auroc': 'mean_test_auroc', 'aupr': 'mean_test_aupr'})
+)
+
+compare_df = (get_top_and_smallest_lasso_params(perf_df)
+    .merge(top_test_df, left_index=True, right_index=True)
+)
+
 compare_df
 
 
@@ -290,7 +302,7 @@ with sns.plotting_context('notebook', font_scale=1.4):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
-    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
+    g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)), ylim=(-0.05, 1.05))
     g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     

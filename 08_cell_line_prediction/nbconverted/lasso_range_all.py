@@ -17,10 +17,12 @@
 
 import os
 import itertools as it
+from math import ceil
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches
 from matplotlib.colors import Normalize
 from scipy.stats import pearsonr, spearmanr
 import seaborn as sns
@@ -49,6 +51,11 @@ else:
         cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
     )
 
+if 'sgd' in results_dir:
+    param_orientation = 'lower'
+else:
+    param_orientation = 'higher'
+    
 # performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
 
@@ -108,6 +115,55 @@ perf_df.head()
 # In[5]:
 
 
+sns.set({'figure.figsize': (12, 5)})
+sns.set_style('whitegrid')
+
+sns.boxplot(
+    data=nz_coefs_df.sort_values(by=['lasso_param']),
+    x='lasso_param', y='nz_coefs'
+)
+
+# color the boxplot lines/edges rather than the box fill
+# this makes it easier to discern colors at the extremes; i.e. very many or few nonzero coefs
+# https://stackoverflow.com/a/72333641
+ax = plt.gca()
+box_patches = [patch for patch in ax.patches if type(patch) == matplotlib.patches.PathPatch]
+num_patches = len(box_patches)
+lines_per_boxplot = len(ax.lines) // num_patches
+for i, patch in enumerate(box_patches):
+    # set the linecolor on the patch to the facecolor, and set the facecolor to None
+    col = patch.get_facecolor()
+    patch.set_edgecolor(col)
+    patch.set_facecolor('None')
+
+    # each box has associated Line2D objects (to make the whiskers, fliers, etc.)
+    # loop over them here, and use the same color as above
+    for line in ax.lines[i * lines_per_boxplot: (i + 1) * lines_per_boxplot]:
+        line.set_color(col)
+        line.set_mfc(col)  # facecolor of fliers
+        line.set_mec(col)  # edgecolor of fliers
+
+if direction == 'ccle_tcga':
+    plt.title(f'LASSO parameter vs. number of nonzero coefficients, all genes, CCLE to TCGA', size=16)
+else:
+    plt.title(f'LASSO parameter vs. number of nonzero coefficients, all genes, TCGA to CCLE', size=16)
+plt.xlabel(f'LASSO parameter ({param_orientation} = less regularization)', size=14)
+plt.ylabel('Number of nonzero coefficients', size=14)
+_, xlabels = plt.xticks()
+_ = ax.set_xticklabels(xlabels, size=12)
+ax.set_yticks(ax.get_yticks()[1:])
+_ = ax.set_yticklabels(ax.get_yticks(), size=12)
+plt.gca().tick_params(axis='x', rotation=45)
+plt.tight_layout()
+
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_nz_coefs.svg'), bbox_inches='tight')
+
+
+# In[6]:
+
+
 coefs_perf_df = (nz_coefs_df
     .merge(perf_df[perf_df.signal == 'signal'],
            on=['gene', 'seed', 'fold', 'lasso_param'])
@@ -118,7 +174,7 @@ print(coefs_perf_df.shape)
 coefs_perf_df.head()
 
 
-# In[6]:
+# In[7]:
 
 
 sns.set({'figure.figsize': (8, 6)})
@@ -137,10 +193,10 @@ plt.xlabel('Number of nonzero coefficients')
 # 
 # We'll do this for each gene/cancer type in the dataset below, and plot the distribution of differences between the two strategies, as a way to quantify which strategy is "better" for generalization across cancer types.
 
-# In[7]:
+# In[8]:
 
 
-def get_top_and_smallest_diff(gene):
+def get_top_and_smallest_diff(gene, top_proportion=0.25):
     top_df = (
         perf_df[(perf_df.gene == gene) &
                 (perf_df.data_type == 'cv') &
@@ -153,15 +209,16 @@ def get_top_and_smallest_diff(gene):
     )
     top_df.index = top_df.index.astype(float)
     top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
-    top_5_lasso = top_df.loc[top_df.aupr_rank <= 5, :].index
+    rank_cutoff = ceil(perf_df.lasso_param.unique().shape[0] * top_proportion)
+    params_above_cutoff = top_df.loc[top_df.aupr_rank <= rank_cutoff, :].index
     
     # get parameter with best validation performance
-    top_lasso_param = top_5_lasso[0]
+    top_lasso_param = params_above_cutoff[0]
 
     # get parameter in top 5 validation performance with least nonzero coefficients
     smallest_lasso_param = (
         nz_coefs_df[(nz_coefs_df.gene == gene) & 
-                    (nz_coefs_df.lasso_param.isin(top_5_lasso))]
+                    (nz_coefs_df.lasso_param.isin(params_above_cutoff))]
           .groupby(['lasso_param'])
           .agg(np.mean)
           .drop(columns=['seed', 'fold'])
@@ -187,7 +244,7 @@ def get_top_and_smallest_diff(gene):
 print(get_top_and_smallest_diff('SETD2'))
 
 
-# In[8]:
+# In[9]:
 
 
 all_top_smallest_diff_df = []
@@ -212,7 +269,7 @@ print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
 
 
-# In[9]:
+# In[10]:
 
 
 sns.set({'figure.figsize': (8, 4)})
@@ -232,7 +289,7 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_best_vs_smallest.svg'), bbox_inches='tight')
 
 
-# In[10]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -250,18 +307,40 @@ with sns.plotting_context('notebook', font_scale=1.5):
         plt.title('"Best" vs. "smallest good" LASSO parameter, TCGA -> CCLE, without zeroes', y=1.05)
     plt.xlabel('AUPR(best) - AUPR(smallest good)', labelpad=10)
     plt.gca().axvline(0, color='black', linestyle='--')
+    
+# one "best" example and one "smallest good" example
+if direction == 'tcga_ccle':
+    for plot_gene in ['NF1', 'PIK3CA']:
+        gene_cancer_diff = all_top_smallest_diff_df[
+            (all_top_smallest_diff_df.gene == plot_gene)
+        ].top_smallest_diff.values[0]
+        plt.gca().axvline(gene_cancer_diff, color='grey', linestyle=':', linewidth=3)
+        if plot_gene == 'PIK3CA':
+            plt.gca().text(
+                gene_cancer_diff-0.036, 7, 
+                f'{plot_gene}',
+                size=14,
+                bbox={'facecolor': 'white', 'edgecolor': 'black'}
+            )
+        else:
+            plt.gca().text(
+                gene_cancer_diff+0.005, 7, 
+                f'{plot_gene}',
+                size=14,
+                bbox={'facecolor': 'white', 'edgecolor': 'black'}
+            )
 
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_best_vs_smallest_no_zeroes.svg'), bbox_inches='tight')
 
 
-# In[11]:
+# In[12]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
 
 
-# In[12]:
+# In[13]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
@@ -273,7 +352,7 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).hea
 # 
 # We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
-# In[13]:
+# In[14]:
 
 
 cv_perf_df = (
@@ -287,7 +366,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[14]:
+# In[15]:
 
 
 test_perf_df = (
@@ -301,7 +380,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[15]:
+# In[16]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -332,7 +411,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[16]:
+# In[17]:
 
 
 plot_df = (best_perf_df
@@ -344,7 +423,7 @@ plot_df = (best_perf_df
 plot_df.head()
 
 
-# In[17]:
+# In[18]:
 
 
 # plot cv/test performance distribution for each gene
@@ -390,7 +469,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[18]:
+# In[19]:
 
 
 # plot difference in validation and test performance for each gene
