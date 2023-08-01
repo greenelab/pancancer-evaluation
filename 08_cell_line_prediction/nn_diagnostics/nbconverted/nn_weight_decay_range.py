@@ -29,7 +29,7 @@ results_dir = os.path.join(
 
 num_genes = 8000
 seed = 42
-plot_gene = 'EGFR'
+plot_gene = 'KRAS'
 
 output_plots = True
 output_plots_dir = os.path.join(
@@ -184,7 +184,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
-    g.set(xscale='log', xlim=(min(plot_df.weight_decay) + 0.0001, max(plot_df.weight_decay)))
+    g.set(xscale='log', xlim=(min(plot_df.weight_decay) + 0.0001, max(plot_df.weight_decay)), ylim=(-0.05, 1.05))
     g.set_xlabel(f'Weight decay (lower = less regularization)')
     g.set_ylabel('AUPR')
         

@@ -39,11 +39,11 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 # gene to plot results for
-plot_gene = 'PIK3CA'
+plot_gene = 'EGFR'
 
 # direction to plot results for
 # 'ccle_tcga' (train CCLE, test TCGA) or 'tcga_ccle' (train TCGA, test CCLE)
-direction = 'tcga_ccle'
+direction = 'ccle_tcga'
 
 if direction == 'ccle_tcga':
     results_dir = os.path.join(

@@ -29,7 +29,7 @@ results_dir = os.path.join(
 
 num_genes = 8000
 seed = 42
-plot_gene = 'EGFR'
+plot_gene = 'KRAS'
 
 output_plots = True
 output_plots_dir = os.path.join(
@@ -150,7 +150,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
-    # g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)))
+    g.set(xlim=(-0.05, 1.05), ylim=(-0.05, 1.05))
     g.set_xlim(-0.01, 1.01)
     g.set_xlabel(f'Dropout parameter (lower = less regularization)')
     g.set_ylabel('AUPR')

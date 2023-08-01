@@ -118,7 +118,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
-    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)))
+    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)), ylim=(-0.05, 1.05))
     g.set_xlabel(f'Hidden layer size (lower = more regularization)')
     g.set_ylabel('AUPR')
         
