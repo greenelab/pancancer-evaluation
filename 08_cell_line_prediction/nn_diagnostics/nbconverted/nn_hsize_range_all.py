@@ -30,6 +30,11 @@ results_dir = os.path.join(
 num_genes = 16042
 seed = 42
 
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '08_cell_line_prediction', 'generalization_plots', 'nn_results'
+)
+
 
 # In[3]:
 
@@ -57,6 +62,7 @@ for gene_dir in glob.glob(os.path.join(results_dir, '*')):
         hsize_df.append(hsize_gene_df)
 
 hsize_df = pd.concat(hsize_df)
+print(hsize_df.gene.unique().shape)
 print(np.sort(hsize_df.gene.unique()))
 hsize_df.head()
 
@@ -95,6 +101,42 @@ with sns.plotting_context('notebook', font_scale=1.6):
 # In[5]:
 
 
+# plot hidden layer size as a float-valued variable (on a log scale) vs. performance
+sns.set({'figure.figsize': (8, 4)})
+sns.set_style('ticks')
+
+plot_df = (hsize_df
+    .sort_values(by=['hsize'])
+    .reset_index(drop=True)
+)
+plot_df.hsize = plot_df.hsize.astype(int)
+
+with sns.plotting_context('notebook', font_scale=1.6):
+    g = sns.lineplot(
+        data=plot_df,
+        x='hsize', y='aupr', hue='data_type',
+        hue_order=['train', 'cv', 'test'],
+        marker='o'
+    )
+    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)))
+    g.set_xlabel(f'Hidden layer size (lower = more regularization)')
+    g.set_ylabel('AUPR')
+        
+    ax = plt.gca()
+    legend_handles, _ = ax.get_legend_handles_labels()
+    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
+    ax.legend(legend_handles, dataset_labels, title='Dataset')
+    sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
+    plt.title(f'Hidden layer size vs. AUPR, all genes', y=1.025)
+    
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'all_nn_hsize_vs_perf.svg'), bbox_inches='tight')
+
+
+# In[6]:
+
+
 test_ranks_df = (hsize_df[(hsize_df.data_type == 'test') &
                           (hsize_df.signal == 'signal')]
     .groupby(['gene', 'hsize'])
@@ -110,7 +152,7 @@ test_ranks_df['gene_rank'] = (
 test_ranks_df.head(10)
 
 
-# In[6]:
+# In[7]:
 
 
 plot_rank_df = (test_ranks_df
@@ -127,7 +169,7 @@ plot_rank_df.sort_values(by=['hsize', 'gene_rank'])
 plot_rank_df.head()
 
 
-# In[7]:
+# In[8]:
 
 
 sns.set_style('ticks')
@@ -143,7 +185,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
     sns.move_legend(g, 'center right', bbox_to_anchor=(1.025, 0.57), frameon=True)
 
 
-# In[8]:
+# In[9]:
 
 
 plot_upper_half_df = test_ranks_df.copy()
@@ -163,12 +205,13 @@ plot_upper_half_df.sort_values(by=['hsize', 'upper_half'])
 plot_upper_half_df.head()
 
 
-# In[9]:
+# In[10]:
 
 
+sns.set({'figure.figsize': (8, 3)})
 sns.set_style('ticks')
 
-with sns.plotting_context('notebook', font_scale=1.6):
+with sns.plotting_context('notebook', font_scale=1.5):
     g = sns.catplot(
         data=plot_upper_half_df, kind='bar',
         x='hsize', y='gene_count', hue='upper_half',
@@ -176,14 +219,18 @@ with sns.plotting_context('notebook', font_scale=1.6):
     )
     g.set_xlabels('Hidden layer size')
     g.set_ylabels('Number of genes')
-    plt.suptitle('Hidden layer size vs. performance above/below median rank', y=1.05)
-    sns.move_legend(g, 'center right', bbox_to_anchor=(1.025, 0.55), frameon=True)
+    plt.suptitle('Hidden layer size vs. performance above/below median rank, all genes', y=1.05)
+    g._legend.set_title('Above median')
+    sns.move_legend(g, 'center right', bbox_to_anchor=(1.055, 0.55), frameon=True)
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_nn_hsize_above_below_median.svg'), bbox_inches='tight')
 
 
-# In[10]:
+# In[11]:
 
 
-def get_top_and_smallest_diff(gene):
+def get_top_and_smallest_diff(gene, top_proportion=0.25):
     top_df = (
         hsize_df[(hsize_df.gene == gene) &
                  (hsize_df.data_type == 'cv') &
@@ -195,13 +242,14 @@ def get_top_and_smallest_diff(gene):
           .sort_values(by='mean_aupr', ascending=False)
     )
     top_df['aupr_rank'] = top_df.mean_aupr.rank(ascending=False)
-    top_5_hsize = top_df.loc[top_df.aupr_rank <= 5, :].index
+    rank_cutoff = ceil(hsize_df.hsize.unique().shape[0] * top_proportion)
+    params_above_cutoff = top_df.loc[top_df.aupr_rank <= rank_cutoff, :].index
 
     # get parameter with best validation performance
-    top_hsize = top_5_hsize[0]
+    top_hsize = params_above_cutoff[0]
 
     # get smallest hsize in top 5 validation performance
-    smallest_hsize = top_5_hsize.min()
+    smallest_hsize = params_above_cutoff.min()
 
     holdout_df = (
         hsize_df[(hsize_df.gene == gene) &
@@ -222,7 +270,7 @@ def get_top_and_smallest_diff(gene):
 print(get_top_and_smallest_diff('SETD2'))
 
 
-# In[11]:
+# In[12]:
 
 
 all_top_smallest_diff_df = []
@@ -246,42 +294,49 @@ print(all_top_smallest_diff_df.best.value_counts())
 all_top_smallest_diff_df.head()
 
 
-# In[17]:
-
-
-sns.set({'figure.figsize': (8, 3)})
-sns.set_style('whitegrid')
-
-sns.histplot(all_top_smallest_diff_df.top_smallest_diff, bins=20)
-plt.xlim(-0.2, 0.2)
-plt.title('Differences between "best" and "smallest good" hidden layer size')
-plt.xlabel('AUPR(best) - AUPR(smallest good)')
-plt.gca().axvline(0, color='black', linestyle='--')
-
-
 # In[13]:
 
 
 sns.set({'figure.figsize': (8, 3)})
 sns.set_style('whitegrid')
 
-sns.histplot(
-    all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
-    bins=20
-)
+sns.histplot(all_top_smallest_diff_df.top_smallest_diff, binwidth=0.0125, binrange=(-0.2, 0.2))
 plt.xlim(-0.2, 0.2)
-plt.title('Differences between "best" and "smallest good" hidden layer size, without zeroes')
+plt.title('Differences between "best" and "smallest good" hidden layer size')
 plt.xlabel('AUPR(best) - AUPR(smallest good)')
 plt.gca().axvline(0, color='black', linestyle='--')
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_nn_best_vs_smallest.svg'), bbox_inches='tight')
 
 
 # In[14]:
 
 
-all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
+sns.set({'figure.figsize': (8, 3.5)})
+sns.set_style('whitegrid')
+
+with sns.plotting_context('notebook', font_scale=1.2):
+    sns.histplot(
+        all_top_smallest_diff_df[all_top_smallest_diff_df.top_smallest_diff != 0.0].top_smallest_diff,
+        binwidth=0.0125, binrange=(-0.2, 0.2)
+    )
+    plt.xlim(-0.2, 0.2)
+    plt.title('Differences between "best" and "smallest good" hidden layer size, without zeroes', y=1.05)
+    plt.xlabel('AUPR(best) - AUPR(smallest good)')
+    plt.gca().axvline(0, color='black', linestyle='--')
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'all_nn_best_vs_smallest_no_zeroes.svg'), bbox_inches='tight')
 
 
 # In[15]:
+
+
+all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
+
+
+# In[16]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)

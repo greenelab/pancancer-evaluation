@@ -29,7 +29,12 @@ results_dir = os.path.join(
 
 num_genes = 8000
 seed = 42
-plot_gene = 'KRAS'
+plot_gene = 'EGFR'
+
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '08_cell_line_prediction', 'generalization_plots', 'nn_results'
+)
 
 
 # In[3]:
@@ -163,7 +168,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
 
 
 # plot hidden layer size as a float-valued variable (on a log scale) vs. performance
-sns.set({'figure.figsize': (10, 6)})
+sns.set({'figure.figsize': (8, 4)})
 sns.set_style('ticks')
 
 plot_df = (perf_df
@@ -189,4 +194,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
     ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'Hidden layer size vs. AUPR, {plot_gene}', y=1.025)
+    
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_nn_hsize_vs_perf.svg'), bbox_inches='tight')
 
