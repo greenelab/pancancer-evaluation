@@ -65,9 +65,22 @@ else:
 metric = 'aupr'
 
 output_plots = True
-output_plots_dir = os.path.join(
-    cfg.repo_root, '08_cell_line_prediction', 'generalization_plots'
-)
+
+# toggle this in papermill script to generate results for all genes
+figshare = False
+
+
+# In[2]:
+
+
+if figshare:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '08_cell_line_prediction', 'generalization_plots', 'figshare'
+    )
+else:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '08_cell_line_prediction', 'generalization_plots'
+    )
 
 
 # ### Get coefficient information for each lasso penalty

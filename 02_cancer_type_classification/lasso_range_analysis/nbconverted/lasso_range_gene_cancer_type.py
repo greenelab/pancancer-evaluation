@@ -38,15 +38,30 @@ base_results_dir = os.path.join(
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
+# gene/cancer type to plot results for
 plot_gene = 'CDKN2A'
 plot_cancer_type = 'LGG'
+
+# performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
-nz_cutoff = 5.0
 
 output_plots = True
-output_plots_dir = os.path.join(
-    cfg.repo_root, '02_cancer_type_classification', 'generalization_plots'
-)
+
+# toggle this in papermill script to generate results for all genes
+figshare = False
+
+
+# In[2]:
+
+
+if figshare:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '02_cancer_type_classification', 'generalization_plots', 'figshare'
+    )
+else:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '02_cancer_type_classification', 'generalization_plots'
+    )
 
 
 # ### Get coefficient information for each lasso penalty

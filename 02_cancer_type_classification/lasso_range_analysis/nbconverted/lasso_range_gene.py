@@ -30,24 +30,40 @@ get_ipython().run_line_magic('autoreload', '2')
 
 
 base_results_dir = os.path.join(
-    cfg.repo_root, '02_cancer_type_classification', 'results', 'lasso_range_lr_all_features'
+    cfg.repo_root, '02_cancer_type_classification', 'results', 'cancer_type_range'
 )
 
 training_dataset = 'all_other_cancers'
 results_dir = os.path.join(base_results_dir, training_dataset)
 
+# gene to plot results for
 plot_gene = 'KRAS'
-plot_cancer_type = 'KRAS'
-metric = 'aupr'
-nz_cutoff = 5.0
 
-output_plots = False
-output_plots_dir = cfg.cancer_type_lasso_range_dir
+# performance metric: 'aupr' or 'auroc'
+metric = 'aupr'
+
+output_plots = True
+
+# toggle this in papermill script to generate results for all genes
+figshare = True
+
+
+# In[3]:
+
+
+if figshare:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '02_cancer_type_classification', 'generalization_plots', 'figshare'
+    )
+else:
+    output_plots_dir = os.path.join(
+        cfg.repo_root, '02_cancer_type_classification', 'generalization_plots'
+    )
 
 
 # ### Get coefficient information for each lasso penalty
 
-# In[3]:
+# In[4]:
 
 
 nz_coefs_df = []
@@ -73,7 +89,7 @@ nz_coefs_df = nz_coefs_df[nz_coefs_df.gene == plot_gene].copy()
 nz_coefs_df.head()
 
 
-# In[4]:
+# In[5]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -124,7 +140,7 @@ plt.tight_layout()
 
 # ### Get performance information for each lasso penalty
 
-# In[5]:
+# In[6]:
 
 
 perf_df = au.load_prediction_results_lasso_range(results_dir,
@@ -134,7 +150,7 @@ perf_df = perf_df[perf_df.gene == plot_gene].copy()
 perf_df.head()
 
 
-# In[6]:
+# In[7]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -150,12 +166,12 @@ plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
 plt.tight_layout()
 
 if output_plots:
-    output_plots_dir.mkdir(exist_ok=True)
-    plt.savefig(output_plots_dir / f'{plot_gene}_lasso_boxes.png',
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_lasso_boxes.png'),
                 dpi=200, bbox_inches='tight')
 
 
-# In[7]:
+# In[8]:
 
 
 # try with a float-valued x-axis
@@ -192,7 +208,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         t.set_text(l)
 
 if output_plots:
-    plt.savefig(output_plots_dir / f'{plot_gene}_lasso_facets.png',
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_lasso_facets.png'),
                 dpi=200, bbox_inches='tight')
 
 
@@ -205,7 +221,7 @@ if output_plots:
 # 
 # We'll plot the results of both strategies (which sometimes select the same parameter, but usually they're different) for the given gene below.
 
-# In[8]:
+# In[9]:
 
 
 def get_top_and_smallest_lasso_params(cancer_type):
@@ -244,13 +260,13 @@ def get_top_and_smallest_lasso_params(cancer_type):
     return compare_df
 
 
-# In[9]:
+# In[10]:
 
 
 get_top_and_smallest_lasso_params(perf_df.holdout_cancer_type.unique()[0])
 
 
-# In[10]:
+# In[11]:
 
 
 compare_all_df = []
@@ -263,7 +279,7 @@ compare_all_df = pd.concat(compare_all_df)
 compare_all_df.head(5)
 
 
-# In[11]:
+# In[12]:
 
 
 # same plot as before but with the "best"/"smallest" parameters marked
@@ -330,4 +346,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
     ax.add_artist(l)
      
     plt.suptitle(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.02)
+    
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_lasso_facets_smallest_best.png'),
+                dpi=200, bbox_inches='tight')
 
