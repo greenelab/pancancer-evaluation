@@ -207,6 +207,15 @@ all_top_smallest_diff_df.head()
 # In[9]:
 
 
+(all_top_smallest_diff_df
+  .sort_values(by='top_smallest_diff', ascending=False)
+  .to_csv(cfg.generalization_data_dir / 'cancer_type_best_vs_smallest.tsv', sep='\t')
+)
+
+
+# In[10]:
+
+
 sns.set({'figure.figsize': (12, 5)})
 sns.set_style('whitegrid')
 
@@ -224,7 +233,7 @@ if output_plots:
                 bbox_inches='tight')
 
 
-# In[10]:
+# In[11]:
 
 
 sns.set({'figure.figsize': (16, 4)})
@@ -259,13 +268,13 @@ if output_plots:
                 bbox_inches='tight')
 
 
-# In[11]:
+# In[12]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
 
 
-# In[12]:
+# In[13]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
@@ -275,7 +284,7 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).hea
 # 
 # We'll do this using the "best" parameters.
 
-# In[13]:
+# In[14]:
 
 
 cv_perf_df = (
@@ -290,7 +299,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[14]:
+# In[15]:
 
 
 test_perf_df = (
@@ -305,7 +314,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[15]:
+# In[16]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -336,7 +345,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[16]:
+# In[17]:
 
 
 # plot difference in validation and test performance for each gene
@@ -375,7 +384,7 @@ if output_plots:
                 bbox_inches='tight')
 
 
-# In[17]:
+# In[18]:
 
 
 # plot difference in validation and test performance for each gene
@@ -414,7 +423,7 @@ if output_plots:
                 bbox_inches='tight')
 
 
-# In[18]:
+# In[19]:
 
 
 gene_df = (best_perf_df
@@ -435,7 +444,7 @@ for cancer_type, row in gene_df.iterrows():
     print(cancer_type, row.gene_list)
 
 
-# In[23]:
+# In[20]:
 
 
 # plot difference in validation and test performance for each gene
@@ -479,7 +488,7 @@ if output_plots:
                 bbox_inches='tight')
 
 
-# In[26]:
+# In[21]:
 
 
 # plot difference in validation and test performance for each gene

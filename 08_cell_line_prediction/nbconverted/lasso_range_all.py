@@ -40,7 +40,7 @@ get_ipython().run_line_magic('autoreload', '2')
 
 # direction to plot results for
 # 'ccle_tcga' (train CCLE, test TCGA) or 'tcga_ccle' (train TCGA, test CCLE)
-direction = 'ccle_tcga'
+direction = 'tcga_ccle'
 
 if direction == 'ccle_tcga':
     results_dir = os.path.join(
@@ -272,6 +272,15 @@ all_top_smallest_diff_df.head()
 # In[10]:
 
 
+(all_top_smallest_diff_df
+  .sort_values(by='top_smallest_diff', ascending=False)
+  .to_csv(cfg.generalization_data_dir / f'{direction}_best_vs_smallest.tsv', sep='\t')
+)
+
+
+# In[11]:
+
+
 sns.set({'figure.figsize': (8, 4)})
 sns.set_style('whitegrid')
 
@@ -289,7 +298,7 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_best_vs_smallest.svg'), bbox_inches='tight')
 
 
-# In[11]:
+# In[12]:
 
 
 sns.set({'figure.figsize': (12, 5)})
@@ -334,13 +343,13 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_{direction}_best_vs_smallest_no_zeroes.svg'), bbox_inches='tight')
 
 
-# In[12]:
+# In[13]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
 
 
-# In[13]:
+# In[14]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
@@ -352,7 +361,7 @@ all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).hea
 # 
 # We expect there to be some genes where we can predict mutation status well both within TCGA and on CCLE (both "cv" and "test" performance are good), some genes where we can predict well on TCGA but we can't transfer our predictions to CCLE ("cv" performance is decent/good and "test" performance is poor), and some genes where we can't predict well on either set (both "cv" and "test" performance are poor).
 
-# In[14]:
+# In[15]:
 
 
 cv_perf_df = (
@@ -366,7 +375,7 @@ print(cv_perf_df.shape)
 cv_perf_df.head()
 
 
-# In[15]:
+# In[16]:
 
 
 test_perf_df = (
@@ -380,7 +389,7 @@ print(test_perf_df.shape)
 test_perf_df.head()
 
 
-# In[16]:
+# In[17]:
 
 
 # get performance using "best" lasso parameter, across all seeds and folds
@@ -411,7 +420,7 @@ print(best_perf_df.shape)
 best_perf_df.sort_values(by='cv_test_aupr_diff', ascending=False).head()
 
 
-# In[17]:
+# In[18]:
 
 
 plot_df = (best_perf_df
@@ -423,7 +432,7 @@ plot_df = (best_perf_df
 plot_df.head()
 
 
-# In[18]:
+# In[19]:
 
 
 # plot cv/test performance distribution for each gene
@@ -469,7 +478,7 @@ with sns.plotting_context('notebook', font_scale=1.5):
 plt.tight_layout()
 
 
-# In[19]:
+# In[20]:
 
 
 # plot difference in validation and test performance for each gene

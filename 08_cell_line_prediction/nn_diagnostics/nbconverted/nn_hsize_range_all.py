@@ -297,6 +297,15 @@ all_top_smallest_diff_df.head()
 # In[13]:
 
 
+(all_top_smallest_diff_df
+  .sort_values(by='top_smallest_diff', ascending=False)
+  .to_csv(cfg.generalization_data_dir / f'tcga_ccle_nn_best_vs_smallest.tsv', sep='\t')
+)
+
+
+# In[14]:
+
+
 sns.set({'figure.figsize': (8, 3)})
 sns.set_style('whitegrid')
 
@@ -310,7 +319,7 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_nn_best_vs_smallest.svg'), bbox_inches='tight')
 
 
-# In[14]:
+# In[15]:
 
 
 sns.set({'figure.figsize': (8, 3.5)})
@@ -330,13 +339,13 @@ if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_nn_best_vs_smallest_no_zeroes.svg'), bbox_inches='tight')
 
 
-# In[15]:
+# In[16]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=False).head(10)
 
 
-# In[16]:
+# In[17]:
 
 
 all_top_smallest_diff_df.sort_values(by='top_smallest_diff', ascending=True).head(10)
