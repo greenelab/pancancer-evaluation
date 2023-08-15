@@ -1,16 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ### TCGA <-> CCLE mutation prediction: LASSO parameter range experiments
+# ### LASSO parameter range experiments
 # 
-# Here, we're interested in:
-# 
-# * Training mutation status models on data from TCGA (human tumor samples) and testing on data from CCLE (cancer cell lines), or
-# * Training mutation status models on data from CCLE and testing on data from TCGA
-# 
-# This is similar to our other experiments where we hold out and evaluate on all data from a single cancer type, but now the "domains" are entire datasets rather than cancer types from the same dataset.
-# 
-# This script plots the detailed results of varying regularization strength (LASSO parameter) for a single gene.
+# We want to see whether smaller models (i.e. models with fewer nonzero features) tend to generalize to new cancer types better than larger ones; this script compares/visualizes those results.
 
 # In[1]:
 
@@ -38,29 +31,17 @@ get_ipython().run_line_magic('autoreload', '2')
 # In[2]:
 
 
-# gene to plot results for
-plot_gene = 'EGFR'
+base_results_dir = os.path.join(
+    cfg.repo_root, '02_cancer_type_classification', 'results', 'cancer_type_range'
+)
 
-# direction to plot results for
-# 'ccle_tcga' (train CCLE, test TCGA) or 'tcga_ccle' (train TCGA, test CCLE)
-direction = 'ccle_tcga'
+training_dataset = 'all_other_cancers'
+results_dir = os.path.join(base_results_dir, training_dataset)
 
-if direction == 'ccle_tcga':
-    results_dir = os.path.join(
-        cfg.repo_root, '08_cell_line_prediction', 'results', 'ccle_to_tcga'
-    )
-    dataset_labels = ['CCLE (train)', 'CCLE (holdout)', 'TCGA'] 
-else:
-    results_dir = os.path.join(
-        cfg.repo_root, '08_cell_line_prediction', 'results', 'tcga_to_ccle'
-    )
-    dataset_labels = ['TCGA (train)', 'TCGA (holdout)', 'CCLE'] 
+# gene/cancer type to plot results for
+plot_gene = 'CDKN2A'
+plot_cancer_type = 'LGG'
 
-if 'sgd' in results_dir:
-    param_orientation = 'lower'
-else:
-    param_orientation = 'higher'
-    
 # performance metric: 'aupr' or 'auroc'
 metric = 'aupr'
 
@@ -75,11 +56,11 @@ figshare = False
 
 if figshare:
     output_plots_dir = os.path.join(
-        cfg.repo_root, '08_cell_line_prediction', 'generalization_plots', 'figshare'
+        cfg.repo_root, '02_cancer_type_classification', 'generalization_plots', 'figshare'
     )
 else:
     output_plots_dir = os.path.join(
-        cfg.repo_root, '08_cell_line_prediction', 'generalization_plots'
+        cfg.repo_root, '02_cancer_type_classification', 'generalization_plots'
     )
 
 
@@ -106,20 +87,20 @@ nz_coefs_df = pd.DataFrame(
     nz_coefs_df,
     columns=['gene', 'cancer_type', 'lasso_param', 'seed', 'fold', 'nz_coefs']
 )
-nz_coefs_df.drop(columns=['cancer_type'], inplace=True)
 nz_coefs_df.lasso_param = nz_coefs_df.lasso_param.astype(float)
-nz_coefs_df = nz_coefs_df[nz_coefs_df.gene == plot_gene].copy()
+nz_coefs_df = nz_coefs_df[(nz_coefs_df.gene == plot_gene) &
+                          (nz_coefs_df.cancer_type == plot_cancer_type)].copy()
 nz_coefs_df.head()
 
 
 # In[4]:
 
 
-sns.set({'figure.figsize': (14, 4)})
+sns.set({'figure.figsize': (12, 5)})
 sns.set_style('whitegrid')
 
 sns.boxplot(
-    data=nz_coefs_df.sort_values(by=['lasso_param']),
+    data=nz_coefs_df.sort_values(by=['cancer_type', 'lasso_param']),
     x='lasso_param', y='nz_coefs'
 )
 
@@ -143,19 +124,21 @@ for i, patch in enumerate(box_patches):
         line.set_mfc(col)  # facecolor of fliers
         line.set_mec(col)  # edgecolor of fliers
 
-plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}', size=16)
-plt.xlabel(f'LASSO parameter ({param_orientation} = less regularization)', size=14)
+plt.title(f'LASSO parameter vs. number of nonzero coefficients, {plot_gene}_{plot_cancer_type}',
+          size=16)
+plt.xlabel('Cancer type', size=14)
 plt.ylabel('Number of nonzero coefficients', size=14)
+ax.tick_params(axis='x', rotation=45)
 _, xlabels = plt.xticks()
 _ = ax.set_xticklabels(xlabels, size=12)
 ax.set_yticks(ax.get_yticks()[1:])
 _ = ax.set_yticklabels(ax.get_yticks(), size=12)
-plt.gca().tick_params(axis='x', rotation=45)
 plt.tight_layout()
 
 if output_plots:
     os.makedirs(output_plots_dir, exist_ok=True)
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_nz_coefs.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_{plot_cancer_type}_coefs.png'),
+                dpi=200, bbox_inches='tight')
 
 
 # ### Get performance information for each lasso penalty
@@ -164,12 +147,11 @@ if output_plots:
 
 
 perf_df = au.load_prediction_results_lasso_range(results_dir,
-                                                 'tcga_to_ccle',
+                                                 training_dataset,
                                                  gene=plot_gene)
-
-perf_df.drop(columns=['holdout_cancer_type'], inplace=True)
+perf_df = perf_df[(perf_df.gene == plot_gene) &
+                  (perf_df.holdout_cancer_type == plot_cancer_type)].copy()
 perf_df.lasso_param = perf_df.lasso_param.astype(float)
-perf_df = perf_df[perf_df.gene == plot_gene].copy()
 perf_df.head()
 
 
@@ -182,12 +164,16 @@ sns.boxplot(
     data=(
         perf_df[(perf_df.signal == 'signal') &
                 (perf_df.data_type == 'test')]
-          .sort_values(by=['lasso_param'])
+          .sort_values(by=['holdout_cancer_type', 'lasso_param'])
     ), x='lasso_param', y=metric
 )
 plt.gca().tick_params(axis='x', rotation=45)
-plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}')
+plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}_{plot_cancer_type}')
 plt.tight_layout()
+
+if output_plots:
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_{plot_cancer_type}_lasso_boxes.png'),
+                dpi=200, bbox_inches='tight')
 
 
 # In[7]:
@@ -195,8 +181,8 @@ plt.tight_layout()
 
 # plot LASSO parameter vs. AUPR, for all 3 datasets
 # "train" = data used to train model
-# "cv" = validation set from TCGA (not used to train model)
-# "test" = CCLE data (not used to train model)
+# "cv" = validation set
+# "test" = held-out cancer type
 sns.set({'figure.figsize': (9, 5)})
 sns.set_style('ticks')
 
@@ -215,18 +201,19 @@ with sns.plotting_context('notebook', font_scale=1.6):
         marker='o',
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)), ylim=(-0.05, 1.05))
-    g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
+    g.set_xlabel('LASSO parameter (higher = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()
     legend_handles, _ = ax.get_legend_handles_labels()
+    dataset_labels = ['Train', 'Stratified holdout \n(same cancer types)', 'Test \n(unseen cancer type)']
     ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1, 1))
     
-    plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
+    plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}_{plot_cancer_type}', y=1.025)
     
 if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_{direction}_parameter_vs_perf.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_{plot_cancer_type}_parameter_vs_perf.svg'), bbox_inches='tight')
 
 
 # ### Visualize LASSO model selection for the given gene
@@ -241,10 +228,11 @@ if output_plots:
 # In[8]:
 
 
-def get_top_and_smallest_lasso_params(perf_df, top_proportion=0.25):
+def get_top_and_smallest_lasso_params(cancer_type, top_proportion=0.25):
     top_df = (
         perf_df[(perf_df.data_type == 'cv') &
-                (perf_df.signal == 'signal')]
+                (perf_df.signal == 'signal') &
+                (perf_df.holdout_cancer_type == cancer_type)]
           .groupby(['lasso_param'])
           .agg(np.mean)
           .drop(columns=['seed', 'fold'])
@@ -261,7 +249,8 @@ def get_top_and_smallest_lasso_params(perf_df, top_proportion=0.25):
 
     # get parameter in top 5 validation performance with least nonzero coefficients
     smallest_lasso_param = (
-        nz_coefs_df[(nz_coefs_df.lasso_param.isin(params_above_cutoff))]
+        nz_coefs_df[(nz_coefs_df.cancer_type == cancer_type) &
+                    (nz_coefs_df.lasso_param.isin(params_above_cutoff))]
           .groupby(['lasso_param'])
           .agg(np.mean)
           .drop(columns=['seed', 'fold'])
@@ -271,6 +260,7 @@ def get_top_and_smallest_lasso_params(perf_df, top_proportion=0.25):
     compare_df = top_df.loc[
         [smallest_lasso_param, top_lasso_param], :
     ]
+    compare_df['cancer_type'] = cancer_type
     compare_df['desc'] = ['smallest', 'best']
     return compare_df
 
@@ -278,20 +268,8 @@ def get_top_and_smallest_lasso_params(perf_df, top_proportion=0.25):
 # In[9]:
 
 
-top_test_df = (
-    perf_df[(perf_df.data_type == 'test') &
-            (perf_df.signal == 'signal')]
-      .groupby(['lasso_param'])
-      .agg(np.mean)
-      .drop(columns=['seed', 'fold'])
-      .rename(columns={'auroc': 'mean_test_auroc', 'aupr': 'mean_test_aupr'})
-)
-
-compare_df = (get_top_and_smallest_lasso_params(perf_df)
-    .merge(top_test_df, left_index=True, right_index=True)
-)
-
-compare_df
+compare_df = get_top_and_smallest_lasso_params(plot_cancer_type)
+compare_df.head(5)
 
 
 # In[10]:
@@ -316,7 +294,7 @@ with sns.plotting_context('notebook', font_scale=1.4):
         marker='o'
     )
     g.set(xscale='log', xlim=(min(plot_df.lasso_param), max(plot_df.lasso_param)), ylim=(-0.05, 1.05))
-    g.set_xlabel(f'LASSO parameter ({param_orientation} = less regularization)')
+    g.set_xlabel(f'LASSO parameter (higher = less regularization)')
     g.set_ylabel(f'{metric.upper()}')
     
     ax = plt.gca()
@@ -338,8 +316,8 @@ with sns.plotting_context('notebook', font_scale=1.4):
     legend_handles, _ = ax.get_legend_handles_labels()
     ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
-    plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}', y=1.025)
+    plt.title(f'LASSO parameter vs. {metric.upper()}, {plot_gene}_{plot_cancer_type}', y=1.025)
     
 if output_plots:
-    plt.savefig(os.path.join(output_plots_dir, f'{gene}_{direction}_best_vs_smallest.svg'), bbox_inches='tight')
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_{plot_cancer_type}_best_vs_smallest.svg'), bbox_inches='tight')
 

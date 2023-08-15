@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ### Neural network hidden layer size experiments, per gene
+# 
+# We want to see whether smaller models (i.e. models with smaller hidden layer sizes) tend to generalize to new cancer types better than larger ones; this script compares/visualizes those results.
+
 # In[1]:
 
 
@@ -31,6 +35,13 @@ num_genes = 8000
 seed = 42
 plot_gene = 'KRAS'
 
+output_plots = True
+output_plots_dir = os.path.join(
+    cfg.repo_root, '08_cell_line_prediction', 'generalization_plots', 'nn_results'
+)
+
+
+# ### Get performance information for each hidden layer size
 
 # In[3]:
 
@@ -52,6 +63,10 @@ for hsize_file in glob.glob(
 print(sorted(list(hsize_dfs.keys())))
 hsize_dfs[list(hsize_dfs.keys())[0]].head()
 
+
+# ### Plot learning curves
+# 
+# Visualize performance info across epochs.
 
 # In[4]:
 
@@ -108,6 +123,10 @@ for hsize_ix, hsize in enumerate(hsize_vals):
 plt.tight_layout()
 
 
+# ### Plot performance across hidden layer sizes
+# 
+# Take the final epoch, and compare train/CV/test performance for models of each size.
+
 # In[6]:
 
 
@@ -163,7 +182,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
 
 
 # plot hidden layer size as a float-valued variable (on a log scale) vs. performance
-sns.set({'figure.figsize': (10, 6)})
+sns.set({'figure.figsize': (8, 4)})
 sns.set_style('ticks')
 
 plot_df = (perf_df
@@ -179,7 +198,7 @@ with sns.plotting_context('notebook', font_scale=1.6):
         hue_order=['train', 'cv', 'test'],
         marker='o'
     )
-    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)))
+    g.set(xscale='log', xlim=(min(plot_df.hsize), max(plot_df.hsize)), ylim=(-0.05, 1.05))
     g.set_xlabel(f'Hidden layer size (lower = more regularization)')
     g.set_ylabel('AUPR')
         
@@ -189,4 +208,8 @@ with sns.plotting_context('notebook', font_scale=1.6):
     ax.legend(legend_handles, dataset_labels, title='Dataset')
     sns.move_legend(g, "upper left", bbox_to_anchor=(1.01, 1))
     plt.title(f'Hidden layer size vs. AUPR, {plot_gene}', y=1.025)
+    
+if output_plots:
+    os.makedirs(output_plots_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_plots_dir, f'{plot_gene}_nn_hsize_vs_perf.svg'), bbox_inches='tight')
 
