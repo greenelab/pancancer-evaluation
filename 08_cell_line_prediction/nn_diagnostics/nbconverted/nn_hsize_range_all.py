@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ### Neural network hidden layer size experiments, summary across all genes
+# 
+# We want to see whether smaller models (i.e. models with smaller hidden layer sizes) tend to generalize to new cancer types better than larger ones; this script compares/visualizes those results across all genes in our cancer driver gene set.
+
 # In[1]:
 
 
@@ -36,6 +40,8 @@ output_plots_dir = os.path.join(
 )
 
 
+# ### Get performance information for each gene and hidden layer size
+
 # In[3]:
 
 
@@ -66,6 +72,8 @@ print(hsize_df.gene.unique().shape)
 print(np.sort(hsize_df.gene.unique()))
 hsize_df.head()
 
+
+# ### Plot average performance for each hidden layer size, across genes/seeds/folds
 
 # In[4]:
 
@@ -133,6 +141,8 @@ if output_plots:
     os.makedirs(output_plots_dir, exist_ok=True)
     plt.savefig(os.path.join(output_plots_dir, f'all_nn_hsize_vs_perf.svg'), bbox_inches='tight')
 
+
+# ### Plot performance ranks for each hidden layer size, across genes
 
 # In[6]:
 
@@ -226,6 +236,15 @@ with sns.plotting_context('notebook', font_scale=1.5):
 if output_plots:
     plt.savefig(os.path.join(output_plots_dir, f'all_nn_hsize_above_below_median.svg'), bbox_inches='tight')
 
+
+# ### Get "best" hidden layer size and compare performance across all genes
+# 
+# We want to use two different strategies to pick the "best" hidden layer size:
+# 
+# 1. Choose the top 25% of hsizes based on validation set AUPR, then take the smallest model (least nonzero coefficients) in that set. This is the "parsimonious" approach that assumes that smaller models will generalize better.
+# 2. Choose the top hsize parameter based solely on validation set AUPR, without considering model size. This is the "non-parsimonious" approach.
+# 
+# We'll do this for each gene/cancer type in the dataset, and plot the distribution of differences between the two strategies, as a way to quantify which strategy is "better" for generalization across cancer types.
 
 # In[11]:
 

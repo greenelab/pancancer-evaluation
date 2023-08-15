@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# ### Neural network hidden layer size experiments, per gene
+# 
+# We want to see whether smaller models (i.e. models with smaller hidden layer sizes) tend to generalize to new cancer types better than larger ones; this script compares/visualizes those results.
+
 # In[1]:
 
 
@@ -37,6 +41,8 @@ output_plots_dir = os.path.join(
 )
 
 
+# ### Get performance information for each hidden layer size
+
 # In[3]:
 
 
@@ -57,6 +63,10 @@ for hsize_file in glob.glob(
 print(sorted(list(hsize_dfs.keys())))
 hsize_dfs[list(hsize_dfs.keys())[0]].head()
 
+
+# ### Plot learning curves
+# 
+# Visualize performance info across epochs.
 
 # In[4]:
 
@@ -112,6 +122,10 @@ for hsize_ix, hsize in enumerate(hsize_vals):
 
 plt.tight_layout()
 
+
+# ### Plot performance across hidden layer sizes
+# 
+# Take the final epoch, and compare train/CV/test performance for models of each size.
 
 # In[6]:
 
